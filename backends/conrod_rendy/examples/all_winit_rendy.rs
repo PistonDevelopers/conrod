@@ -1,7 +1,7 @@
 use conrod_example_shared::{WIN_H, WIN_W};
-use conrod_rendy::{UiImage, UiPipeline, SimpleUiAux};
+use conrod_rendy::{UiTexture, UiPipeline, SimpleUiAux};
 use rendy::{
-    command::Families,
+    command::{Families, QueueType},
     factory::{self, Factory},
     graph::{
         present::PresentNode,
@@ -45,72 +45,80 @@ fn main() {
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
-    // Load the Rust logo from our assets folder to use as an example image.
+    // We'll load the Rust logo from our assets folder to use as an example image.
     let logo_path = assets.join("images/rust.png");
-    let image = UiImage::new(logo_path).unwrap();
-    let mut image_map = conrod_core::image::Map::new();
-    let rust_logo = image_map.insert(image);
-
-    let mut app = conrod_example_shared::DemoApp::new(rust_logo);
-    {
-        let mut ui_cell = ui.set_widgets();
-        conrod_example_shared::gui(&mut ui_cell, &ids, &mut app);
-    }
 
     let config: factory::Config = Default::default();
     let rendy = AnyWindowedRendy::init_auto(&config, window_builder, &event_loop).unwrap();
     rendy::with_any_windowed_rendy!((rendy)
         (mut factory, mut families, surface, window) => {
-    let mut graph_builder = GraphBuilder::<_, SimpleUiAux>::new();
-    let size = window
-        .inner_size()
-        .to_physical(window.hidpi_factor());
+            // Load the image onto the GPU.
+            let family_id = families
+                .find(|f| match f.capability() {
+                    QueueType::General | QueueType::Graphics => true,
+                    _ => false,
+                })
+                .expect("no queue to load image");
+            let family = families.family(family_id);
+            let queue_id = family.queue(0).id();
+            let image = UiTexture::from_path(&logo_path, &mut factory, queue_id).unwrap();
+            let mut image_map = conrod_core::image::Map::new();
+            let rust_logo = image_map.insert(image);
 
-    let color = graph_builder.create_image(
-        Kind::D2(size.width as u32, size.height as u32, 1, 1),
-        1,
-        factory.get_surface_format(&surface),
-        Some(ClearValue {
-            color: ClearColor {
-                float32: CLEAR_COLOR,
-            },
-        }),
+            // Create the demo application.
+            let mut app = conrod_example_shared::DemoApp::new(rust_logo);
+
+            let mut graph_builder = GraphBuilder::<_, SimpleUiAux<_>>::new();
+            let size = window
+                .inner_size()
+                .to_physical(window.hidpi_factor());
+
+            let color = graph_builder.create_image(
+                Kind::D2(size.width as u32, size.height as u32, 1, 1),
+                1,
+                factory.get_surface_format(&surface),
+                Some(ClearValue {
+                    color: ClearColor {
+                        float32: CLEAR_COLOR,
+                    },
+                }),
+            );
+
+            let pass = graph_builder.add_node(
+                UiPipeline::builder()
+                    .into_subpass()
+                    .with_color(color)
+                    .into_pass(),
+            );
+
+            graph_builder.add_node(
+                PresentNode::builder(&factory, surface, color).with_dependency(pass),
+            );
+
+            let aux = SimpleUiAux {
+                ui,
+                image_map,
+                dpi_factor: window.hidpi_factor(),
+            };
+
+            let graph = graph_builder
+                .build(&mut factory, &mut families, &aux)
+                .unwrap();
+
+            run(event_loop, aux, ids, app, factory, families, window, Some(graph));
+        }
     );
-
-    let pass = graph_builder.add_node(
-        UiPipeline::builder()
-            .into_subpass()
-            .with_color(color)
-            .into_pass(),
-    );
-
-    graph_builder.add_node(
-        PresentNode::builder(&factory, surface, color).with_dependency(pass),
-    );
-
-    let aux = SimpleUiAux {
-        ui,
-        image_map,
-        dpi_factor: window.hidpi_factor(),
-    };
-
-    let graph = graph_builder
-        .build(&mut factory, &mut families, &aux)
-        .unwrap();
-
-    run(event_loop, aux, ids, app, factory, families, window, Some(graph));
-    });
 }
 
 pub fn run<B: Backend>(
     event_loop: EventLoop<()>,
-    mut aux: SimpleUiAux,
+    mut aux: SimpleUiAux<B>,
     ids: conrod_example_shared::Ids,
     mut app: conrod_example_shared::DemoApp,
     mut factory: Factory<B>,
     mut families: Families<B>,
     window: Window,
-    mut graph: Option<Graph<B, SimpleUiAux>>,
+    mut graph: Option<Graph<B, SimpleUiAux<B>>>,
 ) {
     event_loop.run(move |event, _, control_flow| {
         if let Some(event) = conrod_rendy::winit_convert::convert_event(event.clone(), &window) {
