@@ -15,6 +15,7 @@ use rendy::{
     },
     init::{
         winit::{
+            self,
             event::{Event, WindowEvent},
             event_loop::{ControlFlow, EventLoop},
             window::{Window, WindowBuilder},
@@ -25,6 +26,24 @@ use rendy::{
 };
 
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
+
+// A wrapper around the winit window that allows us to implement the trait necessary for enabling
+// the winit <-> conrod conversion functions.
+struct WindowRef<'a>(&'a Window);
+
+// Implement the `WinitWindow` trait for `WindowRef` to allow for generating compatible conversion
+// functions.
+impl<'a> conrod_winit::WinitWindow for WindowRef<'a> {
+    fn get_inner_size(&self) -> Option<(u32, u32)> {
+        Some(winit::window::Window::inner_size(&self.0).into())
+    }
+    fn hidpi_factor(&self) -> f32 {
+        winit::window::Window::hidpi_factor(&self.0) as _
+    }
+}
+
+// Generate the winit <-> conrod_core type conversion fns.
+conrod_winit::v020_conversion_fns!();
 
 fn main() {
     // Create the window manager
@@ -86,7 +105,7 @@ pub fn run<B: Backend>(
     mut graph: Option<Graph<B, SimpleUiAux<B>>>,
 ) {
     event_loop.run(move |event, _, control_flow| {
-        if let Some(event) = conrod_rendy::winit_convert::convert_event(event.clone(), &window) {
+        if let Some(event) = convert_event(event.clone(), &window) {
             aux.ui.handle_event(event);
         }
 

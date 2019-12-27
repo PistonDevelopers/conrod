@@ -1,5 +1,3 @@
-pub mod winit_convert;
-
 use conrod_core::image::{Id as ImageId, Map as ImageMap};
 use image;
 use conrod_core::mesh::{self, Mesh};

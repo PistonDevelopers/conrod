@@ -21,4 +21,5 @@ profiler = ["rendy/profiler"]
 
 [dev-dependencies]
 conrod_example_shared = { path = "../conrod_example_shared", version = "0.68" }
+conrod_winit = { path = "../conrod_winit", version = "0.68" }
 find_folder = "0.3.0"
