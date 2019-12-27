@@ -21,6 +21,7 @@ use rendy::{
         },
         AnyWindowedRendy,
     },
+    wsi::Surface,
 };
 
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
@@ -52,7 +53,6 @@ fn main() {
     let rendy = AnyWindowedRendy::init_auto(&config, window_builder, &event_loop).unwrap();
     rendy::with_any_windowed_rendy!((rendy)
         (mut factory, mut families, surface, window) => {
-            // Load the image onto the GPU.
             let family_id = families
                 .find(|f| match f.capability() {
                     QueueType::General | QueueType::Graphics => true,
@@ -64,47 +64,12 @@ fn main() {
             let image = UiTexture::from_path(&logo_path, &mut factory, queue_id).unwrap();
             let mut image_map = conrod_core::image::Map::new();
             let rust_logo = image_map.insert(image);
-
-            // Create the demo application.
             let app = conrod_example_shared::DemoApp::new(rust_logo);
-
-            let mut graph_builder = GraphBuilder::<_, SimpleUiAux<_>>::new();
-            let size = window
-                .inner_size()
-                .to_physical(window.hidpi_factor());
-
-            let color = graph_builder.create_image(
-                Kind::D2(size.width as u32, size.height as u32, 1, 1),
-                1,
-                factory.get_surface_format(&surface),
-                Some(ClearValue {
-                    color: ClearColor {
-                        float32: CLEAR_COLOR,
-                    },
-                }),
-            );
-
-            let pass = graph_builder.add_node(
-                UiPipeline::builder()
-                    .into_subpass()
-                    .with_color(color)
-                    .into_pass(),
-            );
-
-            graph_builder.add_node(
-                PresentNode::builder(&factory, surface, color).with_dependency(pass),
-            );
-
-            let aux = SimpleUiAux {
-                ui,
-                image_map,
-                dpi_factor: window.hidpi_factor(),
-            };
-
-            let graph = graph_builder
-                .build(&mut factory, &mut families, &aux)
-                .unwrap();
-
+            let dpi_factor = window.hidpi_factor();
+            let aux = SimpleUiAux { ui, image_map, dpi_factor };
+            let size = window.inner_size().to_physical(dpi_factor);
+            let win_size = [size.width as u32, size.height as u32];
+            let graph = create_graph(win_size, &mut factory, &mut families, surface, &aux);
             run(event_loop, aux, ids, app, factory, families, window, Some(graph));
         }
     );
@@ -138,11 +103,22 @@ pub fn run<B: Backend>(
                     graph.run(&mut factory, &mut families, &aux);
                 }
             }
-            Event::WindowEvent {
-                event: WindowEvent::CloseRequested,
-                ..
-            } => *control_flow = ControlFlow::Exit,
-            _ => *control_flow = ControlFlow::Poll,
+            Event::WindowEvent { event, .. } => match event {
+                WindowEvent::CloseRequested | WindowEvent::Destroyed => *control_flow = ControlFlow::Exit,
+                WindowEvent::Resized(size) => {
+                    let size = size.to_physical(window.hidpi_factor());
+                    let win_size = [size.width as u32, size.height as u32];
+                    recreate_graph(win_size, &mut factory, &mut families, &window, &aux, &mut graph);
+                }
+                WindowEvent::HiDpiFactorChanged(dpi_factor) => {
+                    aux.dpi_factor = dpi_factor;
+                    let size = window.inner_size().to_physical(dpi_factor);
+                    let win_size = [size.width as u32, size.height as u32];
+                    recreate_graph(win_size, &mut factory, &mut families, &window, &aux, &mut graph);
+                }
+                _ => (),
+            }
+            _ => (),
         }
 
         if *control_flow == ControlFlow::Exit {
@@ -151,4 +127,60 @@ pub fn run<B: Backend>(
             }
         }
     });
+}
+
+fn create_graph<B>(
+    [win_w, win_h]: [u32; 2],
+    factory: &mut Factory<B>,
+    families: &mut Families<B>,
+    surface: Surface<B>,
+    aux: &SimpleUiAux<B>,
+) -> Graph<B, SimpleUiAux<B>>
+where
+    B: Backend,
+{
+    let mut graph_builder = GraphBuilder::<_, SimpleUiAux<_>>::new();
+
+    // Create the target, color image.
+    let kind = Kind::D2(win_w, win_h, 1, 1);
+    let levels = 1;
+    let format = factory.get_surface_format(&surface);
+    let clear = Some(ClearValue { color: ClearColor { float32: CLEAR_COLOR, }, });
+    let color = graph_builder.create_image(kind, levels, format, clear);
+
+    // Create the UI graphics pipeline node.
+    let pass = graph_builder.add_node(
+        UiPipeline::builder()
+            .into_subpass()
+            .with_color(color)
+            .into_pass(),
+    );
+
+    // The pass for presenting the colour image to the surface.
+    graph_builder.add_node(
+        PresentNode::builder(factory, surface, color)
+            .with_dependency(pass),
+    );
+
+    graph_builder
+        .build(factory, families, &aux)
+        .expect("failed to build the graph")
+}
+
+fn recreate_graph<B>(
+    win_size: [u32; 2],
+    factory: &mut Factory<B>,
+    families: &mut Families<B>,
+    window: &Window,
+    aux: &SimpleUiAux<B>,
+    graph: &mut Option<Graph<B, SimpleUiAux<B>>>,
+)
+where
+    B: Backend,
+{
+    if let Some(graph) = graph.take() {
+        graph.dispose(factory, aux);
+    }
+    let surface = factory.create_surface(window).expect("failed to create surface");
+    *graph = Some(create_graph(win_size, factory, families, surface, aux));
 }
