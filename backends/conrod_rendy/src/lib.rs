@@ -16,12 +16,16 @@ use rendy::hal::{
     Backend,
 };
 use rendy::memory::Dynamic;
+use rendy::mesh::AsVertex;
 use rendy::resource::{Buffer, BufferInfo, DescriptorSet, DescriptorSetLayout, Escape, Extent, Handle};
-use rendy::shader::{ShaderSet, ShaderSetBuilder, SpirvReflection, SpirvShader};
+use rendy::shader::{ShaderSet, ShaderSetBuilder, SpirvShader};
 use rendy::texture::{Texture, TextureBuilder};
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use std::path::Path;
+use vertex::Vertex;
+
+mod vertex;
 
 /// Draw text from the text cache texture `tex` in the fragment shader.
 pub const MODE_TEXT: u32 = 0;
@@ -61,17 +65,6 @@ lazy_static::lazy_static! {
     static ref SHADERS: ShaderSetBuilder = ShaderSetBuilder::default()
         .with_vertex(&*VERTEX).unwrap()
         .with_fragment(&*FRAGMENT).unwrap();
-
-    static ref SHADER_REFLECTION: SpirvReflection = SHADERS.reflect().unwrap();
-}
-
-/// The `Vertex` type passed to the vertex shader.
-#[derive(Debug, Copy, Clone)]
-pub struct Vertex {
-    pub pos: [f32; 2],
-    pub uv: [f32; 2],
-    pub color: [f32; 4],
-    pub mode: u32,
 }
 
 /// A simple type that wraps a rendy `Texture` and provides a `conrod_core::mesh::ImageDimensions`
@@ -231,14 +224,33 @@ where
     }
 
     fn vertices(&self) -> Vec<(Vec<Element<Format>>, u32, VertexInputRate)> {
-        vec![SHADER_REFLECTION
-            .attributes_range(..)
-            .unwrap()
-            .gfx_vertex_input_desc(VertexInputRate::Vertex)]
+        vec![
+            Vertex::vertex().gfx_vertex_input_desc(hal::pso::VertexInputRate::Vertex),
+        ]
     }
 
     fn layout(&self) -> Layout {
-        SHADER_REFLECTION.layout().unwrap()
+        Layout {
+            sets: vec![SetLayout {
+                bindings: vec![
+                    hal::pso::DescriptorSetLayoutBinding {
+                        binding: 0,
+                        ty: hal::pso::DescriptorType::CombinedImageSampler,
+                        count: 1,
+                        stage_flags: hal::pso::ShaderStageFlags::FRAGMENT,
+                        immutable_samplers: false,
+                    },
+                    hal::pso::DescriptorSetLayoutBinding {
+                        binding: 1,
+                        ty: hal::pso::DescriptorType::CombinedImageSampler,
+                        count: 1,
+                        stage_flags: hal::pso::ShaderStageFlags::FRAGMENT,
+                        immutable_samplers: false,
+                    },
+                ],
+            }],
+            push_constants: Vec::new(),
+        }
     }
 
     fn load_shader_set(&self, factory: &mut Factory<B>, _aux: &T) -> ShaderSet<B> {
@@ -401,14 +413,13 @@ where
         // to `&[Vertex]` after ensuring layouts are the same.
         let vertices: Vec<Vertex> = self.mesh.vertices().iter().map(|v| {
             Vertex {
-                pos: v.position,
-                uv: v.tex_coords,
-                color: v.rgba,
-                mode: v.mode,
+                pos: v.position.into(),
+                uv: v.tex_coords.into(),
+                color: v.rgba.into(),
+                mode: v.mode.into(),
             }
         }).collect();
-        let buffer_size = SHADER_REFLECTION.attributes_range(..).unwrap().stride as u64
-            * vertices.len() as u64;
+        let buffer_size = Vertex::vertex().stride as u64 * vertices.len() as u64;
         let mut buffer = factory
             .create_buffer(
                 BufferInfo {

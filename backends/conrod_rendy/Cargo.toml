@@ -8,7 +8,7 @@ edition = "2018"
 conrod_core = { path = "../../conrod_core", version = "0.68" }
 image = "0.21"
 lazy_static = "1.4.0"
-rendy = { version = "0.5.1", default-features = false, features = ["base", "spirv-reflection", "init-winit", "texture-image"] }
+rendy = { version = "0.5.1", default-features = false, features = ["base", "init-winit", "texture-image"] }
 
 [features]
 empty = ["rendy/empty"]
