@@ -1,6 +1,6 @@
 pub mod winit_convert;
 
-use conrod_core::image::{Id, Map};
+use conrod_core::image::Map;
 use image;
 use conrod_core::mesh::{self, Mesh};
 use conrod_core::{Rect, Ui};
@@ -30,6 +30,19 @@ pub const MODE_TEXT: u32 = 0;
 pub const MODE_IMAGE: u32 = 1;
 /// Ignore `tex` and draw simple, colored 2D geometry.
 pub const MODE_GEOMETRY: u32 = 2;
+
+/// Requirements for the auxiliary type within rendy graphs containing a `UiPipeline` node.
+pub trait UiAux {
+    /// The user interface to be drawn.
+    fn ui(&self) -> &Ui;
+
+    /// Access to the user's images.
+    fn image_map(&self) -> &Map<UiImage>;
+
+    /// The DPI factor for translating from conrod's pixel-agnostic coordinates to pixel
+    /// coordinates for the underlying surface.
+    fn dpi_factor(&self) -> f64;
+}
 
 lazy_static::lazy_static! {
     static ref VERTEX: SpirvShader = SourceShaderInfo::new(
@@ -107,14 +120,14 @@ pub struct Vertex {
     pub mode: u32,
 }
 
-pub struct ConrodImage {
+pub struct UiImage {
     texture_builder: TextureBuilder<'static>,
     width: u32,
     height: u32,
 }
 
-impl ConrodImage {
-    pub fn new(path: PathBuf) -> Result<ConrodImage, image::ImageError> {
+impl UiImage {
+    pub fn new(path: PathBuf) -> Result<UiImage, image::ImageError> {
         let image = image::open(path)?.to_rgba();
         let (width, height) = image.dimensions();
 
@@ -125,7 +138,7 @@ impl ConrodImage {
             .with_kind(Kind::D2(width, height, 1, 1))
             .with_view_kind(ViewKind::D2);
 
-        Ok(ConrodImage {
+        Ok(UiImage {
             texture_builder,
             width,
             height,
@@ -133,19 +146,11 @@ impl ConrodImage {
     }
 }
 
-pub struct ConrodAux {
-    // TODO: This could just be a `&'a Ui` instead.
-    pub ui: Ui,
-    pub image_map: Map<ConrodImage>,
-    pub image_id: Id,
-    pub dpi_factor: f64,
-}
-
 #[derive(Debug, Default)]
-pub struct ConrodPipelineDesc;
+pub struct UiPipelineDesc;
 
 #[derive(Debug)]
-pub struct ConrodPipeline<B: Backend> {
+pub struct UiPipeline<B: Backend> {
     mesh: Mesh,
     descriptor_set: Escape<DescriptorSet<B>>,
     buffer: Option<Escape<Buffer<B>>>,
@@ -154,17 +159,42 @@ pub struct ConrodPipeline<B: Backend> {
     vertice_count: u32,
 }
 
-impl mesh::ImageDimensions for ConrodImage {
+/// A simple, provided implementation of the `UiAux` trait.
+///
+/// Useful as a suitable auxiliary type when the `UiPipeline` is the only pipeline within the
+/// rendy graph.
+pub struct SimpleUiAux {
+    pub ui: Ui,
+    pub image_map: Map<UiImage>,
+    pub dpi_factor: f64,
+}
+
+impl UiAux for SimpleUiAux {
+    fn ui(&self) -> &Ui {
+        &self.ui
+    }
+
+    fn image_map(&self) -> &Map<UiImage> {
+        &self.image_map
+    }
+
+    fn dpi_factor(&self) -> f64 {
+        self.dpi_factor
+    }
+}
+
+impl mesh::ImageDimensions for UiImage {
     fn dimensions(&self) -> [u32; 2] {
         [self.width, self.height]
     }
 }
 
-impl<B> SimpleGraphicsPipelineDesc<B, ConrodAux> for ConrodPipelineDesc
+impl<B, T> SimpleGraphicsPipelineDesc<B, T> for UiPipelineDesc
 where
     B: Backend,
+    T: UiAux,
 {
-    type Pipeline = ConrodPipeline<B>;
+    type Pipeline = UiPipeline<B>;
 
     fn depth_stencil(&self) -> Option<DepthStencilDesc> {
         None
@@ -181,7 +211,7 @@ where
         SHADER_REFLECTION.layout().unwrap()
     }
 
-    fn load_shader_set(&self, factory: &mut Factory<B>, _aux: &ConrodAux) -> ShaderSet<B> {
+    fn load_shader_set(&self, factory: &mut Factory<B>, _aux: &T) -> ShaderSet<B> {
         SHADERS.build(factory, Default::default()).unwrap()
     }
 
@@ -190,7 +220,7 @@ where
         _ctx: &GraphContext<B>,
         factory: &mut Factory<B>,
         queue: QueueId,
-        aux: &ConrodAux,
+        aux: &T,
         _buffers: Vec<NodeBuffer>,
         _images: Vec<NodeImage>,
         set_layouts: &[Handle<DescriptorSetLayout<B>>],
@@ -227,7 +257,7 @@ where
         let mut descriptors = vec![glyph_cache_sampler_desc];
 
         let mut texture = None;
-        if let Some(image) = aux.image_map.get(&aux.image_id) {
+        if let Some(image) = aux.image_map().values().next() {
             texture = Some(
                 image
                     .texture_builder
@@ -254,7 +284,7 @@ where
                 }]);
         }
 
-        Ok(ConrodPipeline {
+        Ok(UiPipeline {
             mesh,
             descriptor_set,
             buffer: None,
@@ -265,11 +295,12 @@ where
     }
 }
 
-impl<B> SimpleGraphicsPipeline<B, ConrodAux> for ConrodPipeline<B>
+impl<B, T> SimpleGraphicsPipeline<B, T> for UiPipeline<B>
 where
     B: Backend,
+    T: UiAux,
 {
-    type Desc = ConrodPipelineDesc;
+    type Desc = UiPipelineDesc;
 
     fn prepare(
         &mut self,
@@ -277,15 +308,18 @@ where
         queue: QueueId,
         _set_layouts: &[Handle<DescriptorSetLayout<B>>],
         _index: usize,
-        aux: &ConrodAux,
+        aux: &T,
     ) -> PrepareResult {
-        let primitives = match aux.ui.draw_if_changed() {
+        let ui = aux.ui();
+        let dpi_factor = aux.dpi_factor();
+        let image_map = aux.image_map();
+        let primitives = match aux.ui().draw_if_changed() {
             None => return PrepareResult::DrawReuse,
             Some(prims) => prims,
         };
 
-        let viewport = Rect::from_xy_dim([0.0; 2], [aux.ui.win_w, aux.ui.win_h]);
-        let fill = self.mesh.fill(viewport, aux.dpi_factor, &aux.image_map, primitives)
+        let viewport = Rect::from_xy_dim([0.0; 2], [ui.win_w, ui.win_h]);
+        let fill = self.mesh.fill(viewport, dpi_factor, image_map, primitives)
             .expect("failed to fill mesh");
 
         if fill.glyph_cache_requires_upload {
@@ -360,7 +394,7 @@ where
         layout: &<B as Backend>::PipelineLayout,
         mut encoder: RenderPassEncoder<'_, B>,
         _index: usize,
-        _aux: &ConrodAux,
+        _aux: &T,
     ) {
         if let Some(buffer) = &self.buffer {
             unsafe {
@@ -376,7 +410,7 @@ where
         }
     }
 
-    fn dispose(self, _factory: &mut Factory<B>, _aux: &ConrodAux) {}
+    fn dispose(self, _factory: &mut Factory<B>, _aux: &T) {}
 }
 
 fn sampler_img_state(queue_id: QueueId) -> ImageState {
