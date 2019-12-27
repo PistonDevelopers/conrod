@@ -66,7 +66,7 @@ fn main() {
             let rust_logo = image_map.insert(image);
 
             // Create the demo application.
-            let mut app = conrod_example_shared::DemoApp::new(rust_logo);
+            let app = conrod_example_shared::DemoApp::new(rust_logo);
 
             let mut graph_builder = GraphBuilder::<_, SimpleUiAux<_>>::new();
             let size = window
