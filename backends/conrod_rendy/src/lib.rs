@@ -17,10 +17,7 @@ use rendy::hal::{
 };
 use rendy::memory::Dynamic;
 use rendy::resource::{Buffer, BufferInfo, DescriptorSet, DescriptorSetLayout, Escape, Extent, Handle};
-use rendy::shader::{
-    ShaderKind, ShaderSet, ShaderSetBuilder, SourceLanguage, SourceShaderInfo, SpirvReflection,
-    SpirvShader,
-};
+use rendy::shader::{ShaderSet, ShaderSetBuilder, SpirvReflection, SpirvShader};
 use rendy::texture::{Texture, TextureBuilder};
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
@@ -49,64 +46,17 @@ pub trait UiAux {
 }
 
 lazy_static::lazy_static! {
-    static ref VERTEX: SpirvShader = SourceShaderInfo::new(
-    "
-#version 450
-
-layout(location = 0) in vec2 pos;
-layout(location = 1) in vec2 uv;
-layout(location = 2) in vec4 color;
-layout(location = 3) in uint mode;
-
-layout(location = 0) out vec2 v_Uv;
-layout(location = 1) out vec4 v_Color;
-layout(location = 2) flat out uint v_Mode;
-
-void main() {
-    v_Uv = uv;
-    v_Color = color;
-    gl_Position = vec4(pos, 0.0, 1.0);
-    v_Mode = mode;
-}
-    ",
-        "conrod.vert",
-        ShaderKind::Vertex,
-        SourceLanguage::GLSL,
+    static ref VERTEX: SpirvShader = SpirvShader::from_bytes(
+        include_bytes!("shaders/vert.spv"),
+        hal::pso::ShaderStageFlags::VERTEX,
         "main",
-    ).precompile().unwrap();
+    ).expect("failed to construct `SpirvShader` from bytes");
 
-    static ref FRAGMENT: SpirvShader = SourceShaderInfo::new(
-    "
-#version 450
-layout(set = 0, binding = 0) uniform sampler2D t_TextColor;
-layout(set = 0, binding = 1) uniform sampler2D t_ImgColor;
-
-layout(location = 0) in vec2 v_Uv;
-layout(location = 1) in vec4 v_Color;
-layout(location = 2) flat in uint v_Mode;
-
-layout(location = 0) out vec4 Target0;
-
-void main() {
-    // Text
-    if (v_Mode == uint(0)) {
-        Target0 = v_Color * vec4(1.0, 1.0, 1.0, texture(t_TextColor, v_Uv).r);
-
-    // Image
-    } else if (v_Mode == uint(1)) {
-        Target0 = texture(t_ImgColor, v_Uv);
-
-    // 2D Geometry
-    } else if (v_Mode == uint(2)) {
-        Target0 = v_Color;
-    }
-}
-    ",
-        "conrod.frag",
-        ShaderKind::Fragment,
-        SourceLanguage::GLSL,
+    static ref FRAGMENT: SpirvShader = SpirvShader::from_bytes(
+        include_bytes!("shaders/frag.spv"),
+        hal::pso::ShaderStageFlags::FRAGMENT,
         "main",
-    ).precompile().unwrap();
+    ).expect("failed to construct `SpirvShader` from bytes");
 
     static ref SHADERS: ShaderSetBuilder = ShaderSetBuilder::default()
         .with_vertex(&*VERTEX).unwrap()
