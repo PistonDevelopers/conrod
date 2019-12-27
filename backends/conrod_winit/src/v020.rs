@@ -1,6 +1,5 @@
-use rendy::init::winit;
-
-macro_rules! convert_key {
+#[macro_export]
+macro_rules! v020_convert_key {
     ($keycode:expr) => {{
         match $keycode {
             winit::event::VirtualKeyCode::Key0 => conrod_core::input::keyboard::Key::D0,
@@ -132,7 +131,8 @@ macro_rules! convert_key {
 /// output.
 ///
 /// Requires that both the `conrod_core` and `winit` crates are in the crate root.
-macro_rules! convert_mouse_button {
+#[macro_export]
+macro_rules! v020_convert_mouse_button {
     ($mouse_button:expr) => {{
         match $mouse_button {
             winit::event::MouseButton::Left => conrod_core::input::MouseButton::Left,
@@ -152,7 +152,8 @@ macro_rules! convert_mouse_button {
 ///
 /// Expects a `winit::WindowEvent` and a reference to a window implementing `WinitWindow`.
 /// Returns an `Option<conrod_core::event::Input>`.
-macro_rules! convert_window_event {
+#[macro_export]
+macro_rules! v020_convert_window_event {
     ($event:expr, $window:expr) => {{
         // The window size in points.
         let (win_w, win_h): (f64, f64) = $window.inner_size().into();
@@ -162,8 +163,8 @@ macro_rules! convert_window_event {
         let ty = |y: conrod_core::Scalar| -(y - win_h / 2.0);
 
         // Functions for converting keys and mouse buttons.
-        let map_key = |key| convert_key!(key);
-        let map_mouse = |button| convert_mouse_button!(button);
+        let map_key = |key| $crate::v020_convert_key!(key);
+        let map_mouse = |button| $crate::v020_convert_mouse_button!(button);
 
         match $event {
             winit::event::WindowEvent::Resized(winit::dpi::LogicalSize { width, height }) => {
@@ -258,10 +259,11 @@ macro_rules! convert_window_event {
 ///
 /// Invocations of this macro require that a version of the `winit` and `conrod_core` crates are
 /// available in the crate root.
-macro_rules! convert_event {
+#[macro_export]
+macro_rules! v020_convert_event {
     ($event:expr, $window:expr) => {{
         match $event {
-            winit::event::Event::WindowEvent { event, .. } => convert_window_event!(event, $window),
+            winit::event::Event::WindowEvent { event, .. } => $crate::v020_convert_window_event!(event, $window),
             _ => None,
         }
     }};
@@ -272,7 +274,8 @@ macro_rules! convert_event {
 /// Expects a `conrod_core::cursor::MouseCursor`, returns a `winit::MouseCursor`.
 ///
 /// Requires that both the `conrod_core` and `winit` crates are in the crate root.
-macro_rules! convert_mouse_cursor {
+#[macro_export]
+macro_rules! v020_convert_mouse_cursor {
     ($cursor:expr) => {{
         match $cursor {
             conrod_core::cursor::MouseCursor::Text => winit::window::CursorIcon::Text,
@@ -297,41 +300,46 @@ macro_rules! convert_mouse_cursor {
     }};
 }
 
-/// Generate a set of conversion functions for converting between types of the crate's versions of
-/// `winit` and `conrod_core`.
-/// Maps winit's key to a conrod `Key`.
-///
-/// Expects a `winit::VirtualKeyCode` as input and returns a `conrod_core::input::keyboard::Key`.
-///
-/// Requires that both the `winit` and `conrod_core` crates exist within the crate root.
-pub fn convert_key(keycode: winit::event::VirtualKeyCode) -> conrod_core::input::keyboard::Key {
-    convert_key!(keycode)
-}
+#[macro_export]
+macro_rules! v020_conversion_fns {
+    () => {
+        /// Generate a set of conversion functions for converting between types of the crate's versions of
+        /// `winit` and `conrod_core`.
+        /// Maps winit's key to a conrod `Key`.
+        ///
+        /// Expects a `winit::VirtualKeyCode` as input and returns a `conrod_core::input::keyboard::Key`.
+        ///
+        /// Requires that both the `winit` and `conrod_core` crates exist within the crate root.
+        pub fn convert_key(keycode: winit::event::VirtualKeyCode) -> conrod_core::input::keyboard::Key {
+            $crate::v020_convert_key!(keycode)
+        }
 
-/// Convert a `winit::MouseButton` to a `conrod_core::input::MouseButton`.
-pub fn convert_mouse_button(
-    mouse_button: winit::event::MouseButton,
-) -> conrod_core::input::MouseButton {
-    convert_mouse_button!(mouse_button)
-}
+        /// Convert a `winit::MouseButton` to a `conrod_core::input::MouseButton`.
+        pub fn convert_mouse_button(
+            mouse_button: winit::event::MouseButton,
+        ) -> conrod_core::input::MouseButton {
+            $crate::v020_convert_mouse_button!(mouse_button)
+        }
 
-/// Convert a given conrod mouse cursor to the corresponding winit cursor type.
-pub fn convert_mouse_cursor(cursor: conrod_core::cursor::MouseCursor) -> winit::window::CursorIcon {
-    convert_mouse_cursor!(cursor)
-}
+        /// Convert a given conrod mouse cursor to the corresponding winit cursor type.
+        pub fn convert_mouse_cursor(cursor: conrod_core::cursor::MouseCursor) -> winit::window::CursorIcon {
+            $crate::v020_convert_mouse_cursor!(cursor)
+        }
 
-/// A function for converting a `winit::WindowEvent` to a `conrod_core::event::Input`.
-pub fn convert_window_event(
-    event: winit::event::WindowEvent,
-    window: &winit::window::Window,
-) -> Option<conrod_core::event::Input> {
-    convert_window_event!(event, window)
-}
+        /// A function for converting a `winit::WindowEvent` to a `conrod_core::event::Input`.
+        pub fn convert_window_event(
+            event: winit::event::WindowEvent,
+            window: &winit::window::Window,
+        ) -> Option<conrod_core::event::Input> {
+            $crate::v020_convert_window_event!(event, window)
+        }
 
-/// A function for converting a `winit::Event` to a `conrod_core::event::Input`.
-pub fn convert_event(
-    event: winit::event::Event<()>,
-    window: &winit::window::Window,
-) -> Option<conrod_core::event::Input> {
-    convert_event!(event, window)
+        /// A function for converting a `winit::Event` to a `conrod_core::event::Input`.
+        pub fn convert_event(
+            event: winit::event::Event<()>,
+            window: &winit::window::Window,
+        ) -> Option<conrod_core::event::Input> {
+            $crate::v020_convert_event!(event, window)
+        }
+    };
 }
