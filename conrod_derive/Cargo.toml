@@ -12,6 +12,6 @@ homepage = "https://github.com/pistondevelopers/conrod"
 proc-macro = true
 
 [dependencies]
-proc-macro2 = "0.4.2"
-quote = "0.6"
-syn = { version = "0.15", features = ["extra-traits", "full"] }
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "1", features = ["extra-traits", "full"] }

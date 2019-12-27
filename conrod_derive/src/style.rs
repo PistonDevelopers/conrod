@@ -134,7 +134,7 @@ fn params(ast: &syn::DeriveInput) -> Result<Params, Error> {
             };
 
             let literal = match item {
-                syn::Meta::NameValue(syn::MetaNameValue{ref ident, ref lit,..}) if ident == "default" => lit,
+                syn::Meta::NameValue(syn::MetaNameValue{ref path, ref lit,..}) if path.is_ident("default") => lit,
                 ref item => return Some(Err(Error::UnexpectedMetaItem(item.clone()))),
             };
 

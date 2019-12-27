@@ -82,17 +82,17 @@ fn common_builder_field(ast: &syn::DeriveInput) -> Result<&syn::Ident, Error> {
     for field in body.fields.iter() {
         // First, search for the attribute.
         for attr in &field.attrs {
-            if let Some(_meta) = attr.interpret_meta() {
+            if let Ok(_meta) = attr.parse_meta() {
                 let mut is_conrod=false;
                 let mut has_common_builder = false;
                 if let syn::Meta::List(_metalist) = _meta {
-                    if _metalist.ident == "conrod" {
+                    if _metalist.path.is_ident("conrod") {
                         is_conrod = true;
                     }
 
                     has_common_builder = _metalist.nested.iter().any(|v| match *v {
-                        syn::NestedMeta::Meta(syn::Meta::Word(ref w))
-                            if w == "common_builder" => true,
+                        syn::NestedMeta::Meta(syn::Meta::Path(ref p))
+                            if p.is_ident("common_builder") => true,
                         _ => false,
                     });
                 }
