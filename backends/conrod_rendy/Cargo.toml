@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 conrod_core = { path = "../../conrod_core", version = "0.68" }
-image = "0.21"
 lazy_static = "1.4.0"
 rendy = { version = "0.5.1", default-features = false, features = ["base", "init-winit", "texture-image"] }
 
@@ -23,3 +22,4 @@ profiler = ["rendy/profiler"]
 conrod_example_shared = { path = "../conrod_example_shared", version = "0.68" }
 conrod_winit = { path = "../conrod_winit", version = "0.68" }
 find_folder = "0.3.0"
+image = "0.21"

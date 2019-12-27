@@ -1,5 +1,4 @@
 use conrod_core::image::{Id as ImageId, Map as ImageMap};
-use image;
 use conrod_core::mesh::{self, Mesh};
 use conrod_core::{Rect, Ui};
 use rendy::command::{QueueId, RenderPassEncoder};
@@ -20,7 +19,6 @@ use rendy::shader::{ShaderSet, ShaderSetBuilder, SpirvShader};
 use rendy::texture::{Texture, TextureBuilder};
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
-use std::path::Path;
 use vertex::Vertex;
 
 mod vertex;
@@ -74,32 +72,6 @@ where
     texture: Texture<B>,
 }
 
-impl<B> UiTexture<B>
-where
-    B: Backend,
-{
-    /// An optional, simplified constructor for loading a `UiTexture` from a 2D image at the given
-    /// path.
-    pub fn from_path(
-        path: &Path,
-        factory: &mut Factory<B>,
-        queue_id: QueueId,
-    ) -> Result<Self, image::ImageError> {
-        let image = image::open(path)?.to_rgba();
-        let (width, height) = image.dimensions();
-        let img_state = sampler_img_state(queue_id);
-        let texture = TextureBuilder::new()
-            .with_raw_data(image.into_vec(), Format::Rgba8Srgb)
-            .with_data_width(width)
-            .with_data_height(height)
-            .with_kind(Kind::D2(width, height, 1, 1))
-            .with_view_kind(ViewKind::D2)
-            .build(img_state, factory)
-            .expect("failed to build the texture");
-        Ok(UiTexture { texture })
-    }
-}
-
 #[derive(Debug)]
 pub struct UiPipelineDesc {
     /// The dimensions with which the glyph cache should be initialised.
@@ -130,6 +102,30 @@ where
     pub ui: Ui,
     pub image_map: ImageMap<UiTexture<B>>,
     pub dpi_factor: f64,
+}
+
+impl<B> UiTexture<B>
+where
+    B: Backend,
+{
+    /// An optional, simplified constructor for loading a `UiTexture` from a slice of sRGBA bytes.
+    pub fn from_rgba_bytes(
+        bytes: &[u8],
+        dimensions: [u32; 2],
+        factory: &mut Factory<B>,
+        queue_id: QueueId,
+    ) -> Result<Self, rendy::texture::BuildError> {
+        let [width, height] = dimensions;
+        let img_state = sampler_img_state(queue_id);
+        let texture = TextureBuilder::new()
+            .with_raw_data(bytes, Format::Rgba8Srgb)
+            .with_data_width(width)
+            .with_data_height(height)
+            .with_kind(Kind::D2(width, height, 1, 1))
+            .with_view_kind(ViewKind::D2)
+            .build(img_state, factory)?;
+        Ok(UiTexture { texture })
+    }
 }
 
 impl Default for UiPipelineDesc {

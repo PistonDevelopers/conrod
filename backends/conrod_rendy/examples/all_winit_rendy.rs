@@ -1,7 +1,8 @@
 use conrod_example_shared::{WIN_H, WIN_W};
 use conrod_rendy::{UiTexture, UiPipeline, SimpleUiAux};
+use image;
 use rendy::{
-    command::{Families, QueueType},
+    command::{Families, QueueId, QueueType},
     factory::{self, Factory},
     graph::{
         present::PresentNode,
@@ -24,6 +25,7 @@ use rendy::{
     },
     wsi::Surface,
 };
+use std::path::Path;
 
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
 
@@ -80,7 +82,7 @@ fn main() {
                 .expect("no queue to load image");
             let family = families.family(family_id);
             let queue_id = family.queue(0).id();
-            let image = UiTexture::from_path(&logo_path, &mut factory, queue_id).unwrap();
+            let image = ui_texture_from_path(&logo_path, &mut factory, queue_id).unwrap();
             let mut image_map = conrod_core::image::Map::new();
             let rust_logo = image_map.insert(image);
             let app = conrod_example_shared::DemoApp::new(rust_logo);
@@ -202,4 +204,20 @@ where
     }
     let surface = factory.create_surface(window).expect("failed to create surface");
     *graph = Some(create_graph(win_size, factory, families, surface, aux));
+}
+
+fn ui_texture_from_path<B>(
+    path: &Path,
+    factory: &mut Factory<B>,
+    queue_id: QueueId,
+) -> Result<UiTexture<B>, image::ImageError>
+where
+    B: Backend,
+{
+    let image = image::open(path)?.to_rgba();
+    let (width, height) = image.dimensions();
+    let dimensions = [width, height];
+    let texture = UiTexture::from_rgba_bytes(&image, dimensions, factory, queue_id)
+        .expect("failed to create `UiTexture`");
+    Ok(texture)
 }
