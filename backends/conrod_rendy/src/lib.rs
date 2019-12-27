@@ -1,6 +1,6 @@
 pub mod winit_convert;
 
-use conrod_core::image::Map;
+use conrod_core::image::{Id as ImageId, Map as ImageMap};
 use image;
 use conrod_core::mesh::{self, Mesh};
 use conrod_core::{Rect, Ui};
@@ -22,7 +22,9 @@ use rendy::shader::{
     SpirvShader,
 };
 use rendy::texture::{Texture, TextureBuilder};
-use std::path::PathBuf;
+use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
+use std::path::Path;
 
 /// Draw text from the text cache texture `tex` in the fragment shader.
 pub const MODE_TEXT: u32 = 0;
@@ -33,11 +35,13 @@ pub const MODE_GEOMETRY: u32 = 2;
 
 /// Requirements for the auxiliary type within rendy graphs containing a `UiPipeline` node.
 pub trait UiAux {
+    type Backend: Backend;
+
     /// The user interface to be drawn.
     fn ui(&self) -> &Ui;
 
     /// Access to the user's images.
-    fn image_map(&self) -> &Map<UiImage>;
+    fn image_map(&self) -> &ImageMap<UiTexture<Self::Backend>>;
 
     /// The DPI factor for translating from conrod's pixel-agnostic coordinates to pixel
     /// coordinates for the underlying surface.
@@ -120,29 +124,38 @@ pub struct Vertex {
     pub mode: u32,
 }
 
-pub struct UiImage {
-    texture_builder: TextureBuilder<'static>,
-    width: u32,
-    height: u32,
+/// A simple type that wraps a rendy `Texture` and provides a `conrod_core::mesh::ImageDimensions`
+/// implementation.
+pub struct UiTexture<B>
+where
+    B: Backend,
+{
+    texture: Texture<B>,
 }
 
-impl UiImage {
-    pub fn new(path: PathBuf) -> Result<UiImage, image::ImageError> {
+impl<B> UiTexture<B>
+where
+    B: Backend,
+{
+    /// An optional, simplified constructor for loading a `UiTexture` from a 2D image at the given
+    /// path.
+    pub fn from_path(
+        path: &Path,
+        factory: &mut Factory<B>,
+        queue_id: QueueId,
+    ) -> Result<Self, image::ImageError> {
         let image = image::open(path)?.to_rgba();
         let (width, height) = image.dimensions();
-
-        let texture_builder = TextureBuilder::new()
+        let img_state = sampler_img_state(queue_id);
+        let texture = TextureBuilder::new()
             .with_raw_data(image.into_vec(), Format::Rgba8Srgb)
             .with_data_width(width)
             .with_data_height(height)
             .with_kind(Kind::D2(width, height, 1, 1))
-            .with_view_kind(ViewKind::D2);
-
-        Ok(UiImage {
-            texture_builder,
-            width,
-            height,
-        })
+            .with_view_kind(ViewKind::D2)
+            .build(img_state, factory)
+            .expect("failed to build the texture");
+        Ok(UiTexture { texture })
     }
 }
 
@@ -152,29 +165,90 @@ pub struct UiPipelineDesc;
 #[derive(Debug)]
 pub struct UiPipeline<B: Backend> {
     mesh: Mesh,
-    descriptor_set: Escape<DescriptorSet<B>>,
+    // The default descriptor set to be bound.
+    default_descriptor_set: Escape<DescriptorSet<B>>,
+    // One descriptor set per image as each is drawn in a separate pass.
+    // TODO: This is quite inefficient - we should use a dynamically packed texture atlas or
+    // something instead of this.
+    descriptor_sets: HashMap<ImageId, Escape<DescriptorSet<B>>>,
     buffer: Option<Escape<Buffer<B>>>,
-    texture: Option<Texture<B>>,
     glyph_cache_texture: Texture<B>,
-    vertice_count: u32,
 }
 
 /// A simple, provided implementation of the `UiAux` trait.
 ///
 /// Useful as a suitable auxiliary type when the `UiPipeline` is the only pipeline within the
 /// rendy graph.
-pub struct SimpleUiAux {
+pub struct SimpleUiAux<B>
+where
+    B: Backend,
+{
     pub ui: Ui,
-    pub image_map: Map<UiImage>,
+    pub image_map: ImageMap<UiTexture<B>>,
     pub dpi_factor: f64,
 }
 
-impl UiAux for SimpleUiAux {
+impl<B> Deref for UiTexture<B>
+where
+    B: Backend,
+{
+    type Target = Texture<B>;
+    fn deref(&self) -> &Self::Target {
+        &self.texture
+    }
+}
+
+impl<B> DerefMut for UiTexture<B>
+where
+    B: Backend,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.texture
+    }
+}
+
+impl<B> From<Texture<B>> for UiTexture<B>
+where
+    B: Backend,
+{
+    fn from(texture: Texture<B>) -> Self {
+        UiTexture { texture }
+    }
+}
+
+impl<B> Into<Texture<B>> for UiTexture<B>
+where
+    B: Backend,
+{
+    fn into(self) -> Texture<B> {
+        self.texture
+    }
+}
+
+impl<B> mesh::ImageDimensions for UiTexture<B>
+where
+    B: Backend,
+{
+    fn dimensions(&self) -> [u32; 2] {
+        match self.image().kind() {
+            Kind::D1(w, _) => [w, 1],
+            Kind::D2(w, h, _, _) => [w, h],
+            Kind::D3(w, h, _) => [w, h],
+        }
+    }
+}
+
+impl<B> UiAux for SimpleUiAux<B>
+where
+    B: Backend,
+{
+    type Backend = B;
+
     fn ui(&self) -> &Ui {
         &self.ui
     }
 
-    fn image_map(&self) -> &Map<UiImage> {
+    fn image_map(&self) -> &ImageMap<UiTexture<Self::Backend>> {
         &self.image_map
     }
 
@@ -183,16 +257,10 @@ impl UiAux for SimpleUiAux {
     }
 }
 
-impl mesh::ImageDimensions for UiImage {
-    fn dimensions(&self) -> [u32; 2] {
-        [self.width, self.height]
-    }
-}
-
 impl<B, T> SimpleGraphicsPipelineDesc<B, T> for UiPipelineDesc
 where
     B: Backend,
-    T: UiAux,
+    T: UiAux<Backend = B>,
 {
     type Pipeline = UiPipeline<B>;
 
@@ -220,7 +288,7 @@ where
         _ctx: &GraphContext<B>,
         factory: &mut Factory<B>,
         queue: QueueId,
-        aux: &T,
+        _aux: &T,
         _buffers: Vec<NodeBuffer>,
         _images: Vec<NodeImage>,
         set_layouts: &[Handle<DescriptorSetLayout<B>>],
@@ -230,16 +298,11 @@ where
         // enough for large GUIs with lots of text.
         let mesh = Mesh::new();
 
-        let descriptor_set = factory
-            .create_descriptor_set(set_layouts[0].clone())
-            .unwrap();
-
         // Create the texture used for caching glyphs on the GPU.
         let sampler_img_state = sampler_img_state(queue);
         let (gc_width, gc_height) = mesh.glyph_cache().dimensions();
-        let init_data = mesh.glyph_cache_pixel_buffer().to_vec();
         let glyph_cache_texture = TextureBuilder::new()
-            .with_raw_data(init_data, Format::R8Unorm)
+            .with_raw_data(mesh.glyph_cache_pixel_buffer(), Format::R8Unorm)
             .with_data_width(gc_width)
             .with_data_height(gc_height)
             .with_kind(Kind::D2(gc_width, gc_height, 1, 1))
@@ -247,50 +310,30 @@ where
             .build(sampler_img_state, factory)
             .expect("failed to create glyph cache texture");
 
-        // TODO: Move this into the `draw`?
-        // Write the descriptor set.
-        let glyph_cache_sampler_desc = hal::pso::Descriptor::CombinedImageSampler(
-            glyph_cache_texture.view().raw(),
-            hal::image::Layout::ShaderReadOnlyOptimal,
-            glyph_cache_texture.sampler().raw(),
-        );
-        let mut descriptors = vec![glyph_cache_sampler_desc];
-
-        let mut texture = None;
-        if let Some(image) = aux.image_map().values().next() {
-            texture = Some(
-                image
-                    .texture_builder
-                    .build(sampler_img_state, factory)
-                    .expect("failed to build texture for image")
-            );
-            let texture = texture.as_ref().unwrap();
-            let sampler_desc = hal::pso::Descriptor::CombinedImageSampler(
-                texture.view().raw(),
-                hal::image::Layout::ShaderReadOnlyOptimal,
-                texture.sampler().raw(),
-            );
-            descriptors.push(sampler_desc);
-        }
-
+        // Write the default descriptor set.
+        let layout = set_layouts[0].clone();
+        let default_descriptor_set = factory.create_descriptor_set(layout).unwrap();
+        let glyph_cache_desc = create_glyph_cache_descriptor(&glyph_cache_texture);
+        let descriptors = vec![glyph_cache_desc];
+        let write = hal::pso::DescriptorSetWrite {
+            set: default_descriptor_set.raw(),
+            binding: 0,
+            array_offset: 0,
+            descriptors,
+        };
+        let writes = vec![write];
         unsafe {
-            factory
-                .device()
-                .write_descriptor_sets(vec![hal::pso::DescriptorSetWrite {
-                    set: descriptor_set.raw(),
-                    binding: 0,
-                    array_offset: 0,
-                    descriptors,
-                }]);
+            factory.device().write_descriptor_sets(writes);
         }
+
+        let descriptor_sets = HashMap::new();
 
         Ok(UiPipeline {
             mesh,
-            descriptor_set,
+            default_descriptor_set,
+            descriptor_sets,
             buffer: None,
             glyph_cache_texture,
-            texture,
-            vertice_count: 0,
         })
     }
 }
@@ -298,7 +341,7 @@ where
 impl<B, T> SimpleGraphicsPipeline<B, T> for UiPipeline<B>
 where
     B: Backend,
-    T: UiAux,
+    T: UiAux<Backend = B>,
 {
     type Desc = UiPipelineDesc;
 
@@ -306,22 +349,26 @@ where
         &mut self,
         factory: &Factory<B>,
         queue: QueueId,
-        _set_layouts: &[Handle<DescriptorSetLayout<B>>],
+        set_layouts: &[Handle<DescriptorSetLayout<B>>],
         _index: usize,
         aux: &T,
     ) -> PrepareResult {
         let ui = aux.ui();
         let dpi_factor = aux.dpi_factor();
         let image_map = aux.image_map();
+        let viewport = Rect::from_xy_dim([0.0; 2], [ui.win_w, ui.win_h]);
+
+        // Only continue preparation if something within the UI has visibly changed.
         let primitives = match aux.ui().draw_if_changed() {
             None => return PrepareResult::DrawReuse,
             Some(prims) => prims,
         };
 
-        let viewport = Rect::from_xy_dim([0.0; 2], [ui.win_w, ui.win_h]);
+        // Fill the mesh from the given primitives.
         let fill = self.mesh.fill(viewport, dpi_factor, image_map, primitives)
             .expect("failed to fill mesh");
 
+        // If fill indicates the glyph cache needs updating, do so.
         if fill.glyph_cache_requires_upload {
             let (gc_width, gc_height) = self.mesh.glyph_cache().dimensions();
             let img_layers = rendy::resource::SubresourceLayers {
@@ -354,6 +401,40 @@ where
             }
         }
 
+        // Create new descriptor sets for new images.
+        let image_map = aux.image_map();
+        let glyph_cache_texture = &self.glyph_cache_texture;
+        let descriptor_sets = &mut self.descriptor_sets;
+        let new_textures: HashMap<_, _> = image_map.iter()
+            .filter(|&(img_id, _)| !descriptor_sets.contains_key(img_id))
+            .collect();
+        let new_descriptors: HashMap<_, _> = new_textures
+            .iter()
+            .map(|(img_id, texture)| {
+                let descriptors = create_descriptors(glyph_cache_texture, texture);
+                let descriptor_set = factory
+                    .create_descriptor_set(set_layouts[0].clone())
+                    .unwrap();
+                descriptor_sets.insert(**img_id, descriptor_set);
+                (img_id, descriptors)
+            })
+            .collect();
+        let new_writes: Vec<_> = new_descriptors.into_iter()
+            .map(|(img_id, descriptors)| {
+                hal::pso::DescriptorSetWrite {
+                    set: descriptor_sets[img_id].raw(),
+                    binding: 0,
+                    array_offset: 0,
+                    descriptors,
+                }
+            })
+            .collect();
+        if !new_writes.is_empty() {
+            unsafe {
+                factory.device().write_descriptor_sets(new_writes);
+            }
+        }
+
         // TODO: Remove this in favour of `unsafe`ly casting the `&[conrod_core::mesh::Vertex]`
         // to `&[Vertex]` after ensuring layouts are the same.
         let vertices: Vec<Vertex> = self.mesh.vertices().iter().map(|v| {
@@ -364,10 +445,8 @@ where
                 mode: v.mode,
             }
         }).collect();
-
         let buffer_size = SHADER_REFLECTION.attributes_range(..).unwrap().stride as u64
             * vertices.len() as u64;
-
         let mut buffer = factory
             .create_buffer(
                 BufferInfo {
@@ -377,7 +456,6 @@ where
                 Dynamic,
             )
             .unwrap();
-
         unsafe {
             // Fresh buffer.
             factory
@@ -385,7 +463,6 @@ where
                 .unwrap();
         }
         self.buffer = Some(buffer);
-        self.vertice_count = vertices.len() as u32;
         PrepareResult::DrawRecord
     }
 
@@ -396,16 +473,71 @@ where
         _index: usize,
         _aux: &T,
     ) {
-        if let Some(buffer) = &self.buffer {
-            unsafe {
-                encoder.bind_graphics_descriptor_sets(
-                    layout,
-                    0,
-                    std::iter::once(self.descriptor_set.raw()),
-                    std::iter::empty::<u32>(),
-                );
-                encoder.bind_vertex_buffers(0, Some((buffer.raw(), 0)));
-                encoder.draw(0..self.vertice_count, 0..1);
+        let buffer = match self.buffer {
+            None => return,
+            Some(ref b) => b,
+        };
+
+        unsafe {
+            // Bind the default descriptor set.
+            encoder.bind_graphics_descriptor_sets(
+                layout,
+                0,
+                std::iter::once(self.default_descriptor_set.raw()),
+                std::iter::empty::<u32>(),
+            );
+        }
+
+        for cmd in self.mesh.commands() {
+            match cmd {
+                mesh::Command::Draw(draw) => match draw {
+                    mesh::Draw::Image(img_id, v_range) => {
+                        if v_range.len() == 0 {
+                            continue;
+                        }
+                        let vertices_range = v_range.start as u32..v_range.end as u32;
+                        let instances_range = 0..1;
+                        unsafe {
+                            // Bind the descriptor set associated with this image.
+                            encoder.bind_graphics_descriptor_sets(
+                                layout,
+                                0,
+                                std::iter::once(self.descriptor_sets[&img_id].raw()),
+                                std::iter::empty::<u32>(),
+                            );
+                            encoder.bind_vertex_buffers(0, Some((buffer.raw(), 0)));
+                            encoder.draw(vertices_range, instances_range);
+                        }
+                    }
+
+                    mesh::Draw::Plain(v_range) => {
+                        if v_range.len() == 0 {
+                            continue;
+                        }
+                        let vertices_range = v_range.start as u32..v_range.end as u32;
+                        let instances_range = 0..1;
+                        unsafe {
+                            encoder.bind_vertex_buffers(0, Some((buffer.raw(), 0)));
+                            encoder.draw(vertices_range, instances_range);
+                        }
+                    }
+                }
+
+                mesh::Command::Scizzor(scizzor) => {
+                    let mesh::Scizzor { top_left, dimensions } = scizzor;
+                    let [x, y] = top_left;
+                    let [w, h] = dimensions;
+                    let rect = hal::pso::Rect {
+                        x: x as i16,
+                        y: y as i16,
+                        w: w as i16,
+                        h: h as i16,
+                    };
+                    let first_scissor = 0; // TODO: Clarify what this means, I'm just guessing.
+                    unsafe {
+                        encoder.set_scissors(first_scissor, Some(&rect));
+                    }
+                }
             }
         }
     }
@@ -420,4 +552,34 @@ fn sampler_img_state(queue_id: QueueId) -> ImageState {
         access: hal::image::Access::SHADER_READ,
         layout: hal::image::Layout::ShaderReadOnlyOptimal,
     }
+}
+
+// Create the glyph cache texture sampler descriptor.
+fn create_glyph_cache_descriptor<B>(glyph_cache_texture: &Texture<B>) -> hal::pso::Descriptor<B>
+where
+    B: Backend,
+{
+    hal::pso::Descriptor::CombinedImageSampler(
+        glyph_cache_texture.view().raw(),
+        hal::image::Layout::ShaderReadOnlyOptimal,
+        glyph_cache_texture.sampler().raw(),
+    )
+}
+
+// Create the glyph cache and image descriptors.
+fn create_descriptors<'a, B>(
+    glyph_cache_texture: &'a Texture<B>,
+    image_texture: &'a Texture<B>,
+) -> Vec<hal::pso::Descriptor<'a, B>>
+where
+    B: Backend,
+{
+    let glyph_cache_sampler_desc = create_glyph_cache_descriptor(glyph_cache_texture);
+    let image_sampler_desc = hal::pso::Descriptor::CombinedImageSampler(
+        image_texture.view().raw(),
+        hal::image::Layout::ShaderReadOnlyOptimal,
+        image_texture.sampler().raw(),
+    );
+
+    vec![glyph_cache_sampler_desc, image_sampler_desc]
 }

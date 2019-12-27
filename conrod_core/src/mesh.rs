@@ -38,9 +38,9 @@ pub struct Scizzor {
 
 /// A `Command` describing a step in the drawing process.
 #[derive(Clone, Debug)]
-pub enum Command<'a> {
+pub enum Command {
     /// Draw to the target.
-    Draw(Draw<'a>),
+    Draw(Draw),
     /// Update the scizzor within the pipeline.
     Scizzor(Scizzor),
 }
@@ -48,19 +48,18 @@ pub enum Command<'a> {
 /// An iterator yielding `Command`s, produced by the `Renderer::commands` method.
 pub struct Commands<'a> {
     commands: std::slice::Iter<'a, PreparedCommand>,
-    vertices: &'a [Vertex],
 }
 
 /// A `Command` for drawing to the target.
 ///
 /// Each variant describes how to draw the contents of the vertex buffer.
 #[derive(Clone, Debug)]
-pub enum Draw<'a> {
+pub enum Draw {
     /// A range of vertices representing triangles textured with the image in the
     /// image_map at the given `widget::Id`.
-    Image(image::Id, &'a [Vertex]),
+    Image(image::Id, std::ops::Range<usize>),
     /// A range of vertices representing plain triangles.
-    Plain(&'a [Vertex]),
+    Plain(std::ops::Range<usize>),
 }
 
 /// The data associated with a single vertex.
@@ -545,12 +544,10 @@ impl Mesh {
     pub fn commands(&self) -> Commands {
         let Mesh {
             ref commands,
-            ref vertices,
             ..
         } = *self;
         Commands {
             commands: commands.iter(),
-            vertices: vertices,
         }
     }
 
@@ -563,19 +560,18 @@ impl Mesh {
 }
 
 impl<'a> Iterator for Commands<'a> {
-    type Item = Command<'a>;
+    type Item = Command;
     fn next(&mut self) -> Option<Self::Item> {
         let Commands {
             ref mut commands,
-            ref vertices,
         } = *self;
         commands.next().map(|command| match *command {
             PreparedCommand::Scizzor(scizzor) => Command::Scizzor(scizzor),
             PreparedCommand::Plain(ref range) => {
-                Command::Draw(Draw::Plain(&vertices[range.clone()]))
+                Command::Draw(Draw::Plain(range.clone()))
             }
             PreparedCommand::Image(id, ref range) => {
-                Command::Draw(Draw::Image(id, &vertices[range.clone()]))
+                Command::Draw(Draw::Image(id, range.clone()))
             }
         })
     }
