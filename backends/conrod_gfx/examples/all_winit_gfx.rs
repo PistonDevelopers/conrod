@@ -64,7 +64,7 @@ fn main() {
     let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
         .theme(conrod_example_shared::theme())
         .build();
-    let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
+    let gui = conrod_example_shared::Gui::new(&mut ui);
 
     // Load font from file
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
@@ -166,8 +166,8 @@ fn main() {
 
         // Update widgets if any event has happened
         if ui.global_input().events().next().is_some() {
-            let mut ui = ui.set_widgets();
-            conrod_example_shared::gui(&mut ui, &ids, &mut app);
+            let mut ui = &mut ui.set_widgets();
+            gui.update(&mut ui, &mut app);
         }
     }
 }

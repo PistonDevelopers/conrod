@@ -27,10 +27,11 @@ fn main() {
     let display = support::GliumDisplayWinitWrapper(display);
 
     // Construct our `Ui`.
-    let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64]).theme(conrod_example_shared::theme()).build();
+    let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
+        .theme(conrod_example_shared::theme())
+        .build();
 
-    // The `widget::Id` of each widget instantiated in `conrod_example_shared::gui`.
-    let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
+    let gui = conrod_example_shared::Gui::new(&mut ui);
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
     let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
@@ -101,7 +102,8 @@ fn main() {
         }
 
         // Instantiate a GUI demonstrating every widget type provided by conrod.
-        conrod_example_shared::gui(&mut ui.set_widgets(), &ids, &mut app);
+        let mut ui = &mut ui.set_widgets();
+        gui.update(&mut ui, &mut app);
 
         // Draw the `Ui`.
         if let Some(primitives) = ui.draw_if_changed() {
