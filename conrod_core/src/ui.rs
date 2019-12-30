@@ -1151,11 +1151,17 @@ impl Ui {
     /// happening. Let us know if you need finer control over this and we'll expose a way for you
     /// to set the redraw count manually.
     pub fn draw_if_changed(&self) -> Option<render::Primitives> {
-        if self.redraw_count.load(atomic::Ordering::Relaxed) > 0 {
+        if self.has_changed() {
             return Some(self.draw())
         }
 
         None
+    }
+
+    /// Returns if the redraw_count is greater than 0 and thus draw_if_changed would draw
+    /// See `Ui::draw_if_changed` for when this is triggered
+    pub fn has_changed(&self) -> bool {
+        self.redraw_count.load(atomic::Ordering::Relaxed) > 0
     }
 
 
