@@ -14,9 +14,10 @@ use vulkano::buffer::cpu_pool::CpuBufferPool;
 use vulkano::buffer::BufferUsage;
 use vulkano::buffer::ImmutableBuffer;
 use vulkano::command_buffer::DynamicState;
-use vulkano::descriptor::descriptor_set::{DescriptorSet, FixedSizeDescriptorSetsPool,
-                                          PersistentDescriptorSetError,
-                                          PersistentDescriptorSetBuildError};
+use vulkano::descriptor::descriptor_set::{
+    DescriptorSet, FixedSizeDescriptorSetsPool, PersistentDescriptorSetBuildError,
+    PersistentDescriptorSetError,
+};
 use vulkano::device::*;
 use vulkano::format::*;
 use vulkano::framebuffer::*;
@@ -169,7 +170,7 @@ impl_vertex!(Vertex, pos, uv, color, mode);
 /// A type used for translating `render::Primitives` into `Command`s that indicate how to draw the
 /// conrod GUI using `vulkano`.
 pub struct Renderer {
-    pipeline: Arc<GraphicsPipelineAbstract + Send + Sync>,
+    pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
     glyph_cache: GlyphCache<'static>,
     glyph_uploads: Arc<CpuBufferPool<u8>>,
     glyph_cache_tex: Arc<StorageImage<R8Unorm>>,
@@ -177,7 +178,7 @@ pub struct Renderer {
     sampler: Arc<Sampler>,
     commands: Vec<PreparedCommand>,
     vertices: Vec<Vertex>,
-    tex_descs: FixedSizeDescriptorSetsPool<Arc<GraphicsPipelineAbstract + Send + Sync>>,
+    tex_descs: FixedSizeDescriptorSetsPool<Arc<dyn GraphicsPipelineAbstract + Send + Sync>>,
 }
 
 /// An command for uploading an individual glyph.
@@ -194,9 +195,9 @@ pub struct GlyphCacheCommand<'a> {
 /// `DrawCommand`s, we can avoid consuming the entire `AutoCommandBufferBuilder` itself which might
 /// not always be available from APIs that wrap Vulkan.
 pub struct DrawCommand {
-    pub graphics_pipeline: Arc<GraphicsPipelineAbstract + Send + Sync>,
+    pub graphics_pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
     pub dynamic_state: DynamicState,
-    pub descriptor_set: Arc<DescriptorSet + Send + Sync>,
+    pub descriptor_set: Arc<dyn DescriptorSet + Send + Sync>,
     pub vertex_buffer: Arc<ImmutableBuffer<[Vertex]>>,
 }
 
@@ -234,13 +235,11 @@ impl Renderer {
     {
         // TODO: Check that necessary subpass properties exist?
         let [w, h] = window_dims;
-        let glyph_cache_dims = [(w as f64 * dpi_factor) as u32, (h as f64 * dpi_factor) as u32];
-        Self::with_glyph_cache_dimensions(
-            device,
-            subpass,
-            graphics_queue_family,
-            glyph_cache_dims,
-        )
+        let glyph_cache_dims = [
+            (w as f64 * dpi_factor) as u32,
+            (h as f64 * dpi_factor) as u32,
+        ];
+        Self::with_glyph_cache_dimensions(device, subpass, graphics_queue_family, glyph_cache_dims)
     }
 
     /// Construct a new empty `Renderer`.
@@ -283,7 +282,7 @@ impl Renderer {
                 .fragment_shader(fragment_shader.main_entry_point(), ())
                 .blend_alpha_blending()
                 .render_pass(subpass)
-                .build(device.clone())?
+                .build(device.clone())?,
         );
 
         let (glyph_cache, glyph_cache_tex, glyph_cache_pixel_buffer) = {
@@ -762,7 +761,7 @@ impl Renderer {
             self.tex_descs
                 .next()
                 .add_sampled_image(self.glyph_cache_tex.clone(), self.sampler.clone())?
-                .build()?
+                .build()?,
         );
 
         let tex_descs = &mut self.tex_descs;
@@ -818,7 +817,7 @@ impl Renderer {
                                         image.image_access.clone(),
                                         self.sampler.clone(),
                                     )?
-                                    .build()?
+                                    .build()?,
                             );
                             let (vbuf, _vbuf_fut) = ImmutableBuffer::from_iter(
                                 verts.iter().cloned(),
@@ -918,7 +917,7 @@ impl StdError for RendererCreationError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             RendererCreationError::SamplerCreation(ref err) => Some(err),
             RendererCreationError::ShaderLoad(ref err) => Some(err),
@@ -937,7 +936,7 @@ impl StdError for DrawError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             DrawError::PersistentDescriptorSet(ref err) => Some(err),
             DrawError::PersistentDescriptorSetBuild(ref err) => Some(err),

@@ -1,8 +1,9 @@
 //! A simple example demonstrating the `List` widget.
 
-#[macro_use] extern crate conrod_core;
+#[macro_use]
+extern crate conrod_core;
 extern crate conrod_glium;
-#[macro_use] extern crate conrod_winit;
+extern crate conrod_winit;
 extern crate find_folder;
 extern crate glium;
 
@@ -36,7 +37,9 @@ fn main() {
     let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
-    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let assets = find_folder::Search::KidsThenParents(3, 5)
+        .for_folder("assets")
+        .unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
@@ -52,10 +55,8 @@ fn main() {
     // Poll events from the window.
     let mut event_loop = support::EventLoop::new();
     'main: loop {
-
         // Handle all events.
         for event in event_loop.next(&mut events_loop) {
-
             // Use the `winit` backend feature to convert the winit event to a conrod one.
             if let Some(event) = support::convert_event(event.clone(), &display) {
                 ui.handle_event(event);
@@ -65,12 +66,13 @@ fn main() {
             match event {
                 glium::glutin::Event::WindowEvent { event, .. } => match event {
                     // Break from the loop upon `Escape`.
-                    glium::glutin::WindowEvent::CloseRequested |
-                    glium::glutin::WindowEvent::KeyboardInput {
-                        input: glium::glutin::KeyboardInput {
-                            virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
-                            ..
-                        },
+                    glium::glutin::WindowEvent::CloseRequested
+                    | glium::glutin::WindowEvent::KeyboardInput {
+                        input:
+                            glium::glutin::KeyboardInput {
+                                virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
+                                ..
+                            },
                         ..
                     } => break 'main,
                     _ => (),
@@ -96,7 +98,9 @@ fn main() {
 fn set_ui(ref mut ui: conrod_core::UiCell, list: &mut [bool], ids: &Ids) {
     use conrod_core::{widget, Colorable, Labelable, Positionable, Sizeable, Widget};
 
-    widget::Canvas::new().color(conrod_core::color::DARK_CHARCOAL).set(ids.canvas, ui);
+    widget::Canvas::new()
+        .color(conrod_core::color::DARK_CHARCOAL)
+        .set(ids.canvas, ui);
 
     let (mut items, scrollbar) = widget::List::flow_down(list.len())
         .item_size(50.0)
@@ -117,5 +121,7 @@ fn set_ui(ref mut ui: conrod_core::UiCell, list: &mut [bool], ids: &Ids) {
         }
     }
 
-    if let Some(s) = scrollbar { s.set(ui) }
+    if let Some(s) = scrollbar {
+        s.set(ui)
+    }
 }

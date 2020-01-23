@@ -1,0 +1,30 @@
+[package]
+name = "conrod_rendy"
+version = "0.1.0"
+authors = ["David Partouche <david@kaligs.com>"]
+edition = "2018"
+
+[dependencies]
+conrod_core = { path = "../../conrod_core", version = "0.68" }
+lazy_static = "1.4.0"
+rendy = { version = "0.5.1", default-features = false, features = ["base", "texture"] }
+
+[features]
+empty = ["rendy/empty"]
+dx12 = ["rendy/dx12"]
+gl = ["rendy/gl"]
+metal = ["rendy/metal"]
+vulkan = ["rendy/vulkan"]
+init-winit = ["rendy/init-winit"]
+no-slow-safety-checks = ["rendy/no-slow-safety-checks"]
+profiler = ["rendy/profiler"]
+
+[dev-dependencies]
+conrod_example_shared = { path = "../conrod_example_shared", version = "0.68" }
+conrod_winit = { path = "../conrod_winit", version = "0.68" }
+find_folder = "0.3.0"
+image = "0.22"
+
+[[example]]
+name = "all_winit_rendy"
+required-features = ["init-winit"]

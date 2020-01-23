@@ -33,6 +33,7 @@ pub mod guide;
 pub mod image;
 pub mod input;
 mod label;
+pub mod mesh;
 pub mod position;
 pub mod render;
 pub mod text;

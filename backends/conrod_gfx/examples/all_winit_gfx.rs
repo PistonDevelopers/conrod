@@ -9,15 +9,15 @@ extern crate conrod_core;
 extern crate conrod_example_shared;
 extern crate conrod_gfx;
 extern crate conrod_winit;
+extern crate find_folder;
 extern crate gfx;
 extern crate gfx_core;
 extern crate gfx_window_glutin;
 extern crate glutin;
-extern crate find_folder;
 extern crate image;
 extern crate winit;
 
-use conrod_example_shared::{WIN_W, WIN_H};
+use conrod_example_shared::{WIN_H, WIN_W};
 use gfx::Device;
 
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
@@ -48,17 +48,24 @@ fn main() {
         .with_title("Conrod with GFX and Glutin")
         .with_dimensions((WIN_W, WIN_H).into());
 
-    let context = glutin::ContextBuilder::new()
-        .with_multisampling(4);
+    let context = glutin::ContextBuilder::new().with_multisampling(4);
 
     let mut events_loop = winit::EventsLoop::new();
 
     // Initialize gfx things
-    let (context, mut device, mut factory, rtv, _) =
-        gfx_window_glutin::init::<conrod_gfx::ColorFormat, DepthFormat>(builder, context, &events_loop).unwrap();
+    let (context, mut device, mut factory, rtv, _) = gfx_window_glutin::init::<
+        conrod_gfx::ColorFormat,
+        DepthFormat,
+    >(builder, context, &events_loop)
+    .unwrap();
     let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
 
-    let mut renderer = conrod_gfx::Renderer::new(&mut factory, &rtv, context.window().get_hidpi_factor() as f64).unwrap();
+    let mut renderer = conrod_gfx::Renderer::new(
+        &mut factory,
+        &rtv,
+        context.window().get_hidpi_factor() as f64,
+    )
+    .unwrap();
 
     // Create Ui and Ids of widgets to instantiate
     let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
@@ -67,23 +74,32 @@ fn main() {
     let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
 
     // Load font from file
-    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let assets = find_folder::Search::KidsThenParents(3, 5)
+        .for_folder("assets")
+        .unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
     // Load the Rust logo from our assets folder to use as an example image.
-    fn load_rust_logo<T: gfx::format::TextureFormat,R: gfx_core::Resources, F: gfx::Factory<R>>(factory: &mut F) -> (gfx::handle::ShaderResourceView<R, <T as gfx::format::Formatted>::View>,(u32,u32)) {
-        use gfx::{format, texture};
+    fn load_rust_logo<T: gfx::format::TextureFormat, R: gfx_core::Resources, F: gfx::Factory<R>>(
+        factory: &mut F,
+    ) -> (
+        gfx::handle::ShaderResourceView<R, <T as gfx::format::Formatted>::View>,
+        (u32, u32),
+    ) {
         use gfx::memory::Bind;
         use gfx::memory::Usage;
-        let assets = find_folder::Search::ParentsThenKids(5, 3).for_folder("assets").unwrap();
+        use gfx::{format, texture};
+        let assets = find_folder::Search::ParentsThenKids(5, 3)
+            .for_folder("assets")
+            .unwrap();
         let path = assets.join("images/rust.png");
         let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba();
         let image_dimensions = rgba_image.dimensions();
         let kind = texture::Kind::D2(
             image_dimensions.0 as texture::Size,
             image_dimensions.1 as texture::Size,
-            texture::AaMode::Single
+            texture::AaMode::Single,
         );
         let info = texture::Info {
             kind: kind,
@@ -92,19 +108,27 @@ fn main() {
             bind: Bind::SHADER_RESOURCE,
             usage: Usage::Dynamic,
         };
-        let raw = factory.create_texture_raw(
-            info,
-            Some(<T::Channel as format::ChannelTyped>::get_channel_type()),
-            Some((&[rgba_image.into_raw().as_slice()], texture::Mipmap::Provided))).unwrap();
+        let raw = factory
+            .create_texture_raw(
+                info,
+                Some(<T::Channel as format::ChannelTyped>::get_channel_type()),
+                Some((
+                    &[rgba_image.into_raw().as_slice()],
+                    texture::Mipmap::Provided,
+                )),
+            )
+            .unwrap();
         let tex = gfx_core::memory::Typed::new(raw);
-        let view = factory.view_texture_as_shader_resource::<T>(
-            &tex, (0,0), format::Swizzle::new()
-        ).unwrap();
-        (view,image_dimensions)
+        let view = factory
+            .view_texture_as_shader_resource::<T>(&tex, (0, 0), format::Swizzle::new())
+            .unwrap();
+        (view, image_dimensions)
     }
 
     let mut image_map = conrod_core::image::Map::new();
-    let rust_logo = image_map.insert(load_rust_logo::<conrod_gfx::ColorFormat,_,_>(&mut factory));
+    let rust_logo = image_map.insert(load_rust_logo::<conrod_gfx::ColorFormat, _, _>(
+        &mut factory,
+    ));
 
     // Demonstration app state that we'll control with our conrod GUI.
     let mut app = conrod_example_shared::DemoApp::new(rust_logo);
@@ -125,9 +149,15 @@ fn main() {
             //Clear the window
             renderer.clear(&mut encoder, CLEAR_COLOR);
 
-            renderer.fill(&mut encoder,dims,dpi_factor as f64,primitives,&image_map);
+            renderer.fill(
+                &mut encoder,
+                dims,
+                dpi_factor as f64,
+                primitives,
+                &image_map,
+            );
 
-            renderer.draw(&mut factory,&mut encoder,&image_map);
+            renderer.draw(&mut factory, &mut encoder, &image_map);
 
             encoder.flush(&mut device);
             context.swap_buffers().unwrap();
@@ -135,8 +165,7 @@ fn main() {
         }
 
         let mut should_quit = false;
-        events_loop.poll_events(|event|{
-
+        events_loop.poll_events(|event| {
             // Convert winit event to conrod event, requires conrod to be built with the `winit` feature
             if let Some(event) = convert_event(event.clone(), &WindowRef(context.window())) {
                 ui.handle_event(event);
@@ -144,20 +173,29 @@ fn main() {
 
             // Close window if the escape key or the exit button is pressed
             match event {
-                winit::Event::WindowEvent{event, .. } =>
-                    match event {
-                        winit::WindowEvent::KeyboardInput{ input: winit::KeyboardInput{ virtual_keycode: Some(winit::VirtualKeyCode::Escape),..}, ..} |
-                        winit::WindowEvent::CloseRequested => should_quit = true,
-                        winit::WindowEvent::Resized(logical_size) => {
-                            let hidpi_factor = context.window().get_hidpi_factor();
-                            let physical_size = logical_size.to_physical(hidpi_factor);
-                            context.resize(physical_size);
-                            let (new_color, _) = gfx_window_glutin::new_views::<conrod_gfx::ColorFormat, DepthFormat>(&context);
-                            renderer.on_resize(new_color);
-                        }
-                        _ => {},
-                    },
-                _ => {},
+                winit::Event::WindowEvent { event, .. } => match event {
+                    winit::WindowEvent::KeyboardInput {
+                        input:
+                            winit::KeyboardInput {
+                                virtual_keycode: Some(winit::VirtualKeyCode::Escape),
+                                ..
+                            },
+                        ..
+                    }
+                    | winit::WindowEvent::CloseRequested => should_quit = true,
+                    winit::WindowEvent::Resized(logical_size) => {
+                        let hidpi_factor = context.window().get_hidpi_factor();
+                        let physical_size = logical_size.to_physical(hidpi_factor);
+                        context.resize(physical_size);
+                        let (new_color, _) = gfx_window_glutin::new_views::<
+                            conrod_gfx::ColorFormat,
+                            DepthFormat,
+                        >(&context);
+                        renderer.on_resize(new_color);
+                    }
+                    _ => {}
+                },
+                _ => {}
             }
         });
         if should_quit {
