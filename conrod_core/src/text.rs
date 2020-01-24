@@ -359,7 +359,7 @@ pub mod glyph {
         }
     }
 
-    /// Produces an iterator that yields iteraors yielding `Rect`s for each selected character in
+    /// Produces an iterator that yields iterators yielding `Rect`s for each selected character in
     /// each line of text within the given iterator yielding char `Rect`s.
     ///
     /// Given some `start` and `end` indices, only `Rect`s for `char`s between these two indices
@@ -535,7 +535,7 @@ pub mod cursor {
         /// If `self` is at the beginning of the line, call previous, which returns the last
         /// index position of the previous line, or None if it's the first line
         ///
-        /// If `self` points to whitespace, skip past that whitespace, then return the index of 
+        /// If `self` points to whitespace, skip past that whitespace, then return the index of
         /// the start of the word that precedes the whitespace
         ///
         /// If `self` is in the middle or end of a word, return the index of the start of that word
@@ -574,7 +574,7 @@ pub mod cursor {
         /// If `self` is at the end of a line other than the last, this returns the first index of
         /// the next line.
         ///
-        /// If `self` points to whitespace, skip past that whitespace, then return the index of 
+        /// If `self` points to whitespace, skip past that whitespace, then return the index of
         /// the end of the word after the whitespace
         ///
         /// If `self` is in the middle or start of a word, return the index of the end of that word
@@ -969,7 +969,7 @@ pub mod line {
         last_break: Option<Break>,
     }
 
-    /// An iterator yielding a `Rect` for each line in 
+    /// An iterator yielding a `Rect` for each line in
     #[derive(Clone)]
     pub struct Rects<I> {
         infos: I,
@@ -1179,7 +1179,7 @@ pub mod line {
 
     /// Returns the next index at which the text will break by either:
     /// - A newline character.
-    /// - A line wrap at the beginning of the whitespace that preceeds the first word
+    /// - A line wrap at the beginning of the whitespace that precedes the first word
     /// exceeding the `max_width`.
     /// - A line wrap at the beginning of the first character exceeding the `max_width`,
     /// if no whitespace appears for `max_width` characters.
