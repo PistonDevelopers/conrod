@@ -1,0 +1,26 @@
+[package]
+name = "conrod_wgpu"
+version = "0.68.0"
+authors = [
+    "mitchmindtree <mitchell.nordine@gmail.com>",
+]
+keywords = ["ui", "widgets", "gui", "interface", "graphics"]
+description = "A crate to assist with rendering conrod UIs via wgpu."
+license = "MIT OR Apache-2.0"
+readme = "../../README.md"
+repository = "https://github.com/pistondevelopers/conrod.git"
+homepage = "https://github.com/pistondevelopers/conrod"
+documentation = "https://docs.rs/conrod"
+categories = ["gui"]
+edition = "2018"
+
+[dependencies]
+conrod_core = { path = "../../conrod_core", version = "0.68" }
+wgpu = "0.4"
+
+[dev-dependencies]
+conrod_example_shared = { path = "../conrod_example_shared", version = "0.68" }
+conrod_winit = { path = "../conrod_winit", version = "0.68" }
+find_folder = "0.3"
+image = "0.23"
+winit = "0.21"
