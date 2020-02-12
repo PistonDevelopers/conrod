@@ -31,7 +31,7 @@ fn main() {
 
     // Create the window and surface.
     #[cfg(not(feature = "gl"))]
-    let (window, size, surface) = {
+    let (window, mut size, surface) = {
         let window = winit::window::WindowBuilder::new()
             .with_title("Conrod with wgpu")
             .with_inner_size(winit::dpi::LogicalSize { width: WIN_W, height: WIN_H })
@@ -57,7 +57,7 @@ fn main() {
     let mut renderer = conrod_wgpu::Renderer::new(&device);
 
     // Create the swapchain.
-    let swap_chain_desc = wgpu::SwapChainDescriptor {
+    let mut swap_chain_desc = wgpu::SwapChainDescriptor {
         usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
         format: wgpu::TextureFormat::Bgra8UnormSrgb,
         width: size.width,
@@ -108,10 +108,19 @@ fn main() {
         *control_flow = if cfg!(feature = "metal-auto-capture") {
             ControlFlow::Exit
         } else {
-            ControlFlow::Poll
+            ControlFlow::Wait
         };
         match event {
             event::Event::WindowEvent { event, .. } => match event {
+                // Recreate swapchain when window is resized.
+                event::WindowEvent::Resized(new_size) => {
+                    size = new_size;
+                    swap_chain_desc.width = new_size.width;
+                    swap_chain_desc.height = new_size.height;
+                    swap_chain = device.create_swap_chain(&surface, &swap_chain_desc);
+                }
+
+                // Close on request or on Escape.
                 event::WindowEvent::KeyboardInput {
                     input:
                         event::KeyboardInput {
@@ -126,13 +135,17 @@ fn main() {
                 }
                 _ => {}
             },
+
             event::Event::MainEventsCleared => {
                 // Update widgets if any event has happened
                 if ui.global_input().events().next().is_some() {
                     let mut ui = ui.set_widgets();
                     conrod_example_shared::gui(&mut ui, &ids, &mut app);
+                    window.request_redraw();
                 }
+            },
 
+            event::Event::RedrawRequested(_) => {
                 // If the view has changed at all, it's time to draw.
                 let primitives = match ui.draw_if_changed() {
                     None => return,
