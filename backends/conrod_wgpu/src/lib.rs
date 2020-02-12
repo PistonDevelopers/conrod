@@ -157,7 +157,6 @@ impl Renderer {
             &glyph_cache_tex,
             &sampler,
             &default_image_tex,
-            DEFAULT_IMAGE_TEX_FORMAT,
         );
 
         // The empty set of bind groups to be associated with user images.
@@ -223,12 +222,7 @@ impl Renderer {
     /// Converts the inner list of `Command`s generated via `fill` to a list of
     /// `RenderPassCommand`s that are easily digestible by a `wgpu::RenderPass` produced by a
     /// `wgpu::CommandEncoder`.
-    pub fn render(
-        &mut self,
-        device: &wgpu::Device,
-        image_map: &image::Map<Image>,
-        viewport: [f32; 4],
-    ) -> Render {
+    pub fn render(&mut self, device: &wgpu::Device, image_map: &image::Map<Image>) -> Render {
         let mut commands = vec![];
 
         // Ensure we have a descriptor set ready for each image in the map and no more.
@@ -243,7 +237,6 @@ impl Renderer {
                 &self.glyph_cache_tex,
                 &self.sampler,
                 &img.texture,
-                img.texture_format,
             );
             self.bind_groups.insert(*id, bind_group);
         }
@@ -388,14 +381,6 @@ impl<'a> GlyphCacheCommand<'a> {
     }
 }
 
-// let vs = include_bytes!("shader.vert.spv");
-// let vs_module =
-//     device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&vs[..])).unwrap());
-//
-// let fs = include_bytes!("shader.frag.spv");
-// let fs_module =
-//     device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&fs[..])).unwrap());
-
 fn glyph_cache_tex_desc([width, height]: [u32; 2]) -> wgpu::TextureDescriptor {
     let depth = 1;
     let texture_extent = wgpu::Extent3d { width, height, depth };
@@ -473,19 +458,9 @@ fn bind_group(
     glyph_cache_tex: &wgpu::Texture,
     sampler: &wgpu::Sampler,
     image: &wgpu::Texture,
-    image_tex_format: wgpu::TextureFormat,
 ) -> wgpu::BindGroup {
     // Glyph cache texture view.
-    let glyph_cache_tex_view_desc = wgpu::TextureViewDescriptor {
-        format: GLYPH_TEX_FORMAT,
-        dimension: wgpu::TextureViewDimension::D2,
-        aspect: wgpu::TextureAspect::All,
-        base_mip_level: 0,
-        level_count: 1,
-        base_array_layer: 0,
-        array_layer_count: 1,
-    };
-    let glyph_cache_tex_view = glyph_cache_tex.create_view(&glyph_cache_tex_view_desc);
+    let glyph_cache_tex_view = glyph_cache_tex.create_default_view();
     let glyph_cache_tex_binding = wgpu::Binding {
         binding: 0,
         resource: wgpu::BindingResource::TextureView(&glyph_cache_tex_view),
@@ -498,16 +473,7 @@ fn bind_group(
     };
 
     // Image texture view.
-    let image_tex_view_desc = wgpu::TextureViewDescriptor {
-        format: image_tex_format,
-        dimension: wgpu::TextureViewDimension::D2,
-        aspect: wgpu::TextureAspect::All,
-        base_mip_level: 0,
-        level_count: 1,
-        base_array_layer: 0,
-        array_layer_count: 1,
-    };
-    let image_tex_view = image.create_view(&image_tex_view_desc);
+    let image_tex_view = image.create_default_view();
     let image_tex_binding = wgpu::Binding {
         binding: 2,
         resource: wgpu::BindingResource::TextureView(&image_tex_view),

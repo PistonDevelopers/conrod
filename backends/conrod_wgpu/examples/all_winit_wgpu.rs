@@ -185,7 +185,7 @@ fn main() {
                     };
                     let mut render_pass = encoder.begin_render_pass(&render_pass_desc);
 
-                    let render = renderer.render(&device, &image_map, viewport);
+                    let render = renderer.render(&device, &image_map);
                     render_pass.set_pipeline(render.pipeline);
                     render_pass.set_vertex_buffers(0, &[(&render.vertex_buffer, 0)]);
                     let instance_range = 0..1;
