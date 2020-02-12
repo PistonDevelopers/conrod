@@ -112,13 +112,17 @@ impl mesh::ImageDimensions for Image {
 
 impl Renderer {
     /// Construct a new `Renderer`.
-    pub fn new(device: &wgpu::Device) -> Self {
+    pub fn new(device: &wgpu::Device, msaa_samples: u32) -> Self {
         let glyph_cache_dims = mesh::DEFAULT_GLYPH_CACHE_DIMS;
-        Self::with_glyph_cache_dimensions(device, glyph_cache_dims)
+        Self::with_glyph_cache_dimensions(device, msaa_samples, glyph_cache_dims)
     }
 
     /// Create a renderer with a specific size for the glyph cache.
-    pub fn with_glyph_cache_dimensions(device: &wgpu::Device, glyph_cache_dims: [u32; 2]) -> Self {
+    pub fn with_glyph_cache_dimensions(
+        device: &wgpu::Device,
+        msaa_samples: u32,
+        glyph_cache_dims: [u32; 2],
+    ) -> Self {
         assert_eq!(glyph_cache_dims[0] % 256, 0, "wgpu glyph cache width must be multiple of 256");
 
         // The mesh for converting primitives into vertices.
@@ -145,7 +149,8 @@ impl Renderer {
         // Create the render pipeline.
         let bind_group_layout = bind_group_layout(device);
         let pipeline_layout = pipeline_layout(device, &bind_group_layout);
-        let render_pipeline = render_pipeline(device, &pipeline_layout, &vs_mod, &fs_mod);
+        let render_pipeline =
+            render_pipeline(device, &pipeline_layout, &vs_mod, &fs_mod, msaa_samples);
 
         // Create the default image that is bound to `image_texture` along with a default bind
         // group for use in the case that there are no user supplied images.
@@ -535,6 +540,7 @@ fn render_pipeline(
     layout: &wgpu::PipelineLayout,
     vs_mod: &wgpu::ShaderModule,
     fs_mod: &wgpu::ShaderModule,
+    msaa_samples: u32,
 ) -> wgpu::RenderPipeline {
     let vs_desc = wgpu::ProgrammableStageDescriptor {
         module: &vs_mod,
@@ -581,7 +587,7 @@ fn render_pipeline(
         depth_stencil_state: None,
         index_format: wgpu::IndexFormat::Uint16,
         vertex_buffers: &[vertex_buffer_desc],
-        sample_count: 1,
+        sample_count: msaa_samples,
         sample_mask: !0,
         alpha_to_coverage_enabled: false,
     };

@@ -7,11 +7,11 @@ use winit::{
 };
 
 // A wrapper around the winit window that allows us to implement the trait necessary for enabling
-// the winit <-> conrod conversion functions.
+// the winit <-> conrod input and event conversion functions.
 struct WindowRef<'a>(&'a winit::window::Window);
 
-// Implement the `WinitWindow` trait for `WindowRef` to allow for generating compatible conversion
-// functions.
+// Implement the `WinitWindow` trait for `WindowRef` to allow for generating compatible input and
+// event conversion functions.
 impl<'a> conrod_winit::WinitWindow for WindowRef<'a> {
     fn get_inner_size(&self) -> Option<(u32, u32)> {
         Some(winit::window::Window::inner_size(&self.0).into())
@@ -25,6 +25,7 @@ impl<'a> conrod_winit::WinitWindow for WindowRef<'a> {
 conrod_winit::v021_conversion_fns!();
 
 const LOGO_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
+const MSAA_SAMPLES: u32 = 4;
 
 fn main() {
     let event_loop = EventLoop::new();
@@ -54,7 +55,7 @@ fn main() {
     let (device, mut queue) = adapter.request_device(&device_desc);
 
     // Create the renderer for rendering conrod primitives.
-    let mut renderer = conrod_wgpu::Renderer::new(&device);
+    let mut renderer = conrod_wgpu::Renderer::new(&device, MSAA_SAMPLES);
 
     // Create the swapchain.
     let mut swap_chain_desc = wgpu::SwapChainDescriptor {
@@ -65,6 +66,10 @@ fn main() {
         present_mode: wgpu::PresentMode::Vsync,
     };
     let mut swap_chain = device.create_swap_chain(&surface, &swap_chain_desc);
+
+    // The intermediary multisampled texture that will be resolved (MSAA).
+    let mut multisampled_framebuffer =
+        create_multisampled_framebuffer(&device, &swap_chain_desc, MSAA_SAMPLES);
 
     // Create Ui and Ids of widgets to instantiate
     let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
@@ -118,6 +123,8 @@ fn main() {
                     swap_chain_desc.width = new_size.width;
                     swap_chain_desc.height = new_size.height;
                     swap_chain = device.create_swap_chain(&surface, &swap_chain_desc);
+                    multisampled_framebuffer =
+                        create_multisampled_framebuffer(&device, &swap_chain_desc, MSAA_SAMPLES);
                 }
 
                 // Close on request or on Escape.
@@ -172,13 +179,19 @@ fn main() {
 
                 // Begin the render pass and add the draw commands.
                 {
+                    // This condition allows to more easily tweak the MSAA_SAMPLES constant.
+                    let (attachment, resolve_target) = match MSAA_SAMPLES {
+                        1 => (&frame.view, None),
+                        _ => (&multisampled_framebuffer, Some(&frame.view)),
+                    };
                     let color_attachment_desc = wgpu::RenderPassColorAttachmentDescriptor {
-                        attachment: &frame.view,
-                        resolve_target: None,
+                        attachment,
+                        resolve_target,
                         load_op: wgpu::LoadOp::Clear,
                         store_op: wgpu::StoreOp::Store,
                         clear_color: wgpu::Color::BLACK,
                     };
+
                     let render_pass_desc = wgpu::RenderPassDescriptor {
                         color_attachments: &[color_attachment_desc],
                         depth_stencil_attachment: None,
@@ -213,6 +226,30 @@ fn main() {
             _ => (),
         }
     });
+}
+
+fn create_multisampled_framebuffer(
+    device: &wgpu::Device,
+    sc_desc: &wgpu::SwapChainDescriptor,
+    sample_count: u32,
+) -> wgpu::TextureView {
+    let multisampled_texture_extent = wgpu::Extent3d {
+        width: sc_desc.width,
+        height: sc_desc.height,
+        depth: 1,
+    };
+    let multisampled_frame_descriptor = &wgpu::TextureDescriptor {
+        size: multisampled_texture_extent,
+        array_layer_count: 1,
+        mip_level_count: 1,
+        sample_count: sample_count,
+        dimension: wgpu::TextureDimension::D2,
+        format: sc_desc.format,
+        usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+    };
+    device
+        .create_texture(multisampled_frame_descriptor)
+        .create_default_view()
 }
 
 fn create_logo_texture(
