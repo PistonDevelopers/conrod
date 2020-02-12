@@ -24,6 +24,8 @@ impl<'a> conrod_winit::WinitWindow for WindowRef<'a> {
 // Generate the winit <-> conrod_core type conversion fns.
 conrod_winit::v021_conversion_fns!();
 
+const LOGO_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
+
 fn main() {
     let event_loop = EventLoop::new();
 
@@ -31,6 +33,7 @@ fn main() {
     #[cfg(not(feature = "gl"))]
     let (window, size, surface) = {
         let window = winit::window::WindowBuilder::new()
+            .with_title("Conrod with wgpu")
             .with_inner_size(winit::dpi::LogicalSize { width: WIN_W, height: WIN_H })
             .build(&event_loop)
             .unwrap();
@@ -81,23 +84,13 @@ fn main() {
     let rgba_logo_image = image::open(logo_path)
         .expect("Couldn't load logo")
         .to_rgba();
+
+    // Create the GPU texture and upload the image data.
     let (logo_w, logo_h) = rgba_logo_image.dimensions();
-    let logo_tex_extent = wgpu::Extent3d {
-        width: logo_w,
-        height: logo_h,
-        depth: 1,
-    };
-    let logo_tex = device.create_texture(&wgpu::TextureDescriptor {
-        size: logo_tex_extent,
-        array_layer_count: 1,
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8UnormSrgb,
-        usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
-    });
+    let logo_tex = create_logo_texture(&device, &mut queue, rgba_logo_image);
     let logo = conrod_wgpu::Image {
         texture: logo_tex,
+        texture_format: LOGO_TEXTURE_FORMAT,
         width: logo_w,
         height: logo_h,
     };
@@ -182,11 +175,13 @@ fn main() {
                     let render = renderer.render(&device, &image_map, viewport);
                     render_pass.set_pipeline(render.pipeline);
                     render_pass.set_vertex_buffers(0, &[(&render.vertex_buffer, 0)]);
-                    render_pass.set_bind_group(0, &render.bind_group, &[]);
                     let instance_range = 0..1;
                     for cmd in render.commands {
                         match cmd {
-                            conrod_wgpu::RenderPassCommand::Scissor { top_left, dimensions } => {
+                            conrod_wgpu::RenderPassCommand::SetBindGroup { bind_group } => {
+                                render_pass.set_bind_group(0, bind_group, &[]);
+                            }
+                            conrod_wgpu::RenderPassCommand::SetScissor { top_left, dimensions } => {
                                 let [x, y] = top_left;
                                 let [w, h] = dimensions;
                                 render_pass.set_scissor_rect(x, y, w, h);
@@ -205,4 +200,59 @@ fn main() {
             _ => (),
         }
     });
+}
+
+fn create_logo_texture(
+    device: &wgpu::Device,
+    queue: &mut wgpu::Queue,
+    image: image::RgbaImage,
+) -> wgpu::Texture {
+    // Initialise the texture.
+    let (width, height) = image.dimensions();
+    let logo_tex_extent = wgpu::Extent3d {
+        width,
+        height,
+        depth: 1,
+    };
+    let logo_tex = device.create_texture(&wgpu::TextureDescriptor {
+        size: logo_tex_extent,
+        array_layer_count: 1,
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: LOGO_TEXTURE_FORMAT,
+        usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
+    });
+
+    // Upload the pixel data.
+    let data = &image.into_raw()[..];
+    let buffer = device
+        .create_buffer_mapped(data.len(), wgpu::BufferUsage::COPY_SRC)
+        .fill_from_slice(data);
+
+    // Submit command for copying pixel data to the texture.
+    let pixel_size_bytes = 4; // Rgba8, as above.
+    let buffer_copy_view = wgpu::BufferCopyView {
+        buffer: &buffer,
+        offset: 0,
+        row_pitch: width * pixel_size_bytes,
+        image_height: height,
+    };
+    let texture_copy_view = wgpu::TextureCopyView {
+        texture: &logo_tex,
+        mip_level: 0,
+        array_layer: 0,
+        origin: wgpu::Origin3d::ZERO,
+    };
+    let extent = wgpu::Extent3d {
+        width: width,
+        height: height,
+        depth: 1,
+    };
+    let cmd_encoder_desc = wgpu::CommandEncoderDescriptor { todo: 0 };
+    let mut encoder = device.create_command_encoder(&cmd_encoder_desc);
+    encoder.copy_buffer_to_texture(buffer_copy_view, texture_copy_view, extent);
+    queue.submit(&[encoder.finish()]);
+
+    logo_tex
 }
