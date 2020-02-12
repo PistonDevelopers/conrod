@@ -495,8 +495,16 @@ fn render_pipeline(
     };
     let color_state_desc = wgpu::ColorStateDescriptor {
         format: wgpu::TextureFormat::Bgra8UnormSrgb,
-        color_blend: wgpu::BlendDescriptor::REPLACE,
-        alpha_blend: wgpu::BlendDescriptor::REPLACE,
+        color_blend: wgpu::BlendDescriptor {
+            src_factor: wgpu::BlendFactor::SrcAlpha,
+            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+            operation: wgpu::BlendOperation::Add,
+        },
+        alpha_blend: wgpu::BlendDescriptor {
+            src_factor: wgpu::BlendFactor::One,
+            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+            operation: wgpu::BlendOperation::Add,
+        },
         write_mask: wgpu::ColorWrite::ALL,
     };
     let vertex_attrs = vertex_attrs();
