@@ -3,8 +3,7 @@ use conrod_core::{
     mesh::{self, Mesh},
     render,
     text::rt,
-    Rect,
-    Scalar,
+    Rect, Scalar,
 };
 use std::collections::HashMap;
 
@@ -92,13 +91,9 @@ pub enum RenderPassCommand<'a> {
         dimensions: [u32; 2],
     },
     /// Draw the specified range of vertices.
-    Draw {
-        vertex_range: std::ops::Range<u32>,
-    },
+    Draw { vertex_range: std::ops::Range<u32> },
     /// A new image requires drawing and in turn a new bind group requires setting.
-    SetBindGroup {
-        bind_group: &'a wgpu::BindGroup,
-    },
+    SetBindGroup { bind_group: &'a wgpu::BindGroup },
 }
 
 const GLYPH_TEX_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
@@ -123,7 +118,11 @@ impl Renderer {
         msaa_samples: u32,
         glyph_cache_dims: [u32; 2],
     ) -> Self {
-        assert_eq!(glyph_cache_dims[0] % 256, 0, "wgpu glyph cache width must be multiple of 256");
+        assert_eq!(
+            glyph_cache_dims[0] % 256,
+            0,
+            "wgpu glyph cache width must be multiple of 256"
+        );
 
         // The mesh for converting primitives into vertices.
         let mesh = Mesh::with_glyph_cache_dimensions(glyph_cache_dims);
@@ -206,7 +205,9 @@ impl Renderer {
         let lt = [vp_l as Scalar, vp_t as Scalar];
         let rb = [vp_r as Scalar, vp_b as Scalar];
         let viewport = Rect::from_corners(lt, rb);
-        let fill = self.mesh.fill(viewport, scale_factor, image_map, primitives)?;
+        let fill = self
+            .mesh
+            .fill(viewport, scale_factor, image_map, primitives)?;
 
         // Check whether or not we need a glyph cache update.
         let glyph_cache_cmd = match fill.glyph_cache_requires_upload {
@@ -219,7 +220,7 @@ impl Renderer {
                     width,
                     height,
                 })
-            },
+            }
         };
         Ok(glyph_cache_cmd)
     }
@@ -255,7 +256,10 @@ impl Renderer {
 
         // Keep track of the currently set bind group.
         #[derive(PartialEq)]
-        enum BindGroup { Default, Image(image::Id) }
+        enum BindGroup {
+            Default,
+            Image(image::Id),
+        }
         let mut bind_group = None;
 
         for command in self.mesh.commands() {
@@ -264,7 +268,10 @@ impl Renderer {
                 mesh::Command::Scizzor(s) => {
                     let top_left = [s.top_left[0] as u32, s.top_left[1] as u32];
                     let dimensions = s.dimensions;
-                    let cmd = RenderPassCommand::SetScissor { top_left, dimensions };
+                    let cmd = RenderPassCommand::SetScissor {
+                        top_left,
+                        dimensions,
+                    };
                     commands.push(cmd);
                 }
 
@@ -280,7 +287,7 @@ impl Renderer {
                         if bind_group.is_none() {
                             bind_group = Some(BindGroup::Default);
                             let cmd = RenderPassCommand::SetBindGroup {
-                                bind_group: &self.default_bind_group
+                                bind_group: &self.default_bind_group,
                             };
                             commands.push(cmd);
                         }
@@ -311,7 +318,7 @@ impl Renderer {
                         };
                         commands.push(cmd);
                     }
-                }
+                },
             }
         }
 
@@ -388,7 +395,11 @@ impl<'a> GlyphCacheCommand<'a> {
 
 fn glyph_cache_tex_desc([width, height]: [u32; 2]) -> wgpu::TextureDescriptor {
     let depth = 1;
-    let texture_extent = wgpu::Extent3d { width, height, depth };
+    let texture_extent = wgpu::Extent3d {
+        width,
+        height,
+        depth,
+    };
     wgpu::TextureDescriptor {
         size: texture_extent,
         array_layer_count: 1,
@@ -404,7 +415,11 @@ fn default_image_tex_desc() -> wgpu::TextureDescriptor {
     let width = 64;
     let height = 64;
     let depth = 1;
-    let texture_extent = wgpu::Extent3d { width, height, depth };
+    let texture_extent = wgpu::Extent3d {
+        width,
+        height,
+        depth,
+    };
     wgpu::TextureDescriptor {
         size: texture_extent,
         array_layer_count: 1,
@@ -452,7 +467,11 @@ fn bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
             dimension: wgpu::TextureViewDimension::D2,
         },
     };
-    let bindings = &[glyph_cache_texture_binding, sampler_binding, image_texture_binding];
+    let bindings = &[
+        glyph_cache_texture_binding,
+        sampler_binding,
+        image_texture_binding,
+    ];
     let desc = wgpu::BindGroupLayoutDescriptor { bindings };
     device.create_bind_group_layout(&desc)
 }

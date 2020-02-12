@@ -3,7 +3,7 @@
 use conrod_example_shared::{WIN_H, WIN_W};
 use winit::{
     event,
-    event_loop::{ControlFlow, EventLoop}
+    event_loop::{ControlFlow, EventLoop},
 };
 
 // A wrapper around the winit window that allows us to implement the trait necessary for enabling
@@ -35,7 +35,10 @@ fn main() {
     let (window, mut size, surface) = {
         let window = winit::window::WindowBuilder::new()
             .with_title("Conrod with wgpu")
-            .with_inner_size(winit::dpi::LogicalSize { width: WIN_W, height: WIN_H })
+            .with_inner_size(winit::dpi::LogicalSize {
+                width: WIN_W,
+                height: WIN_H,
+            })
             .build(&event_loop)
             .unwrap();
         let size = window.inner_size();
@@ -49,7 +52,9 @@ fn main() {
         backends: wgpu::BackendBit::PRIMARY,
     };
     let adapter = wgpu::Adapter::request(&adapter_opts).unwrap();
-    let extensions = wgpu::Extensions { anisotropic_filtering: false };
+    let extensions = wgpu::Extensions {
+        anisotropic_filtering: false,
+    };
     let limits = wgpu::Limits::default();
     let device_desc = wgpu::DeviceDescriptor { extensions, limits };
     let (device, mut queue) = adapter.request_device(&device_desc);
@@ -150,7 +155,7 @@ fn main() {
                     conrod_example_shared::gui(&mut ui, &ids, &mut app);
                     window.request_redraw();
                 }
-            },
+            }
 
             event::Event::RedrawRequested(_) => {
                 // If the view has changed at all, it's time to draw.
@@ -168,7 +173,8 @@ fn main() {
 
                 // Feed the renderer primitives and update glyph cache texture if necessary.
                 let scale_factor = window.scale_factor();
-                let [win_w, win_h]: [f32; 2] = window.inner_size().to_logical::<f32>(scale_factor).into();
+                let [win_w, win_h]: [f32; 2] =
+                    window.inner_size().to_logical::<f32>(scale_factor).into();
                 let viewport = [0.0, 0.0, win_w, win_h];
                 if let Some(cmd) = renderer
                     .fill(&image_map, viewport, scale_factor, primitives)
@@ -207,14 +213,15 @@ fn main() {
                             conrod_wgpu::RenderPassCommand::SetBindGroup { bind_group } => {
                                 render_pass.set_bind_group(0, bind_group, &[]);
                             }
-                            conrod_wgpu::RenderPassCommand::SetScissor { top_left, dimensions } => {
+                            conrod_wgpu::RenderPassCommand::SetScissor {
+                                top_left,
+                                dimensions,
+                            } => {
                                 let [x, y] = top_left;
                                 let [w, h] = dimensions;
                                 render_pass.set_scissor_rect(x, y, w, h);
                             }
-                            conrod_wgpu::RenderPassCommand::Draw {
-                                vertex_range,
-                            } => {
+                            conrod_wgpu::RenderPassCommand::Draw { vertex_range } => {
                                 render_pass.draw(vertex_range, instance_range.clone());
                             }
                         }
