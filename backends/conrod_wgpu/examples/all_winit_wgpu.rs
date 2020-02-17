@@ -6,26 +6,11 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
 };
 
-// A wrapper around the winit window that allows us to implement the trait necessary for enabling
-// the winit <-> conrod input and event conversion functions.
-struct WindowRef<'a>(&'a winit::window::Window);
-
-// Implement the `WinitWindow` trait for `WindowRef` to allow for generating compatible input and
-// event conversion functions.
-impl<'a> conrod_winit::WinitWindow for WindowRef<'a> {
-    fn get_inner_size(&self) -> Option<(u32, u32)> {
-        Some(winit::window::Window::inner_size(&self.0).into())
-    }
-    fn hidpi_factor(&self) -> f32 {
-        winit::window::Window::scale_factor(&self.0) as _
-    }
-}
-
 // Generate the winit <-> conrod_core type conversion fns.
 conrod_winit::v021_conversion_fns!();
 
 const LOGO_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
-const MSAA_SAMPLES: u32 = 4;
+const MSAA_SAMPLES: u32 = 8;
 
 fn main() {
     let event_loop = EventLoop::new();
@@ -59,18 +44,19 @@ fn main() {
     let device_desc = wgpu::DeviceDescriptor { extensions, limits };
     let (device, mut queue) = adapter.request_device(&device_desc);
 
-    // Create the renderer for rendering conrod primitives.
-    let mut renderer = conrod_wgpu::Renderer::new(&device, MSAA_SAMPLES);
-
     // Create the swapchain.
+    let format = wgpu::TextureFormat::Bgra8UnormSrgb;
     let mut swap_chain_desc = wgpu::SwapChainDescriptor {
         usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
-        format: wgpu::TextureFormat::Bgra8UnormSrgb,
+        format,
         width: size.width,
         height: size.height,
         present_mode: wgpu::PresentMode::Vsync,
     };
     let mut swap_chain = device.create_swap_chain(&surface, &swap_chain_desc);
+
+    // Create the renderer for rendering conrod primitives.
+    let mut renderer = conrod_wgpu::Renderer::new(&device, MSAA_SAMPLES, format);
 
     // The intermediary multisampled texture that will be resolved (MSAA).
     let mut multisampled_framebuffer =
@@ -173,8 +159,7 @@ fn main() {
 
                 // Feed the renderer primitives and update glyph cache texture if necessary.
                 let scale_factor = window.scale_factor();
-                let [win_w, win_h]: [f32; 2] =
-                    window.inner_size().to_logical::<f32>(scale_factor).into();
+                let [win_w, win_h]: [f32; 2] = [size.width as f32, size.height as f32];
                 let viewport = [0.0, 0.0, win_w, win_h];
                 if let Some(cmd) = renderer
                     .fill(&image_map, viewport, scale_factor, primitives)

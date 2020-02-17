@@ -156,8 +156,8 @@ macro_rules! v021_convert_mouse_button {
 macro_rules! v021_convert_window_event {
     ($event:expr, $window:expr) => {{
         // The window size in points.
-        let (win_w, win_h): (f64, f64) = $window.inner_size().into();
         let scale_factor: f64 = $window.scale_factor();
+        let (win_w, win_h): (f64, f64) = $window.inner_size().to_logical::<f64>(scale_factor).into();
 
         // Translate the coordinates from top-left-origin-with-y-down to centre-origin-with-y-up.
         let tx = |x: conrod_core::Scalar| x - win_w / 2.0;
@@ -327,7 +327,7 @@ macro_rules! v021_conversion_fns {
 
         /// A function for converting a `winit::WindowEvent` to a `conrod_core::event::Input`.
         pub fn convert_window_event(
-            event: winit::event::WindowEvent,
+            event: &winit::event::WindowEvent,
             window: &winit::window::Window,
         ) -> Option<conrod_core::event::Input> {
             $crate::v021_convert_window_event!(event, window)

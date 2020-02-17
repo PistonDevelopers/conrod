@@ -107,15 +107,20 @@ impl mesh::ImageDimensions for Image {
 
 impl Renderer {
     /// Construct a new `Renderer`.
-    pub fn new(device: &wgpu::Device, msaa_samples: u32) -> Self {
+    pub fn new(
+        device: &wgpu::Device,
+        msaa_samples: u32,
+        swap_chain_format: wgpu::TextureFormat,
+    ) -> Self {
         let glyph_cache_dims = mesh::DEFAULT_GLYPH_CACHE_DIMS;
-        Self::with_glyph_cache_dimensions(device, msaa_samples, glyph_cache_dims)
+        Self::with_glyph_cache_dimensions(device, msaa_samples, swap_chain_format, glyph_cache_dims)
     }
 
     /// Create a renderer with a specific size for the glyph cache.
     pub fn with_glyph_cache_dimensions(
         device: &wgpu::Device,
         msaa_samples: u32,
+        swap_chain_format: wgpu::TextureFormat,
         glyph_cache_dims: [u32; 2],
     ) -> Self {
         assert_eq!(
@@ -148,8 +153,14 @@ impl Renderer {
         // Create the render pipeline.
         let bind_group_layout = bind_group_layout(device);
         let pipeline_layout = pipeline_layout(device, &bind_group_layout);
-        let render_pipeline =
-            render_pipeline(device, &pipeline_layout, &vs_mod, &fs_mod, msaa_samples);
+        let render_pipeline = render_pipeline(
+            device,
+            &pipeline_layout,
+            &vs_mod,
+            &fs_mod,
+            swap_chain_format,
+            msaa_samples,
+        );
 
         // Create the default image that is bound to `image_texture` along with a default bind
         // group for use in the case that there are no user supplied images.
@@ -559,6 +570,7 @@ fn render_pipeline(
     layout: &wgpu::PipelineLayout,
     vs_mod: &wgpu::ShaderModule,
     fs_mod: &wgpu::ShaderModule,
+    dst_format: wgpu::TextureFormat,
     msaa_samples: u32,
 ) -> wgpu::RenderPipeline {
     let vs_desc = wgpu::ProgrammableStageDescriptor {
@@ -577,7 +589,7 @@ fn render_pipeline(
         depth_bias_clamp: 0.0,
     };
     let color_state_desc = wgpu::ColorStateDescriptor {
-        format: wgpu::TextureFormat::Bgra8UnormSrgb,
+        format: dst_format,
         color_blend: wgpu::BlendDescriptor {
             src_factor: wgpu::BlendFactor::SrcAlpha,
             dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
