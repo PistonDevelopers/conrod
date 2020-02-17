@@ -148,9 +148,10 @@ impl Mesh {
 
     /// Fill the inner vertex buffer from the given primitives.
     ///
-    /// - `viewport`: the window in which the UI is drawn.
-    /// - `dpi_factor`: the factor for converting from conrod's DPI agnostic point space to pixel
-    ///   space.
+    /// - `viewport`: the window in which the UI is drawn. The width and height should be the
+    ///   physical size (pixels).
+    /// - `dpi_factor`: the factor for converting from conrod's DPI agnostic point space to the
+    ///   pixel space of the viewport.
     /// - `image_map`: a map from image IDs to images.
     /// - `primitives`: the sequence of UI primitives in order of depth to be rendered.
     pub fn fill<P, I>(
