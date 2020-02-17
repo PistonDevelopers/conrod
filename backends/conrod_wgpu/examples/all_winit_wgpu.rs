@@ -10,7 +10,7 @@ use winit::{
 conrod_winit::v021_conversion_fns!();
 
 const LOGO_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
-const MSAA_SAMPLES: u32 = 8;
+const MSAA_SAMPLES: u32 = 4;
 
 fn main() {
     let event_loop = EventLoop::new();
