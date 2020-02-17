@@ -110,17 +110,17 @@ impl Renderer {
     pub fn new(
         device: &wgpu::Device,
         msaa_samples: u32,
-        swap_chain_format: wgpu::TextureFormat,
+        dst_format: wgpu::TextureFormat,
     ) -> Self {
         let glyph_cache_dims = mesh::DEFAULT_GLYPH_CACHE_DIMS;
-        Self::with_glyph_cache_dimensions(device, msaa_samples, swap_chain_format, glyph_cache_dims)
+        Self::with_glyph_cache_dimensions(device, msaa_samples, dst_format, glyph_cache_dims)
     }
 
     /// Create a renderer with a specific size for the glyph cache.
     pub fn with_glyph_cache_dimensions(
         device: &wgpu::Device,
         msaa_samples: u32,
-        swap_chain_format: wgpu::TextureFormat,
+        dst_format: wgpu::TextureFormat,
         glyph_cache_dims: [u32; 2],
     ) -> Self {
         assert_eq!(
@@ -158,7 +158,7 @@ impl Renderer {
             &pipeline_layout,
             &vs_mod,
             &fs_mod,
-            swap_chain_format,
+            dst_format,
             msaa_samples,
         );
 
