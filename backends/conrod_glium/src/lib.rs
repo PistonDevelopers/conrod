@@ -417,23 +417,21 @@ impl GlyphCache {
 }
 
 pub trait Display {
-    fn get_opengl_version(&self) -> &glium::Version;
-    fn get_framebuffer_dimensions(&self) -> (u32, u32);
-    fn get_hidpi_factor(&self) -> f64;
+    fn opengl_version(&self) -> &glium::Version;
+    fn framebuffer_dimensions(&self) -> (u32, u32);
+    fn hidpi_factor(&self) -> f64;
 }
 
 impl Display for glium::Display {
-    #[allow(unconditional_recursion)]
-    fn get_opengl_version(&self) -> &glium::Version {
-        glium::Display::get_opengl_version(self)
+    fn opengl_version(&self) -> &glium::Version {
+        self.get_opengl_version()
     }
 
-    #[allow(unconditional_recursion)]
-    fn get_framebuffer_dimensions(&self) -> (u32, u32) {
-        glium::Display::get_framebuffer_dimensions(self)
+    fn framebuffer_dimensions(&self) -> (u32, u32) {
+        self.get_framebuffer_dimensions()
     }
 
-    fn get_hidpi_factor(&self) -> f64 {
+    fn hidpi_factor(&self) -> f64 {
         self.gl_window().get_hidpi_factor()
     }
 }
@@ -507,7 +505,7 @@ impl Renderer {
         let mut text_data_u8u8u8 = Vec::new();
 
         // Determine the texture format that we're using.
-        let opengl_version = display.get_opengl_version();
+        let opengl_version = display.opengl_version();
         let client_format = text_texture_client_format(opengl_version);
 
         enum State {
@@ -532,11 +530,11 @@ impl Renderer {
         }
 
         // Framebuffer dimensions and the "dots per inch" factor.
-        let (screen_w, screen_h) = display.get_framebuffer_dimensions();
+        let (screen_w, screen_h) = display.framebuffer_dimensions();
         let (win_w, win_h) = (screen_w as Scalar, screen_h as Scalar);
         let half_win_w = win_w / 2.0;
         let half_win_h = win_h / 2.0;
-        let dpi_factor = display.get_hidpi_factor() as Scalar;
+        let dpi_factor = display.hidpi_factor() as Scalar;
 
         // Functions for converting for conrod scalar coords to GL vertex coords (-1.0 to 1.0).
         let vx = |x: Scalar| (x * dpi_factor / half_win_w) as f32;
