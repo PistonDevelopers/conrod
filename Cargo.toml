@@ -9,4 +9,5 @@ members = [
     "backends/conrod_piston",
     "backends/conrod_rendy",
     "backends/conrod_vulkano",
+    "backends/conrod_wgpu",
 ]
