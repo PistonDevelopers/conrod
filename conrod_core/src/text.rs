@@ -251,20 +251,21 @@ pub mod font {
     }
 
     impl std::error::Error for Error {
-        fn description(&self) -> &str {
+        fn cause(&self) -> Option<&dyn std::error::Error> {
             match *self {
-                Error::IO(ref e) => std::error::Error::description(e),
-                Error::NoFont => "No `Font` found in the loaded `FontCollection`.",
+                Error::IO(ref e) => Some(e),
+                _ => None,
             }
         }
     }
 
     impl std::fmt::Display for Error {
         fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-            match *self {
-                Error::IO(ref e) => std::fmt::Display::fmt(e, f),
-                _ => write!(f, "{}", std::error::Error::description(self))
-            }
+            let s = match *self {
+                Error::IO(ref e) => return std::fmt::Display::fmt(e, f),
+                Error::NoFont => "No `Font` found in the loaded `FontCollection`.",
+            };
+            write!(f, "{}", s)
         }
     }
 

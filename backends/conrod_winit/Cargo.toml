@@ -1,6 +1,6 @@
 [package]
 name = "conrod_winit"
-version = "0.68.0"
+version = "0.69.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
