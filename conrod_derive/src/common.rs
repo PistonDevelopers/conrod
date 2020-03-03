@@ -131,9 +131,11 @@ enum Error {
     NoCommonBuilderField,
 }
 
-impl std::error::Error for Error {
-    fn description(&self) -> &str {
-        match *self {
+impl std::error::Error for Error {}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let s = match *self {
             Error::NotStruct =>
                 "#[derive(WidgetCommon)] is only defined for structs",
             Error::TupleStruct =>
@@ -148,12 +150,7 @@ impl std::error::Error for Error {
                 "`#[derive(WidgetCommon)]` requires a struct with one field of type \
                  `conrod::widget::CommonBuilder` that has the `#[conrod(common_builder)]` \
                  attribute",
-        }
-    }
-}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", std::error::Error::description(self))
+        };
+        write!(f, "{}", s)
     }
 }

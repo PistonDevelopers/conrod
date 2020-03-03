@@ -243,7 +243,7 @@ impl<'a, T> Widget for NumberDialer<'a, T>
         // - If a value has been `Press`ed and is being dragged.
         // - `Drag`ging of the mouse while a button is pressed.
         // - `Scroll`ing of the mouse over a value.
-        'events: for widget_event in ui.widget_input(id).events() {
+        for widget_event in ui.widget_input(id).events() {
             use event;
             use input::{self, MouseButton};
 

@@ -211,9 +211,11 @@ enum Error {
     NonOptionFieldTy,
 }
 
-impl std::error::Error for Error {
-    fn description(&self) -> &str {
-        match *self {
+impl std::error::Error for Error {}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let s = match *self {
             Error::NotStruct =>
                 "`#[derive(WidgetStyle)]` is only defined for structs",
             Error::TupleStruct =>
@@ -228,12 +230,7 @@ impl std::error::Error for Error {
                 "Cannot use #[conrod(default = \"foo\")] attribute on unnamed fields",
             Error::NonOptionFieldTy =>
                 "Cannot use #[conrod(default = \"foo\")] attribute on non-`Option` fields"
-        }
-    }
-}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", std::error::Error::description(self))
+        };
+        write!(f, "{}", s)
     }
 }
