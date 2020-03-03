@@ -1,7 +1,18 @@
 [package]
 name = "conrod_rendy"
 version = "0.1.0"
-authors = ["David Partouche <david@kaligs.com>"]
+authors = [
+    "David Partouche <david@kaligs.com>",
+    "mitchmindtree <mitchell.nordine@gmail.com>",
+]
+keywords = ["ui", "widgets", "gui", "interface", "graphics"]
+description = "A rendy backend for conrod."
+license = "MIT OR Apache-2.0"
+readme = "../../README.md"
+repository = "https://github.com/pistondevelopers/conrod.git"
+homepage = "https://github.com/pistondevelopers/conrod"
+documentation = "https://docs.rs/conrod"
+categories = ["gui"]
 edition = "2018"
 
 [dependencies]
