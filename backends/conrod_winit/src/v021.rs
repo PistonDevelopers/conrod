@@ -334,8 +334,8 @@ macro_rules! v021_conversion_fns {
         }
 
         /// A function for converting a `winit::Event` to a `conrod_core::event::Input`.
-        pub fn convert_event(
-            event: &winit::event::Event<()>,
+        pub fn convert_event<T>(
+            event: &winit::event::Event<T>,
             window: &winit::window::Window,
         ) -> Option<conrod_core::event::Input> {
             $crate::v021_convert_event!(event, window)
