@@ -219,7 +219,7 @@ impl<A> Widget for Scrollbar<A>
                         if rect.is_over(abs_xy) && !handle_rect.is_over(abs_xy) {
                             let handle_pos_range_len = handle_pos_range_len();
                             let offset_range_len = offset_bounds.len();
-                            let mouse_scalar = A::mouse_scalar(xy);
+                            let mouse_scalar = A::mouse_scalar(abs_xy);
                             let pos_offset = mouse_scalar - handle_range.middle();
                             let offset = utils::map_range(pos_offset,
                                                           0.0, handle_pos_range_len,
