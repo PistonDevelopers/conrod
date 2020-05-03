@@ -5,7 +5,7 @@ use conrod_core::{
     text::rt,
     Rect, Scalar,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// A loaded wgpu texture and it's width/height
 pub struct Image {
@@ -49,17 +49,28 @@ pub struct Vertex {
 
 /// A helper type aimed at simplifying the rendering of conrod primitives via wgpu.
 pub struct Renderer {
-    _vs_mod: wgpu::ShaderModule,
-    _fs_mod: wgpu::ShaderModule,
-    bind_group_layout: wgpu::BindGroupLayout,
-    render_pipeline: wgpu::RenderPipeline,
+    vs_mod: wgpu::ShaderModule,
+    fs_mod: wgpu::ShaderModule,
     glyph_cache_tex: wgpu::Texture,
     _default_image_tex: wgpu::Texture,
     default_bind_group: wgpu::BindGroup,
     sampler: wgpu::Sampler,
     mesh: Mesh,
+    // The texture format of the output attachment.
+    dst_format: wgpu::TextureFormat,
+    // The sample count of the output attachment.
+    dst_sample_count: u32,
     // In order to support a dynamic number of images we maintain a unique bind group for each.
     bind_groups: HashMap<image::Id, wgpu::BindGroup>,
+    // We also need a unique
+    render_pipelines: HashMap<wgpu::TextureComponentType, Pipeline>,
+}
+
+/// Data that must be unique per `wgpu::TextureComponentType`, i.e. bind group layout and render
+/// pipeline.
+struct Pipeline {
+    bind_group_layout: wgpu::BindGroupLayout,
+    render_pipeline: wgpu::RenderPipeline,
 }
 
 /// An command for uploading an individual glyph.
@@ -76,7 +87,6 @@ pub struct GlyphCacheCommand<'a> {
 
 /// A render produced by the `Renderer::render` method.
 pub struct Render<'a> {
-    pub pipeline: &'a wgpu::RenderPipeline,
     pub vertex_buffer: wgpu::Buffer,
     pub commands: Vec<RenderPassCommand<'a>>,
 }
@@ -94,9 +104,13 @@ pub enum RenderPassCommand<'a> {
     Draw { vertex_range: std::ops::Range<u32> },
     /// A new image requires drawing and in turn a new bind group requires setting.
     SetBindGroup { bind_group: &'a wgpu::BindGroup },
+    /// An image requiring a different bind group layout requires drawing and in turn, we must set
+    /// the necessary render pipeline.
+    SetPipeline { pipeline: &'a wgpu::RenderPipeline },
 }
 
 const GLYPH_TEX_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
+const GLYPH_TEX_COMPONENT_TY: wgpu::TextureComponentType = wgpu::TextureComponentType::Uint;
 const DEFAULT_IMAGE_TEX_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 
 impl mesh::ImageDimensions for Image {
@@ -105,21 +119,35 @@ impl mesh::ImageDimensions for Image {
     }
 }
 
+impl Image {
+    pub fn texture_component_type(&self) -> wgpu::TextureComponentType {
+        texture_format_to_component_type(self.texture_format)
+    }
+}
+
 impl Renderer {
     /// Construct a new `Renderer`.
+    ///
+    /// The `dst_sample_count` and `dst_format` refer to the associated properties of the output
+    /// attachment to which the `Renderer` will draw. Note that if the `dst_sample_count` or
+    /// `dst_format` change at runtime, the `Renderer` should be reconstructed.
     pub fn new(
         device: &wgpu::Device,
-        msaa_samples: u32,
+        dst_sample_count: u32,
         dst_format: wgpu::TextureFormat,
     ) -> Self {
         let glyph_cache_dims = mesh::DEFAULT_GLYPH_CACHE_DIMS;
-        Self::with_glyph_cache_dimensions(device, msaa_samples, dst_format, glyph_cache_dims)
+        Self::with_glyph_cache_dimensions(device, dst_sample_count, dst_format, glyph_cache_dims)
     }
 
     /// Create a renderer with a specific size for the glyph cache.
+    ///
+    /// The `dst_sample_count` and `dst_format` refer to the associated properties of the output
+    /// attachment to which the `Renderer` will draw. Note that if the `dst_sample_count` or
+    /// `dst_format` change at runtime, the `Renderer` should be reconstructed.
     pub fn with_glyph_cache_dimensions(
         device: &wgpu::Device,
-        msaa_samples: u32,
+        dst_sample_count: u32,
         dst_format: wgpu::TextureFormat,
         glyph_cache_dims: [u32; 2],
     ) -> Self {
@@ -146,12 +174,20 @@ impl Renderer {
         let glyph_cache_tex_desc = glyph_cache_tex_desc(glyph_cache_dims);
         let glyph_cache_tex = device.create_texture(&glyph_cache_tex_desc);
 
+        // Create the default image that is bound to `image_texture` along with a default bind
+        // group for use in the case that there are no user supplied images.
+        let default_image_tex_desc = default_image_tex_desc();
+        let default_image_tex = device.create_texture(&default_image_tex_desc);
+
         // Create the sampler for sampling from the glyph cache and image textures.
         let sampler_desc = sampler_desc();
         let sampler = device.create_sampler(&sampler_desc);
 
-        // Create the render pipeline.
-        let bind_group_layout = bind_group_layout(device);
+        // Create at least one render pipeline for the default texture.
+        let mut render_pipelines = HashMap::new();
+
+        let default_tex_component_ty = texture_format_to_component_type(DEFAULT_IMAGE_TEX_FORMAT);
+        let bind_group_layout = bind_group_layout(device, default_tex_component_ty);
         let pipeline_layout = pipeline_layout(device, &bind_group_layout);
         let render_pipeline = render_pipeline(
             device,
@@ -159,13 +195,8 @@ impl Renderer {
             &vs_mod,
             &fs_mod,
             dst_format,
-            msaa_samples,
+            dst_sample_count,
         );
-
-        // Create the default image that is bound to `image_texture` along with a default bind
-        // group for use in the case that there are no user supplied images.
-        let default_image_tex_desc = default_image_tex_desc();
-        let default_image_tex = device.create_texture(&default_image_tex_desc);
         let default_bind_group = bind_group(
             device,
             &bind_group_layout,
@@ -173,20 +204,26 @@ impl Renderer {
             &sampler,
             &default_image_tex,
         );
+        let default_pipeline = Pipeline {
+            bind_group_layout,
+            render_pipeline,
+        };
+        render_pipelines.insert(default_tex_component_ty, default_pipeline);
 
         // The empty set of bind groups to be associated with user images.
         let bind_groups = Default::default();
 
         Self {
-            _vs_mod: vs_mod,
-            _fs_mod: fs_mod,
+            vs_mod,
+            fs_mod,
             glyph_cache_tex,
             _default_image_tex: default_image_tex,
             default_bind_group,
             sampler,
-            bind_group_layout,
+            dst_format,
+            dst_sample_count,
             bind_groups,
-            render_pipeline,
+            render_pipelines,
             mesh,
         }
     }
@@ -240,30 +277,74 @@ impl Renderer {
     /// `RenderPassCommand`s that are easily digestible by a `wgpu::RenderPass` produced by a
     /// `wgpu::CommandEncoder`.
     pub fn render(&mut self, device: &wgpu::Device, image_map: &image::Map<Image>) -> Render {
+        let Renderer {
+            ref mut bind_groups,
+            ref mut render_pipelines,
+            ref mut mesh,
+            ref vs_mod,
+            ref fs_mod,
+            ref default_bind_group,
+            ref glyph_cache_tex,
+            ref sampler,
+            dst_format,
+            dst_sample_count,
+            ..
+        } = *self;
+
         let mut commands = vec![];
 
-        // Ensure we have a descriptor set ready for each image in the map and no more.
-        self.bind_groups.retain(|k, _| image_map.contains_key(k));
+        // Ensure we have:
+        // - a bind group layout and render pipeline for each unique texture component type.
+        // - a bind group ready for each image in the map.
+        let default_tct = texture_format_to_component_type(DEFAULT_IMAGE_TEX_FORMAT);
+        let unique_tex_component_types: HashSet<_> = image_map
+            .values()
+            .map(|img| img.texture_component_type())
+            .chain(Some(default_tct))
+            .collect();
+        bind_groups.retain(|k, _| image_map.contains_key(k));
+        render_pipelines.retain(|tct, _| unique_tex_component_types.contains(tct));
         for (id, img) in image_map.iter() {
-            if self.bind_groups.contains_key(id) {
+            // If we already have a bind group for this image move on.
+            if bind_groups.contains_key(id) {
                 continue;
             }
+
+            // Retrieve the bind group layout and pipeline for the image's texture component type.
+            let tct = img.texture_component_type();
+            let pipeline = render_pipelines.entry(tct).or_insert_with(|| {
+                let bind_group_layout = bind_group_layout(device, tct);
+                let pipeline_layout = pipeline_layout(device, &bind_group_layout);
+                let render_pipeline = render_pipeline(
+                    device,
+                    &pipeline_layout,
+                    vs_mod,
+                    fs_mod,
+                    dst_format,
+                    dst_sample_count,
+                );
+                Pipeline {
+                    bind_group_layout,
+                    render_pipeline,
+                }
+            });
+
+            // Create the bind
             let bind_group = bind_group(
                 device,
-                &self.bind_group_layout,
-                &self.glyph_cache_tex,
-                &self.sampler,
+                &pipeline.bind_group_layout,
+                &glyph_cache_tex,
+                sampler,
                 &img.texture,
             );
-            self.bind_groups.insert(*id, bind_group);
+            bind_groups.insert(*id, bind_group);
         }
 
         // Prepare a single vertex buffer containing all vertices for all geometry.
-        let vertices = self.mesh.vertices();
-        let vertices = conv_vertex_buffer(vertices);
-        let vertex_buffer = device
-            .create_buffer_mapped(vertices.len(), wgpu::BufferUsage::VERTEX)
-            .fill_from_slice(vertices);
+        let vertices = mesh.vertices();
+        let vertices_bytes = vertices_as_bytes(vertices);
+        let usage = wgpu::BufferUsage::VERTEX;
+        let vertex_buffer = device.create_buffer_with_data(vertices_bytes, usage);
 
         // Keep track of the currently set bind group.
         #[derive(PartialEq)]
@@ -273,7 +354,7 @@ impl Renderer {
         }
         let mut bind_group = None;
 
-        for command in self.mesh.commands() {
+        for command in mesh.commands() {
             match command {
                 // Update the `scizzor` before continuing to draw.
                 mesh::Command::Scizzor(s) => {
@@ -294,11 +375,14 @@ impl Renderer {
                         if vertex_count <= 0 {
                             continue;
                         }
-                        // Ensure a bind group is set.
+                        // Ensure a render pipeline and bind group is set.
                         if bind_group.is_none() {
                             bind_group = Some(BindGroup::Default);
+                            let pipeline = &render_pipelines[&default_tct].render_pipeline;
+                            let cmd = RenderPassCommand::SetPipeline { pipeline };
+                            commands.push(cmd);
                             let cmd = RenderPassCommand::SetBindGroup {
-                                bind_group: &self.default_bind_group,
+                                bind_group: default_bind_group,
                             };
                             commands.push(cmd);
                         }
@@ -318,9 +402,22 @@ impl Renderer {
                         // Ensure the bind group matches this image.
                         let expected_bind_group = Some(BindGroup::Image(image_id));
                         if bind_group != expected_bind_group {
+                            // Check whether or not we need to switch pipelines.
+                            let expected_tct = image_map[&image_id].texture_component_type();
+                            let current_tct = bind_group.as_ref().map(|bg| match *bg {
+                                BindGroup::Default => default_tct,
+                                BindGroup::Image(id) => image_map[&id].texture_component_type(),
+                            });
+                            if current_tct != Some(expected_tct) {
+                                let pipeline = &render_pipelines[&expected_tct].render_pipeline;
+                                let cmd = RenderPassCommand::SetPipeline { pipeline };
+                                commands.push(cmd);
+                            }
+
+                            // Now update the bind group and add the new bind group command.
                             bind_group = expected_bind_group;
                             let cmd = RenderPassCommand::SetBindGroup {
-                                bind_group: &self.bind_groups[&image_id],
+                                bind_group: &bind_groups[&image_id],
                             };
                             commands.push(cmd);
                         }
@@ -334,7 +431,6 @@ impl Renderer {
         }
 
         Render {
-            pipeline: &self.render_pipeline,
             vertex_buffer,
             commands,
         }
@@ -354,10 +450,7 @@ impl<'a> GlyphCacheCommand<'a> {
     /// > if you try to map an existing buffer, it will give it to you only after all the gpu use
     /// > of the buffer is over. So you can't do it every frame reasonably
     pub fn create_buffer(&self, device: &wgpu::Device) -> wgpu::Buffer {
-        let len = self.glyph_cache_pixel_buffer.len();
-        device
-            .create_buffer_mapped(len, wgpu::BufferUsage::COPY_SRC)
-            .fill_from_slice(&self.glyph_cache_pixel_buffer)
+        device.create_buffer_with_data(&self.glyph_cache_pixel_buffer, wgpu::BufferUsage::COPY_SRC)
     }
 
     /// Create the copy view ready for copying the pixel data to the texture.
@@ -365,8 +458,8 @@ impl<'a> GlyphCacheCommand<'a> {
         wgpu::BufferCopyView {
             buffer,
             offset: 0,
-            row_pitch: self.width,
-            image_height: self.height,
+            bytes_per_row: self.width,
+            rows_per_image: self.height,
         }
     }
 
@@ -404,7 +497,7 @@ impl<'a> GlyphCacheCommand<'a> {
     }
 }
 
-fn glyph_cache_tex_desc([width, height]: [u32; 2]) -> wgpu::TextureDescriptor {
+fn glyph_cache_tex_desc([width, height]: [u32; 2]) -> wgpu::TextureDescriptor<'static> {
     let depth = 1;
     let texture_extent = wgpu::Extent3d {
         width,
@@ -412,6 +505,7 @@ fn glyph_cache_tex_desc([width, height]: [u32; 2]) -> wgpu::TextureDescriptor {
         depth,
     };
     wgpu::TextureDescriptor {
+        label: Some("conrod_wgpu_glyph_cache_texture"),
         size: texture_extent,
         array_layer_count: 1,
         mip_level_count: 1,
@@ -422,7 +516,7 @@ fn glyph_cache_tex_desc([width, height]: [u32; 2]) -> wgpu::TextureDescriptor {
     }
 }
 
-fn default_image_tex_desc() -> wgpu::TextureDescriptor {
+fn default_image_tex_desc() -> wgpu::TextureDescriptor<'static> {
     let width = 64;
     let height = 64;
     let depth = 1;
@@ -432,6 +526,7 @@ fn default_image_tex_desc() -> wgpu::TextureDescriptor {
         depth,
     };
     wgpu::TextureDescriptor {
+        label: Some("conrod_wgpu_image_texture"),
         size: texture_extent,
         array_layer_count: 1,
         mip_level_count: 1,
@@ -452,29 +547,34 @@ fn sampler_desc() -> wgpu::SamplerDescriptor {
         mipmap_filter: wgpu::FilterMode::Linear,
         lod_min_clamp: -100.0,
         lod_max_clamp: 100.0,
-        compare_function: wgpu::CompareFunction::Always,
+        compare: wgpu::CompareFunction::Always,
     }
 }
 
-fn bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
-    let glyph_cache_texture_binding = wgpu::BindGroupLayoutBinding {
+fn bind_group_layout(
+    device: &wgpu::Device,
+    img_tex_component_ty: wgpu::TextureComponentType,
+) -> wgpu::BindGroupLayout {
+    let glyph_cache_texture_binding = wgpu::BindGroupLayoutEntry {
         binding: 0,
         visibility: wgpu::ShaderStage::FRAGMENT,
         ty: wgpu::BindingType::SampledTexture {
             multisampled: false,
+            component_type: GLYPH_TEX_COMPONENT_TY,
             dimension: wgpu::TextureViewDimension::D2,
         },
     };
-    let sampler_binding = wgpu::BindGroupLayoutBinding {
+    let sampler_binding = wgpu::BindGroupLayoutEntry {
         binding: 1,
         visibility: wgpu::ShaderStage::FRAGMENT,
-        ty: wgpu::BindingType::Sampler,
+        ty: wgpu::BindingType::Sampler { comparison: false },
     };
-    let image_texture_binding = wgpu::BindGroupLayoutBinding {
+    let image_texture_binding = wgpu::BindGroupLayoutEntry {
         binding: 2,
         visibility: wgpu::ShaderStage::FRAGMENT,
         ty: wgpu::BindingType::SampledTexture {
             multisampled: false,
+            component_type: img_tex_component_ty,
             dimension: wgpu::TextureViewDimension::D2,
         },
     };
@@ -483,7 +583,10 @@ fn bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
         sampler_binding,
         image_texture_binding,
     ];
-    let desc = wgpu::BindGroupLayoutDescriptor { bindings };
+    let desc = wgpu::BindGroupLayoutDescriptor {
+        label: Some("conrod_bind_group_layout"),
+        bindings,
+    };
     device.create_bind_group_layout(&desc)
 }
 
@@ -515,7 +618,12 @@ fn bind_group(
     };
 
     let bindings = &[glyph_cache_tex_binding, sampler_binding, image_tex_binding];
-    let desc = wgpu::BindGroupDescriptor { layout, bindings };
+    let label = Some("conrod_bind_group");
+    let desc = wgpu::BindGroupDescriptor {
+        label,
+        layout,
+        bindings,
+    };
     device.create_bind_group(&desc)
 }
 
@@ -571,7 +679,7 @@ fn render_pipeline(
     vs_mod: &wgpu::ShaderModule,
     fs_mod: &wgpu::ShaderModule,
     dst_format: wgpu::TextureFormat,
-    msaa_samples: u32,
+    dst_sample_count: u32,
 ) -> wgpu::RenderPipeline {
     let vs_desc = wgpu::ProgrammableStageDescriptor {
         module: &vs_mod,
@@ -608,6 +716,10 @@ fn render_pipeline(
         step_mode: wgpu::InputStepMode::Vertex,
         attributes: &vertex_attrs[..],
     };
+    let vertex_state_desc = wgpu::VertexStateDescriptor {
+        index_format: wgpu::IndexFormat::Uint16,
+        vertex_buffers: &[vertex_buffer_desc],
+    };
     let desc = wgpu::RenderPipelineDescriptor {
         layout,
         vertex_stage: vs_desc,
@@ -616,15 +728,62 @@ fn render_pipeline(
         primitive_topology: wgpu::PrimitiveTopology::TriangleList,
         color_states: &[color_state_desc],
         depth_stencil_state: None,
-        index_format: wgpu::IndexFormat::Uint16,
-        vertex_buffers: &[vertex_buffer_desc],
-        sample_count: msaa_samples,
+        vertex_state: vertex_state_desc,
+        sample_count: dst_sample_count,
         sample_mask: !0,
         alpha_to_coverage_enabled: false,
     };
     device.create_render_pipeline(&desc)
 }
 
-fn conv_vertex_buffer(buffer: &[mesh::Vertex]) -> &[Vertex] {
-    unsafe { std::mem::transmute(buffer) }
+fn vertices_as_bytes(s: &[mesh::Vertex]) -> &[u8] {
+    let len = s.len() * std::mem::size_of::<mesh::Vertex>();
+    let ptr = s.as_ptr() as *const u8;
+    unsafe { std::slice::from_raw_parts(ptr, len) }
+}
+
+// TODO: Remove this when this lands https://github.com/gfx-rs/wgpu/pull/628
+fn texture_format_to_component_type(format: wgpu::TextureFormat) -> wgpu::TextureComponentType {
+    match format {
+        wgpu::TextureFormat::R8Uint
+        | wgpu::TextureFormat::R16Uint
+        | wgpu::TextureFormat::Rg8Uint
+        | wgpu::TextureFormat::R32Uint
+        | wgpu::TextureFormat::Rg16Uint
+        | wgpu::TextureFormat::Rgba8Uint
+        | wgpu::TextureFormat::Rg32Uint
+        | wgpu::TextureFormat::Rgba16Uint
+        | wgpu::TextureFormat::Rgba32Uint => wgpu::TextureComponentType::Uint,
+
+        wgpu::TextureFormat::R8Sint
+        | wgpu::TextureFormat::R16Sint
+        | wgpu::TextureFormat::Rg8Sint
+        | wgpu::TextureFormat::R32Sint
+        | wgpu::TextureFormat::Rg16Sint
+        | wgpu::TextureFormat::Rgba8Sint
+        | wgpu::TextureFormat::Rg32Sint
+        | wgpu::TextureFormat::Rgba16Sint
+        | wgpu::TextureFormat::Rgba32Sint => wgpu::TextureComponentType::Sint,
+
+        wgpu::TextureFormat::R8Unorm
+        | wgpu::TextureFormat::R8Snorm
+        | wgpu::TextureFormat::R16Float
+        | wgpu::TextureFormat::R32Float
+        | wgpu::TextureFormat::Rg8Unorm
+        | wgpu::TextureFormat::Rg8Snorm
+        | wgpu::TextureFormat::Rg16Float
+        | wgpu::TextureFormat::Rg11b10Float
+        | wgpu::TextureFormat::Rg32Float
+        | wgpu::TextureFormat::Rgba8Snorm
+        | wgpu::TextureFormat::Rgba16Float
+        | wgpu::TextureFormat::Rgba32Float
+        | wgpu::TextureFormat::Rgba8Unorm
+        | wgpu::TextureFormat::Rgba8UnormSrgb
+        | wgpu::TextureFormat::Bgra8Unorm
+        | wgpu::TextureFormat::Bgra8UnormSrgb
+        | wgpu::TextureFormat::Rgb10a2Unorm
+        | wgpu::TextureFormat::Depth32Float
+        | wgpu::TextureFormat::Depth24Plus
+        | wgpu::TextureFormat::Depth24PlusStencil8 => wgpu::TextureComponentType::Float,
+    }
 }

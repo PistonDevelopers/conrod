@@ -18,6 +18,8 @@ layout(location = 2) flat out uint v_Mode;
 void main() {
     v_Uv = uv;
     v_Color = color;
-    gl_Position = vec4(pos, 0.0, 1.0);
+    // Flip the `y` axis as conrod's renderer expects vulkan vertex coords (`y`
+    // increasing downwards) whereas wgpu expects `y` to increase upwards.
+    gl_Position = vec4(pos * vec2(1.0, -1.0), 0.0, 1.0);
     v_Mode = mode;
 }
