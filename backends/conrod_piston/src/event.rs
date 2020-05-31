@@ -34,7 +34,7 @@ pub fn convert<E>(event: E, win_w: Scalar, win_h: Scalar) -> Option<event::Input
 
     if let Some(args) = event.touch_args() {
         let id = input::touch::Id::new(args.id as u64);
-        let xy = [args.x, args.y];
+        let xy = args.position();
         let phase = match args.touch {
             ::piston_input::Touch::Start => input::touch::Phase::Start,
             ::piston_input::Touch::Move => input::touch::Phase::Move,
@@ -57,8 +57,8 @@ pub fn convert<E>(event: E, win_w: Scalar, win_h: Scalar) -> Option<event::Input
         return Some(event::Input::Text(text));
     }
 
-    if let Some(dim) = event.resize_args() {
-        return Some(event::Input::Resize(dim[0], dim[1]));
+    if let Some(args) = event.resize_args() {
+        return Some(event::Input::Resize(args.window_size[0], args.window_size[1]));
     }
 
     if let Some(b) = event.focus_args() {

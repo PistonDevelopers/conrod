@@ -18,7 +18,7 @@ pub fn main() {
     // Construct the window.
     let mut window: PistonWindow =
         WindowSettings::new("All Widgets - Piston Backend", [WIDTH, HEIGHT])
-            .opengl(OpenGL::V3_2) // If not working, try `OpenGL::V2_1`.
+            .graphics_api(OpenGL::V3_2) // If not working, try `OpenGL::V2_1`.
             .samples(4)
             .exit_on_esc(true)
             .vsync(true)
@@ -35,6 +35,9 @@ pub fn main() {
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
+    // Create texture context to perform operations on textures.
+    let mut texture_context = window.create_texture_context();
+    
     // Create a texture to use for efficiently caching text on the GPU.
     let mut text_vertex_data = Vec::new();
     let (mut glyph_cache, mut text_texture_cache) = {
@@ -48,8 +51,7 @@ pub fn main() {
         let buffer_len = WIDTH as usize * HEIGHT as usize;
         let init = vec![128; buffer_len];
         let settings = TextureSettings::new();
-        let factory = &mut window.factory;
-        let texture = G2dTexture::from_memory_alpha(factory, &init, WIDTH, HEIGHT, &settings).unwrap();
+        let texture = G2dTexture::from_memory_alpha(&mut texture_context, &init, WIDTH, HEIGHT, &settings).unwrap();
         (cache, texture)
     };
 
@@ -60,9 +62,8 @@ pub fn main() {
     let rust_logo: G2dTexture = {
         let assets = find_folder::Search::ParentsThenKids(5, 3).for_folder("assets").unwrap();
         let path = assets.join("images/rust.png");
-        let factory = &mut window.factory;
         let settings = TextureSettings::new();
-        Texture::from_path(factory, &path, Flip::None, &settings).unwrap()
+        Texture::from_path(&mut texture_context, &path, Flip::None, &settings).unwrap()
     };
 
     // Create our `conrod_core::image::Map` which describes each of our widget->image mappings.
@@ -87,11 +88,11 @@ pub fn main() {
             conrod_example_shared::gui(&mut ui, &ids, &mut app);
         });
 
-        window.draw_2d(&event, |context, graphics| {
+        window.draw_2d(&event, |context, graphics, _device| {
             if let Some(primitives) = ui.draw_if_changed() {
 
                 // A function used for caching glyphs to the texture cache.
-                let cache_queued_glyphs = |graphics: &mut G2d,
+                let cache_queued_glyphs = |_graphics: &mut G2d,
                                            cache: &mut G2dTexture,
                                            rect: conrod_core::text::rt::Rect<u32>,
                                            data: &[u8]|
@@ -99,10 +100,9 @@ pub fn main() {
                         let offset = [rect.min.x, rect.min.y];
                         let size = [rect.width(), rect.height()];
                         let format = piston_window::texture::Format::Rgba8;
-                        let encoder = &mut graphics.encoder;
                         text_vertex_data.clear();
                         text_vertex_data.extend(data.iter().flat_map(|&b| vec![255, 255, 255, b]));
-                        UpdateTexture::update(cache, encoder, format, &text_vertex_data[..], offset, size)
+                        UpdateTexture::update(cache, &mut texture_context, format, &text_vertex_data[..], offset, size)
                             .expect("failed to update texture")
                     };
 
