@@ -37,7 +37,7 @@ pub fn main() {
 
     // Create texture context to perform operations on textures.
     let mut texture_context = window.create_texture_context();
-    
+
     // Create a texture to use for efficiently caching text on the GPU.
     let mut text_vertex_data = Vec::new();
     let (mut glyph_cache, mut text_texture_cache) = {
@@ -88,7 +88,7 @@ pub fn main() {
             conrod_example_shared::gui(&mut ui, &ids, &mut app);
         });
 
-        window.draw_2d(&event, |context, graphics, _device| {
+        window.draw_2d(&event, |context, graphics, device| {
             if let Some(primitives) = ui.draw_if_changed() {
 
                 // A function used for caching glyphs to the texture cache.
@@ -119,6 +119,8 @@ pub fn main() {
                                                 &image_map,
                                                 cache_queued_glyphs,
                                                 texture_from_image);
+
+                texture_context.encoder.flush(device);
             }
         });
     }
