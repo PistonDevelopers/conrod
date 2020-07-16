@@ -8,7 +8,7 @@ use position::{Axis, Depth, Point, Rect};
 use std;
 use std::any::Any;
 use std::ops::{Index, IndexMut};
-use widget::{self, Widget};
+use widget::{self, Widget, HitTest};
 
 pub use daggy::Walker;
 pub use self::depth_order::DepthOrder;
@@ -101,6 +101,7 @@ pub struct Container {
     ///
     /// NOTE: See `Wiget::is_over` for more details and a note on possible future plans.
     pub is_over: IsOverFn,
+    pub maybe_drag_start_hit_test_and_rect: Option<(HitTest, Rect)>,
 }
 
 /// A wrapper around a `widget::IsOverFn` to make implementing `Debug` easier for `Container`.
@@ -628,6 +629,7 @@ impl Graph {
             type_id, id, maybe_parent_id, maybe_x_positioned_relatively_id,
             maybe_y_positioned_relatively_id, rect, depth, kid_area, maybe_dragged_from, maybe_floating,
             crop_kids, maybe_x_scroll_state, maybe_y_scroll_state, maybe_graphics_for, is_over,
+            maybe_drag_start_hit_test_and_rect,
         } = widget;
 
         assert!(self.node(id).is_some(), "No node found for the given widget::Id {:?}", id);
@@ -646,6 +648,7 @@ impl Graph {
             maybe_y_scroll_state: maybe_y_scroll_state,
             instantiation_order_idx: instantiation_order_idx,
             is_over: IsOverFn(is_over),
+            maybe_drag_start_hit_test_and_rect,
         };
 
         // Retrieves the widget's parent index.
@@ -699,6 +702,7 @@ impl Graph {
                 container.maybe_y_scroll_state = maybe_y_scroll_state;
                 container.instantiation_order_idx = instantiation_order_idx;
                 container.is_over = IsOverFn(is_over);
+                container.maybe_drag_start_hit_test_and_rect = maybe_drag_start_hit_test_and_rect;
             },
 
         }

@@ -77,6 +77,10 @@ fn main() {
         // Instantiate all widgets in the GUI.
         set_widgets(ui.set_widgets(), ids);
 
+        // Get the underlying winit window and update the mouse cursor as set by conrod.
+        display.0.gl_window().window()
+            .set_cursor(support::convert_mouse_cursor(ui.mouse_cursor()));
+
         // Render the `Ui` and then display it on the screen.
         if let Some(primitives) = ui.draw_if_changed() {
             renderer.fill(&display.0, primitives, &image_map);
@@ -110,6 +114,14 @@ fn set_widgets(ref mut ui: conrod_core::UiCell, ids: &mut Ids) {
     let floating = widget::Canvas::new().floating(true).w_h(110.0, 150.0).label_color(color::WHITE);
     floating.middle_of(ids.left_column).title_bar("Blue").color(color::BLUE).set(ids.floating_a, ui);
     floating.middle_of(ids.right_column).title_bar("Orange").color(color::LIGHT_ORANGE).set(ids.floating_b, ui);
+    widget::FloatingWindow::new()
+        .floating(true)
+        .w_h(200.0, 160.0)
+        .label_color(color::BLACK)
+        .middle_of(ids.left_column)
+        .title_bar("Test")
+        .color(color::LIGHT_GREY)
+        .set(ids.floating_c, ui);
 
     // Here we make some canvas `Tabs` in the middle column.
     widget::Tabs::new(&[(ids.tab_foo, "FOO"), (ids.tab_bar, "BAR"), (ids.tab_baz, "BAZ")])
@@ -163,8 +175,11 @@ fn set_widgets(ref mut ui: conrod_core::UiCell, ids: &mut Ids) {
     for _click in button.clone().middle_of(ids.floating_a).set(ids.bing, ui) {
         println!("Bing!");
     }
-    for _click in button.middle_of(ids.floating_b).set(ids.bong, ui) {
+    for _click in button.clone().middle_of(ids.floating_b).set(ids.bong, ui) {
         println!("Bong!");
+    }
+    for _click in button.middle_of(ids.floating_c).set(ids.foobar, ui) {
+        println!("Foobar!");
     }
 }
 
@@ -186,6 +201,7 @@ widget_ids! {
         footer_scrollbar,
         floating_a,
         floating_b,
+        floating_c,
         tabs,
         tab_foo,
         tab_bar,
@@ -201,5 +217,6 @@ widget_ids! {
         button_matrix,
         bing,
         bong,
+        foobar,
     }
 }

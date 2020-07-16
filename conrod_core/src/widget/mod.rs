@@ -31,6 +31,7 @@ pub use self::collapsible_area::CollapsibleArea;
 pub use self::drop_down_list::DropDownList;
 pub use self::envelope_editor::EnvelopeEditor;
 pub use self::file_navigator::FileNavigator;
+pub use self::floating_window::FloatingWindow;
 pub use self::grid::Grid;
 pub use self::list::List;
 pub use self::list_select::ListSelect;
@@ -69,6 +70,7 @@ pub mod collapsible_area;
 pub mod drop_down_list;
 pub mod envelope_editor;
 pub mod file_navigator;
+pub mod floating_window;
 pub mod grid;
 pub mod list;
 pub mod list_select;
@@ -287,6 +289,7 @@ pub struct CommonState {
     pub maybe_x_scroll_state: Option<scroll::StateX>,
     /// If the widget is scrollable across the *y* axis.
     pub maybe_y_scroll_state: Option<scroll::StateY>,
+    pub maybe_drag_start_hit_test_and_rect: Option<(HitTest, Rect)>,
 }
 
 // **Widget** data to be cached prior to the **Widget::update** call in the **widget::set_widget**
@@ -330,7 +333,8 @@ pub struct PreUpdateCache {
     /// widget.
     pub maybe_graphics_for: Option<Id>,
     /// A function describing whether or not a given point is over the widget.
-    pub is_over: IsOverFn
+    pub is_over: IsOverFn,
+    pub maybe_drag_start_hit_test_and_rect: Option<(HitTest, Rect)>,
 }
 
 // **Widget** data to be cached after the **Widget::update** call in the **widget::set_widget**
@@ -496,6 +500,8 @@ pub trait Common {
 /// - default_height
 /// - drag_area
 /// - kid_area
+/// - hit_test_supported
+/// - hit_test
 ///
 /// Methods that should not be overridden:
 ///
@@ -680,6 +686,19 @@ pub trait Widget: Common + Sized {
             rect: args.rect,
             pad: Padding::none(),
         }
+    }
+
+    fn hit_test_supported(&self) -> bool {
+        false
+    }
+
+    fn hit_test(&self, 
+        _dim: Dimensions,
+        _style: &Self::Style,
+        _theme: &Theme, 
+        _point: Point) -> HitTest
+    {
+        unreachable!()
     }
 
     /// Returns either of the following:
@@ -916,6 +935,7 @@ fn set_widget<'a, 'b, W>(widget: W, id: Id, ui: &'a mut UiCell<'b>) -> W::Event
                     maybe_floating,
                     maybe_x_scroll_state,
                     maybe_y_scroll_state,
+                    maybe_drag_start_hit_test_and_rect,
                     ..
                 } = *container;
 
@@ -937,6 +957,7 @@ fn set_widget<'a, 'b, W>(widget: W, id: Id, ui: &'a mut UiCell<'b>) -> W::Event
                     kid_area: kid_area,
                     maybe_x_scroll_state: maybe_x_scroll_state,
                     maybe_y_scroll_state: maybe_y_scroll_state,
+                    maybe_drag_start_hit_test_and_rect,
                 };
 
                 Some((Some(state), Some(prev_common), Some(style)))
@@ -959,59 +980,124 @@ fn set_widget<'a, 'b, W>(widget: W, id: Id, ui: &'a mut UiCell<'b>) -> W::Event
     // check the positioning to retrieve the Id from there.
     let maybe_parent_id = widget.common().maybe_parent_id.get(id, ui, x_pos, y_pos);
 
-    // Calculate the `xy` location of the widget, considering drag.
-    let (xy, maybe_dragged_from) = maybe_prev_common
-        .as_ref()
-        .and_then(|prev| {
-            if widget.common().maybe_graphics_for.is_some() {
-                return None;
-            }
-            let maybe_drag_area = widget.drag_area(dim, &new_style, &ui.theme);
-            maybe_drag_area.map(|drag_area| {
-                let mut current_dragged_from = prev.maybe_dragged_from;
-                let mut current_xy = prev.rect.xy();
-
-                for event in ui.widget_input(id).events() {
-                    match event {
-                        ::event::Widget::Drag(drag) => {
-                            if drag.button == input::MouseButton::Left {
-                                if current_dragged_from.is_none() && drag_area.is_over(drag.origin)
-                                {
-                                    current_dragged_from = Some(prev.rect.xy());
-                                }
-
-                                if let Some(dragged_from) = current_dragged_from {
-                                    current_xy = [
-                                        dragged_from[0] + drag.to[0] - drag.origin[0],
-                                        dragged_from[1] + drag.to[1] - drag.origin[1],
-                                    ];
-                                }
+    let rect;
+    let maybe_dragged_from;
+    let maybe_drag_start_hit_test_and_rect;
+    if widget.hit_test_supported() {
+        if let Some(prev) = maybe_prev_common.as_ref() {
+            let mut new_rect = prev.rect;
+            let mut maybe_drag_start_tuple = prev.maybe_drag_start_hit_test_and_rect;
+            for event in ui.widget_input(id).events() {
+                match event {
+                    ::event::Widget::Drag(drag) => {
+                        let (drag_start_hit_test, drag_start_rect) = maybe_drag_start_tuple.unwrap_or_else(|| {
+                            let ht = widget.hit_test(new_rect.dim(), &new_style, &ui.theme, drag.origin);
+                            let rect = new_rect;
+                            eprintln!("drag start on {:?}", ht);
+                            (ht, rect)
+                        });
+                        match drag_start_hit_test {
+                            HitTest::TitleBar => {
+                                let (start_xy, dim) = drag_start_rect.xy_dim();
+                                let current_xy = [
+                                    start_xy[0] + drag.to[0] - drag.origin[0],
+                                    start_xy[1] + drag.to[1] - drag.origin[1],
+                                ];
+                                new_rect = Rect::from_xy_dim(current_xy, dim);
+                            }
+                            HitTest::BottomRightCorner => {
+                                let left = drag_start_rect.left();
+                                let top = drag_start_rect.top();
+                                let (w, h) = drag_start_rect.w_h();
+                                // TODO: Make these configurable:
+                                let min_w = 50.0;
+                                let min_h = 50.0;
+                                let new_w = (w + drag.to[0] - drag.origin[0]).max(min_w);
+                                let new_h = (h - (drag.to[1] - drag.origin[1])).max(min_h);
+                                new_rect = Rect::from_corners([left, top], [left + new_w, top - new_h]);
+                            }
+                            _ => {
+                                new_rect = drag_start_rect;
                             }
                         }
-                        ::event::Widget::Release(::event::Release {
-                            button: ::event::Button::Mouse(input::MouseButton::Left, _),
-                            ..
-                        }) => {
-                            current_dragged_from = None;
-                        }
-                        _ => {}
+                        maybe_drag_start_tuple = Some((drag_start_hit_test, drag_start_rect));
                     }
+                    ::event::Widget::Release(::event::Release {
+                        button: ::event::Button::Mouse(input::MouseButton::Left, _),
+                        ..
+                    }) => {
+                        eprintln!("drag release");
+                        maybe_drag_start_tuple = None;
+                    }
+                    _ => {}
                 }
-                (current_xy, current_dragged_from)
-            })
-        })
-        // If there is no previous state to compare for dragging, return an initial state.
-        //
-        // A function for generating the xy coords from the given alignment and Position.
-        .unwrap_or_else(|| {
-            (
-                ui.calc_xy(Some(id), maybe_parent_id, x_pos, y_pos, dim, place_on_kid_area),
-                None,
-            )
-        });
+            }
+            rect = new_rect;
+            maybe_dragged_from = None;
+            maybe_drag_start_hit_test_and_rect = maybe_drag_start_tuple;
+        } else {
+            let xy = ui.calc_xy(Some(id), maybe_parent_id, x_pos, y_pos, dim, place_on_kid_area);
+            rect = Rect::from_xy_dim(xy, dim);
+            maybe_dragged_from = None;
+            maybe_drag_start_hit_test_and_rect = None;
+        }
+    } else {
+        // Calculate the `xy` location of the widget, considering drag.
+        let (xy, maybe_dragged_from_new) = maybe_prev_common
+            .as_ref()
+            .and_then(|prev| {
+                if widget.common().maybe_graphics_for.is_some() {
+                    return None;
+                }
+                let maybe_drag_area = widget.drag_area(dim, &new_style, &ui.theme);
+                maybe_drag_area.map(|drag_area| {
+                    let mut current_dragged_from = prev.maybe_dragged_from;
+                    let mut current_xy = prev.rect.xy();
 
-    // Construct the rectangle describing our Widget's area.
-    let rect = Rect::from_xy_dim(xy, dim);
+                    for event in ui.widget_input(id).events() {
+                        match event {
+                            ::event::Widget::Drag(drag) => {
+                                if drag.button == input::MouseButton::Left {
+                                    if current_dragged_from.is_none() && drag_area.is_over(drag.origin)
+                                    {
+                                        current_dragged_from = Some(prev.rect.xy());
+                                    }
+
+                                    if let Some(dragged_from) = current_dragged_from {
+                                        current_xy = [
+                                            dragged_from[0] + drag.to[0] - drag.origin[0],
+                                            dragged_from[1] + drag.to[1] - drag.origin[1],
+                                        ];
+                                    }
+                                }
+                            }
+                            ::event::Widget::Release(::event::Release {
+                                button: ::event::Button::Mouse(input::MouseButton::Left, _),
+                                ..
+                            }) => {
+                                current_dragged_from = None;
+                            }
+                            _ => {}
+                        }
+                    }
+                    (current_xy, current_dragged_from)
+                })
+            })
+            // If there is no previous state to compare for dragging, return an initial state.
+            //
+            // A function for generating the xy coords from the given alignment and Position.
+            .unwrap_or_else(|| {
+                (
+                    ui.calc_xy(Some(id), maybe_parent_id, x_pos, y_pos, dim, place_on_kid_area),
+                    None,
+                )
+            });
+
+        // Construct the rectangle describing our Widget's area.
+        rect = Rect::from_xy_dim(xy, dim);
+        maybe_dragged_from = maybe_dragged_from_new;
+        maybe_drag_start_hit_test_and_rect = None;
+    };
 
     // Check whether or not the widget is a "floating" (hovering / pop-up style) widget.
     let maybe_floating = if widget.common().is_floating {
@@ -1125,6 +1211,7 @@ fn set_widget<'a, 'b, W>(widget: W, id: Id, ui: &'a mut UiCell<'b>) -> W::Event
             maybe_x_scroll_state: maybe_x_scroll_state,
             maybe_graphics_for: widget.common().maybe_graphics_for,
             is_over: widget.is_over(),
+            maybe_drag_start_hit_test_and_rect,
         });
     }
 
@@ -1138,6 +1225,7 @@ fn set_widget<'a, 'b, W>(widget: W, id: Id, ui: &'a mut UiCell<'b>) -> W::Event
         kid_area: kid_area,
         maybe_x_scroll_state: maybe_x_scroll_state,
         maybe_y_scroll_state: maybe_y_scroll_state,
+        maybe_drag_start_hit_test_and_rect,
     });
 
     // Retrieve the widget's unique state and update it via `Widget::update`.
@@ -1326,4 +1414,20 @@ impl<W> Sizeable for W
     fn get_y_dimension(&self, ui: &Ui) -> Dimension {
         self.common().style.maybe_y_dimension.unwrap_or_else(|| self.default_y_dimension(ui))
     }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum HitTest {
+    // NotApplicable,
+    Content,
+    TitleBar,
+    TopBorder,
+    LeftBorder,
+    RightBorder,
+    BottomBorder,
+    TopLeftCorner,
+    TopRightCorner,
+    BorromLeftCorner,
+    BottomRightCorner,
+    // CollapseButton,
 }
