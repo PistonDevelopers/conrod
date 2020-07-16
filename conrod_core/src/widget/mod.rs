@@ -990,37 +990,39 @@ fn set_widget<'a, 'b, W>(widget: W, id: Id, ui: &'a mut UiCell<'b>) -> W::Event
             for event in ui.widget_input(id).events() {
                 match event {
                     ::event::Widget::Drag(drag) => {
-                        let (drag_start_hit_test, drag_start_rect) = maybe_drag_start_tuple.unwrap_or_else(|| {
-                            let ht = widget.hit_test(new_rect.dim(), &new_style, &ui.theme, drag.origin);
-                            let rect = new_rect;
-                            eprintln!("drag start on {:?}", ht);
-                            (ht, rect)
-                        });
-                        match drag_start_hit_test {
-                            HitTest::TitleBar => {
-                                let (start_xy, dim) = drag_start_rect.xy_dim();
-                                let current_xy = [
-                                    start_xy[0] + drag.to[0] - drag.origin[0],
-                                    start_xy[1] + drag.to[1] - drag.origin[1],
-                                ];
-                                new_rect = Rect::from_xy_dim(current_xy, dim);
+                        if drag.button == input::MouseButton::Left {
+                            let (drag_start_hit_test, drag_start_rect) = maybe_drag_start_tuple.unwrap_or_else(|| {
+                                let ht = widget.hit_test(new_rect.dim(), &new_style, &ui.theme, drag.origin);
+                                let rect = new_rect;
+                                eprintln!("drag start on {:?}", ht);
+                                (ht, rect)
+                            });
+                            match drag_start_hit_test {
+                                HitTest::TitleBar => {
+                                    let (start_xy, dim) = drag_start_rect.xy_dim();
+                                    let current_xy = [
+                                        start_xy[0] + drag.to[0] - drag.origin[0],
+                                        start_xy[1] + drag.to[1] - drag.origin[1],
+                                    ];
+                                    new_rect = Rect::from_xy_dim(current_xy, dim);
+                                }
+                                HitTest::BottomRightCorner => {
+                                    let left = drag_start_rect.left();
+                                    let top = drag_start_rect.top();
+                                    let (w, h) = drag_start_rect.w_h();
+                                    // TODO: Make these configurable:
+                                    let min_w = 50.0;
+                                    let min_h = 50.0;
+                                    let new_w = (w + drag.to[0] - drag.origin[0]).max(min_w);
+                                    let new_h = (h - (drag.to[1] - drag.origin[1])).max(min_h);
+                                    new_rect = Rect::from_corners([left, top], [left + new_w, top - new_h]);
+                                }
+                                _ => {
+                                    new_rect = drag_start_rect;
+                                }
                             }
-                            HitTest::BottomRightCorner => {
-                                let left = drag_start_rect.left();
-                                let top = drag_start_rect.top();
-                                let (w, h) = drag_start_rect.w_h();
-                                // TODO: Make these configurable:
-                                let min_w = 50.0;
-                                let min_h = 50.0;
-                                let new_w = (w + drag.to[0] - drag.origin[0]).max(min_w);
-                                let new_h = (h - (drag.to[1] - drag.origin[1])).max(min_h);
-                                new_rect = Rect::from_corners([left, top], [left + new_w, top - new_h]);
-                            }
-                            _ => {
-                                new_rect = drag_start_rect;
-                            }
+                            maybe_drag_start_tuple = Some((drag_start_hit_test, drag_start_rect));
                         }
-                        maybe_drag_start_tuple = Some((drag_start_hit_test, drag_start_rect));
                     }
                     ::event::Widget::Release(::event::Release {
                         button: ::event::Button::Mouse(input::MouseButton::Left, _),
