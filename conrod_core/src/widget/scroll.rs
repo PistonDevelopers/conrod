@@ -210,7 +210,11 @@ impl<A> State<A>
             let new_offset = maybe_prev_scroll_state.as_ref()
                 .map(|prev| prev.offset_bounds.clamp_value(new_offset_unbounded))
                 .unwrap_or(new_offset_unbounded);
-            offset_bounds.clamp_value(new_offset)
+            if new_offset.is_nan() {
+                offset_bounds.start
+            } else {
+                offset_bounds.clamp_value(new_offset)
+            }
         };
 
         State {
