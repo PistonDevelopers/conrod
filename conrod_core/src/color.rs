@@ -329,6 +329,7 @@ pub fn f32_to_byte(c: f32) -> u8 { (c * 255.0) as u8 }
 
 
 /// Pure function for converting rgb to hsl.
+/// Inputs expected to be between `0.0` and `1.0`.
 pub fn rgb_to_hsl(r: f32, g: f32, b: f32) -> (f32, f32, f32) {
     let c_max = r.max(g).max(b);
     let c_min = r.min(g).min(b);
@@ -344,7 +345,7 @@ pub fn rgb_to_hsl(r: f32, g: f32, b: f32) -> (f32, f32, f32) {
     };
 
     let lightness = (c_max + c_min) / 2.0;
-    let saturation = if lightness == 0.0 { 0.0 }
+    let saturation = if lightness == 0.0 || lightness == 1.0 { 0.0 }
                      else { c / (1.0 - (2.0 * lightness - 1.0).abs()) };
     (hue, saturation, lightness)
 }
