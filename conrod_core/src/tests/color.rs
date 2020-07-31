@@ -45,7 +45,7 @@ fn rgb_to_hsl_gray() {
 
 #[test]
 fn rgb_to_hsl_purple() {
-    // purple rgb (128,0,128) should convert to hsl (5.0, 1.0, 0.25)
+    // purple rgb (128,0,128) should convert to hsl (5.23598766, 1.0, 0.25)
     let (r, g, b) = (0.5, 0.0, 0.5);
     let actual = convert_rgb_to_hsl_to_rgb(r, g, b);
     assert!(compare_rgb_pairs((r, g, b), actual));
