@@ -329,7 +329,8 @@ pub fn f32_to_byte(c: f32) -> u8 { (c * 255.0) as u8 }
 
 
 /// Pure function for converting rgb to hsl.
-/// Inputs expected to be between `0.0` and `1.0`.
+/// * Inputs expected to be between `0.0` and `1.0`.
+/// * Outputs `[0.0, 2*PI)` for `h`, `[0.0, 1.0]` for both `s` and `l`
 pub fn rgb_to_hsl(r: f32, g: f32, b: f32) -> (f32, f32, f32) {
     let c_max = r.max(g).max(b);
     let c_min = r.min(g).min(b);
