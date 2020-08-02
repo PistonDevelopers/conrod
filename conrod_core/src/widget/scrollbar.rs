@@ -181,7 +181,7 @@ impl<A> Widget for Scrollbar<A>
             let len = if scrollable_range_len == 0.0 {
                 track_len
             } else {
-                utils::clamp(track_len * (track_len / scrollable_range_len), 0.0, track_len)
+                utils::clamp(track_len * (1.0 - offset_bounds.len() / scrollable_range_len), 0.0, track_len)
             };
             let handle_range = Range::from_pos_and_len(0.0, len);
             let pos = {
@@ -248,7 +248,7 @@ impl<A> Widget for Scrollbar<A>
         }
 
         // Scroll the given widget by the accumulated additional offset.
-        if additional_offset != 0.0 {
+        if additional_offset != 0.0 && !additional_offset.is_nan() {
             ui.scroll_widget(widget, A::to_2d(additional_offset));
         }
 
