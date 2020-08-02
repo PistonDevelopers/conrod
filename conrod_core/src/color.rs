@@ -19,7 +19,7 @@ use utils::{degrees, fmod, turns};
 pub enum Color {
     /// Red, Green, Blue, Alpha - All values' scales represented between 0.0 and 1.0.
     Rgba(f32, f32, f32, f32),
-    /// Hue, Saturation, Lightness, Alpha - all valuess scales represented between 0.0 and 1.0.
+    /// Hue, Saturation, Lightness, Alpha - all values scales represented between 0.0 and 1.0.
     Hsla(f32, f32, f32, f32),
 }
 
@@ -329,6 +329,8 @@ pub fn f32_to_byte(c: f32) -> u8 { (c * 255.0) as u8 }
 
 
 /// Pure function for converting rgb to hsl.
+/// * Inputs expected to be between `0.0` and `1.0`.
+/// * Outputs `[0.0, 2*PI)` for `h`, `[0.0, 1.0]` for both `s` and `l`
 pub fn rgb_to_hsl(r: f32, g: f32, b: f32) -> (f32, f32, f32) {
     let c_max = r.max(g).max(b);
     let c_min = r.min(g).min(b);
@@ -344,7 +346,7 @@ pub fn rgb_to_hsl(r: f32, g: f32, b: f32) -> (f32, f32, f32) {
     };
 
     let lightness = (c_max + c_min) / 2.0;
-    let saturation = if lightness == 0.0 { 0.0 }
+    let saturation = if lightness == 0.0 || lightness == 1.0 { 0.0 }
                      else { c / (1.0 - (2.0 * lightness - 1.0).abs()) };
     (hue, saturation, lightness)
 }
