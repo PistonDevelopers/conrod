@@ -20,11 +20,12 @@ Guide
 2. [**Getting Started**][2]
     - [Installing Rust and Cargo][2.1]
     - [Running the Conrod Examples][2.2]
-3. **Let's Create a GUI**
-    - Setup a Basic Window (using piston_window)
-    - Conrod Setup
-    - Instantiating Widgets
-    - Widget Positioning and Layout
+3. [**Hello World**][3]
+    - [Creating a new project][3.1]
+    - [Conrod Setup][3.2]
+        -[Back ends][3.2.1]
+    - [Creating a Window][3.3]
+    - [Event Handling][3.4]
 4. **Using and Customising Themes**
     - What is a `Theme`?
     - Custom Themes
@@ -97,24 +98,30 @@ dual licensed as above, without any additional terms or conditions.
 - [Google Noto](https://www.google.com/get/noto/) (Apache2)
 
 
-[The API Documentation]: https://docs.rs/conrod/
-[The Guide]: https://docs.rs/conrod/latest/conrod/guide/index.html
+[The API Documentation]: https://docs.rs/conrod_core/
+[The Guide]: https://docs.rs/conrod_core/latest/conrod_core/guide/index.html
 
-[1]:        https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html
-[1.1]:      https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#a-brief-history
-[1.2]:      https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#screenshots-and-videos
-[1.3]:      https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#feature-overview
-[1.4]:      https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#available-widgets
-[1.4.1]:    https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#primitive-widgets
-[1.4.2]:    https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#common-use-widgets
-[1.5]:      https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#immediate-mode
-[1.5.1]:    https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#what-is-it
-[1.5.2]:    https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#why-use-it
-[1.5.3]:    https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#is-conrod-immediate-or-retained
-[1.6]:      https://docs.rs/conrod/latest/conrod/guide/chapter_1/index.html#the-builder-pattern
-[2]:        https://docs.rs/conrod/latest/conrod/guide/chapter_2/index.html
-[2.1]:      https://docs.rs/conrod/latest/conrod/guide/chapter_2/index.html#installing-rust-and-cargo
-[2.2]:      https://docs.rs/conrod/latest/conrod/guide/chapter_2/index.html#running-the-conrod-examples
+[1]:        https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_1/index.html
+[1.1]:      https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_1/index.html#a-brief-history
+[1.2]:      https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_1/index.html#screenshots-and-videos
+[1.3]:      https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_1/index.html#feature-overview
+[1.4]:      https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_1/index.html#available-widgets
+[1.4.1]:    https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_1/index.html#primitive-widgets
+[1.4.2]:    https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_1/index.html#common-use-widgets
+[1.5]:      https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_1/index.html#immediate-mode
+[1.5.1]:    https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_1/index.html#what-is-it
+[1.5.2]:    https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_1/index.html#why-use-it
+[1.5.3]:    https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_1/index.html#is-conrod-immediate-or-retained
+[1.6]:      https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_1/index.html#the-builder-pattern
+[2]:        https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_2/index.html
+[2.1]:      https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_2/index.html#installing-rust-and-cargo
+[2.2]:      https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_2/index.html#running-the-conrod-examples
+[3]:        https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_3/index.html
+[3.1]:      https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_3/index.html#creating-a-new-project
+[3.2]:      https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_3/index.html#setting-up-conrod
+[3.2.1]:    https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_3/index.html#backends
+[3.3]:      https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_3/index.html#creating-a-window
+[3.4]:      https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_3/index.html#handling-events
 
 [issues]: https://github.com/PistonDevelopers/conrod/issues
 [1.0.0 milestone]: https://github.com/PistonDevelopers/conrod/milestones/1.0.0
