@@ -20,11 +20,12 @@ Guide
 2. [**Getting Started**][2]
     - [Installing Rust and Cargo][2.1]
     - [Running the Conrod Examples][2.2]
-3. **Let's Create a GUI**
-    - Setup a Basic Window (using piston_window)
-    - Conrod Setup
-    - Instantiating Widgets
-    - Widget Positioning and Layout
+3. [**Hello World**][3]
+    - [Creating a new project][3.1]
+    - [Conrod Setup][3.2]
+        -[Back ends][3.2.1]
+    - [Creating a Window][3.3]
+    - [Event Handling][3.4]
 4. **Using and Customising Themes**
     - What is a `Theme`?
     - Custom Themes
@@ -115,6 +116,12 @@ dual licensed as above, without any additional terms or conditions.
 [2]:        https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_2/index.html
 [2.1]:      https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_2/index.html#installing-rust-and-cargo
 [2.2]:      https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_2/index.html#running-the-conrod-examples
+[3]:        https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_3/index.html
+[3.1]:      https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_3/index.html#creating-a-new-project
+[3.2]:      https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_3/index.html#setting-up-conrod
+[3.2.1]:    https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_3/index.html#backends
+[3.3]:      https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_3/index.html#creating-a-window
+[3.4]:      https://docs.rs/conrod_core/latest/conrod_core/guide/chapter_3/index.html#handling-events
 
 [issues]: https://github.com/PistonDevelopers/conrod/issues
 [1.0.0 milestone]: https://github.com/PistonDevelopers/conrod/milestones/1.0.0
