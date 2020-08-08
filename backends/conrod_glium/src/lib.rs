@@ -443,7 +443,7 @@ impl Display for glium::Display {
     }
 
     fn hidpi_factor(&self) -> f64 {
-        self.gl_window().get_hidpi_factor()
+        self.gl_window().window().scale_factor()
     }
 }
 
