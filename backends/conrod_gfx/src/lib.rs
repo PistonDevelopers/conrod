@@ -290,10 +290,10 @@ impl<'a, R: Resources> Renderer<'a, R> {
 
         let rect_to_gfx_rect = |rect: Rect| {
             let (w, h) = rect.w_h();
-            let left = (rect.left() * dpi_factor + half_win_w) as u16;
-            let bottom = (rect.bottom() * dpi_factor + half_win_h) as u16;
-            let width = (w * dpi_factor) as u16;
-            let height = (h * dpi_factor) as u16;
+            let left = (rect.left() * dpi_factor + half_win_w).round() as u16;
+            let bottom = (rect.bottom() * dpi_factor + half_win_h).round() as u16;
+            let width = (w * dpi_factor).round() as u16;
+            let height = (h * dpi_factor).round() as u16;
             gfx::Rect {
                 x: std::cmp::max(left, 0),
                 w: std::cmp::min(width, screen_w as u16),
