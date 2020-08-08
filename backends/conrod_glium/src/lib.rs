@@ -549,10 +549,10 @@ impl Renderer {
 
         let rect_to_glium_rect = |rect: Rect| {
             let (w, h) = rect.w_h();
-            let left = (rect.left() * dpi_factor + half_win_w) as u32;
-            let bottom = (rect.bottom() * dpi_factor + half_win_h) as u32;
-            let width = (w * dpi_factor) as u32;
-            let height = (h * dpi_factor) as u32;
+            let left = (rect.left() * dpi_factor + half_win_w).round() as u32;
+            let bottom = (rect.bottom() * dpi_factor + half_win_h).round() as u32;
+            let width = (w * dpi_factor).round() as u32;
+            let height = (h * dpi_factor).round() as u32;
             glium::Rect {
                 left: std::cmp::max(left, 0),
                 bottom: std::cmp::max(bottom, 0),

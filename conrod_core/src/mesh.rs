@@ -200,10 +200,10 @@ impl Mesh {
 
         let rect_to_scizzor = |rect: Rect| {
             let (w, h) = rect.w_h();
-            let left = (rect.left() * dpi_factor + half_viewport_w) as i32;
-            let top = (rect.top() * dpi_factor - half_viewport_h).abs() as i32;
-            let width = (w * dpi_factor) as u32;
-            let height = (h * dpi_factor) as u32;
+            let left = (rect.left() * dpi_factor + half_viewport_w).round() as i32;
+            let top = (rect.top() * dpi_factor - half_viewport_h).round().abs() as i32;
+            let width = (w * dpi_factor).round() as u32;
+            let height = (h * dpi_factor).round() as u32;
             Scizzor {
                 top_left: [left.max(0), top.max(0)],
                 dimensions: [width.min(viewport_w as u32), height.min(viewport_h as u32)],
