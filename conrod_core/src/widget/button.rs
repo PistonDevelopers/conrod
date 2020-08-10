@@ -383,13 +383,33 @@ impl<'a> Widget for Button<'a, Image> {
 
 fn interaction_and_times_triggered(button_id: widget::Id, ui: &UiCell) -> (Interaction, u16) {
     let input = ui.widget_input(button_id);
-    let interaction = input.mouse().map_or(Interaction::Idle, |mouse| {
-        let is_pressed =
-            mouse.buttons.left().is_down()
-            || ui.global_input().current.touch.values()
-                 .any(|t| t.start.widget == Some(button_id));
-        if is_pressed { Interaction::Press } else { Interaction::Hover }
+    let mouse_interaction = input.mouse().map_or(Interaction::Idle, |mouse| {
+        if mouse.buttons.left().is_down() {
+            if ui.global_input().current.widget_under_mouse == Some(button_id) {
+                Interaction::Press
+            } else {
+                Interaction::Idle
+            }
+        } else {
+            Interaction::Hover
+        }
     });
+    let interaction = match mouse_interaction {
+        Interaction::Idle | Interaction::Hover => {
+            let is_touch_press = ui
+                .global_input()
+                .current
+                .touch
+                .values()
+                .any(|t| t.start.widget == Some(button_id) && t.widget == Some(button_id));
+            if is_touch_press {
+                Interaction::Press
+            } else {
+                mouse_interaction
+            }
+        }
+        Interaction::Press => Interaction::Press,
+    };
     let times_triggered = (input.clicks().left().count() + input.taps().count()) as u16;
     (interaction, times_triggered)
 }
