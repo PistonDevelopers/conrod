@@ -839,14 +839,14 @@ impl Ui {
 
                     // Update the widget under the touch and return the widget capturing the touch.
                     let widget = match self.global_input.current.touch.get_mut(&touch.id) {
-                        Some(touch) => {
-                            touch.widget =
+                        Some(touch_state) => {
+                            touch_state.widget =
                                 graph::algo::pick_widgets(&self.depth_order.indices, touch.xy)
                                     .next(&self.widget_graph,
                                           &self.depth_order.indices,
                                           &self.theme);
-                            touch.xy = touch.xy;
-                            touch.start.widget
+                            touch_state.xy = touch.xy;
+                            touch_state.start.widget
                         },
                         None => None,
                     };
