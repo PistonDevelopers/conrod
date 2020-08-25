@@ -1,7 +1,6 @@
 //! An example demonstrating the use of `conrod_wgpu` alongside `winit`.
 
 use conrod_example_shared::{WIN_H, WIN_W};
-use wgpu::util::DeviceExt;
 use winit::{
     event,
     event_loop::{ControlFlow, EventLoop},
@@ -282,21 +281,13 @@ fn create_logo_texture(
 
     // Upload the pixel data.
     let data = &image.into_raw()[..];
-    let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("conrod_buffer_init_descriptor"),
-        contents: data,
-        usage: wgpu::BufferUsage::COPY_SRC,
-    });
 
     // Submit command for copying pixel data to the texture.
     let pixel_size_bytes = 4; // Rgba8, as above.
-    let buffer_copy_view = wgpu::BufferCopyView {
-        buffer: &buffer,
-        layout: wgpu::TextureDataLayout {
-            offset: 0,
-            bytes_per_row: width * pixel_size_bytes,
-            rows_per_image: height,
-        },
+    let data_layout = wgpu::TextureDataLayout {
+        offset: 0,
+        bytes_per_row: width * pixel_size_bytes,
+        rows_per_image: height,
     };
     let texture_copy_view = wgpu::TextureCopyView {
         texture: &logo_tex,
@@ -311,8 +302,8 @@ fn create_logo_texture(
     let cmd_encoder_desc = wgpu::CommandEncoderDescriptor {
         label: Some("conrod_upload_image_command_encoder"),
     };
-    let mut encoder = device.create_command_encoder(&cmd_encoder_desc);
-    encoder.copy_buffer_to_texture(buffer_copy_view, texture_copy_view, extent);
+    let encoder = device.create_command_encoder(&cmd_encoder_desc);
+    queue.write_texture(texture_copy_view, data, data_layout, extent);
     queue.submit(Some(encoder.finish()));
 
     logo_tex
