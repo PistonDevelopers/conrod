@@ -258,7 +258,7 @@ impl<M, D, S> ListSelect<M, D, S>
             num_items: num_items,
             mode: mode,
             direction: direction,
-            item_size: widget::list::Fixed { length: length },
+            item_size: widget::list::Fixed { length },
             style: style,
             item_instantiation: widget::list::ItemInstantiation::OnlyVisible,
         }

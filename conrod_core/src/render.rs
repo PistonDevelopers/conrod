@@ -344,7 +344,7 @@ impl<'a> Primitives<'a> {
                     let color = style.get_color(theme);
                     match *style {
                         ShapeStyle::Fill(_) => {
-                            let kind = PrimitiveKind::Rectangle { color: color };
+                            let kind = PrimitiveKind::Rectangle { color };
                             return Some(new_primitive(id, kind, scizzor, rect));
                         },
                         ShapeStyle::Outline(ref line_style) => {
@@ -652,7 +652,7 @@ impl<'a> Primitives<'a> {
             match kind {
 
                 PrimitiveKind::Rectangle { color } => {
-                    let kind = OwnedPrimitiveKind::Rectangle { color: color };
+                    let kind = OwnedPrimitiveKind::Rectangle { color };
                     primitives.push(new(kind));
                 },
 
@@ -801,7 +801,7 @@ impl<'a> WalkOwnedPrimitives<'a> {
             match *kind {
 
                 OwnedPrimitiveKind::Rectangle { color } => {
-                    let kind = PrimitiveKind::Rectangle { color: color };
+                    let kind = PrimitiveKind::Rectangle { color };
                     new(kind)
                 },
 
