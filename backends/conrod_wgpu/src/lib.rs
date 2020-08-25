@@ -572,7 +572,7 @@ fn bind_group_layout(
     let sampler_binding = wgpu::BindGroupLayoutEntry {
         binding: 1,
         visibility: wgpu::ShaderStage::FRAGMENT,
-        ty: wgpu::BindingType::Sampler { comparison: false },
+        ty: wgpu::BindingType::Sampler { comparison: true },
         count: None,
     };
     let image_texture_binding = wgpu::BindGroupLayoutEntry {
