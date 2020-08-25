@@ -122,7 +122,7 @@ impl mesh::ImageDimensions for Image {
 
 impl Image {
     pub fn texture_component_type(&self) -> wgpu::TextureComponentType {
-        texture_format_to_component_type(self.texture_format)
+        self.texture_format.into()
     }
 }
 
@@ -181,7 +181,7 @@ impl Renderer {
         // Create at least one render pipeline for the default texture.
         let mut render_pipelines = HashMap::new();
 
-        let default_tex_component_ty = texture_format_to_component_type(DEFAULT_IMAGE_TEX_FORMAT);
+        let default_tex_component_ty = DEFAULT_IMAGE_TEX_FORMAT.into();
         let bind_group_layout = bind_group_layout(device, default_tex_component_ty);
         let pipeline_layout = pipeline_layout(device, &bind_group_layout);
         let render_pipeline = render_pipeline(
@@ -291,7 +291,7 @@ impl Renderer {
         // Ensure we have:
         // - a bind group layout and render pipeline for each unique texture component type.
         // - a bind group ready for each image in the map.
-        let default_tct = texture_format_to_component_type(DEFAULT_IMAGE_TEX_FORMAT);
+        let default_tct = DEFAULT_IMAGE_TEX_FORMAT.into();
         let unique_tex_component_types: HashSet<_> = image_map
             .values()
             .map(|img| img.texture_component_type())
@@ -748,64 +748,4 @@ fn vertices_as_bytes(s: &[mesh::Vertex]) -> &[u8] {
     let len = s.len() * std::mem::size_of::<mesh::Vertex>();
     let ptr = s.as_ptr() as *const u8;
     unsafe { std::slice::from_raw_parts(ptr, len) }
-}
-
-// TODO: Remove this when this lands https://github.com/gfx-rs/wgpu/pull/628
-fn texture_format_to_component_type(format: wgpu::TextureFormat) -> wgpu::TextureComponentType {
-    match format {
-        wgpu::TextureFormat::R8Uint
-        | wgpu::TextureFormat::R16Uint
-        | wgpu::TextureFormat::Rg8Uint
-        | wgpu::TextureFormat::R32Uint
-        | wgpu::TextureFormat::Rg16Uint
-        | wgpu::TextureFormat::Rgba8Uint
-        | wgpu::TextureFormat::Rg32Uint
-        | wgpu::TextureFormat::Rgba16Uint
-        | wgpu::TextureFormat::Rgba32Uint => wgpu::TextureComponentType::Uint,
-
-        wgpu::TextureFormat::R8Sint
-        | wgpu::TextureFormat::R16Sint
-        | wgpu::TextureFormat::Rg8Sint
-        | wgpu::TextureFormat::R32Sint
-        | wgpu::TextureFormat::Rg16Sint
-        | wgpu::TextureFormat::Rgba8Sint
-        | wgpu::TextureFormat::Rg32Sint
-        | wgpu::TextureFormat::Rgba16Sint
-        | wgpu::TextureFormat::Rgba32Sint => wgpu::TextureComponentType::Sint,
-
-        wgpu::TextureFormat::R8Unorm
-        | wgpu::TextureFormat::R8Snorm
-        | wgpu::TextureFormat::R16Float
-        | wgpu::TextureFormat::R32Float
-        | wgpu::TextureFormat::Rg8Unorm
-        | wgpu::TextureFormat::Rg8Snorm
-        | wgpu::TextureFormat::Rg16Float
-        | wgpu::TextureFormat::Rg11b10Float
-        | wgpu::TextureFormat::Rg32Float
-        | wgpu::TextureFormat::Rgba8Snorm
-        | wgpu::TextureFormat::Rgba16Float
-        | wgpu::TextureFormat::Rgba32Float
-        | wgpu::TextureFormat::Rgba8Unorm
-        | wgpu::TextureFormat::Rgba8UnormSrgb
-        | wgpu::TextureFormat::Bgra8Unorm
-        | wgpu::TextureFormat::Bgra8UnormSrgb
-        | wgpu::TextureFormat::Rgb10a2Unorm
-        | wgpu::TextureFormat::Depth32Float
-        | wgpu::TextureFormat::Depth24Plus
-        | wgpu::TextureFormat::Depth24PlusStencil8
-        | wgpu::TextureFormat::Bc1RgbaUnorm
-        | wgpu::TextureFormat::Bc1RgbaUnormSrgb
-        | wgpu::TextureFormat::Bc2RgbaUnorm
-        | wgpu::TextureFormat::Bc2RgbaUnormSrgb
-        | wgpu::TextureFormat::Bc3RgbaUnorm
-        | wgpu::TextureFormat::Bc3RgbaUnormSrgb
-        | wgpu::TextureFormat::Bc4RUnorm
-        | wgpu::TextureFormat::Bc4RSnorm
-        | wgpu::TextureFormat::Bc5RgUnorm
-        | wgpu::TextureFormat::Bc5RgSnorm
-        | wgpu::TextureFormat::Bc6hRgbUfloat
-        | wgpu::TextureFormat::Bc6hRgbSfloat
-        | wgpu::TextureFormat::Bc7RgbaUnorm
-        | wgpu::TextureFormat::Bc7RgbaUnormSrgb => wgpu::TextureComponentType::Float,
-    }
 }
