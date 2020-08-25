@@ -1,6 +1,7 @@
 //! An example demonstrating the use of `conrod_wgpu` alongside `winit`.
 
 use conrod_example_shared::{WIN_H, WIN_W};
+use wgpu::util::DeviceExt;
 use winit::{
     event,
     event_loop::{ControlFlow, EventLoop},
@@ -15,6 +16,9 @@ const MSAA_SAMPLES: u32 = 4;
 fn main() {
     let event_loop = EventLoop::new();
 
+    let backends = wgpu::BackendBit::PRIMARY;
+    let instance = wgpu::Instance::new(backends);
+
     // Create the window and surface.
     #[cfg(not(feature = "gl"))]
     let (window, mut size, surface) = {
@@ -27,25 +31,24 @@ fn main() {
             .build(&event_loop)
             .unwrap();
         let size = window.inner_size();
-        let surface = wgpu::Surface::create(&window);
+        let surface = unsafe { instance.create_surface(&window) };
         (window, size, surface)
     };
 
     // Select an adapter and gpu device.
-    let backends = wgpu::BackendBit::PRIMARY;
     let adapter_opts = wgpu::RequestAdapterOptions {
         power_preference: wgpu::PowerPreference::Default,
         compatible_surface: Some(&surface),
     };
-    let adapter_request = wgpu::Adapter::request(&adapter_opts, backends);
-    let adapter = futures::executor::block_on(adapter_request).unwrap();
-    let extensions = wgpu::Extensions {
-        anisotropic_filtering: false,
-    };
+    let adapter = futures::executor::block_on(instance.request_adapter(&adapter_opts)).unwrap();
     let limits = wgpu::Limits::default();
-    let device_desc = wgpu::DeviceDescriptor { extensions, limits };
-    let device_request = adapter.request_device(&device_desc);
-    let (device, mut queue) = futures::executor::block_on(device_request);
+    let device_desc = wgpu::DeviceDescriptor {
+        features: wgpu::Features::empty(),
+        limits,
+        shader_validation: true,
+    };
+    let device_request = adapter.request_device(&device_desc, None);
+    let (device, mut queue) = futures::executor::block_on(device_request).unwrap();
 
     // Create the swapchain.
     let format = wgpu::TextureFormat::Bgra8UnormSrgb;
@@ -154,7 +157,7 @@ fn main() {
                 };
 
                 // The window frame that we will draw to.
-                let frame = swap_chain.get_next_texture().unwrap();
+                let frame = swap_chain.get_current_frame().unwrap();
 
                 // Begin encoding commands.
                 let cmd_encoder_desc = wgpu::CommandEncoderDescriptor {
@@ -177,15 +180,16 @@ fn main() {
                 {
                     // This condition allows to more easily tweak the MSAA_SAMPLES constant.
                     let (attachment, resolve_target) = match MSAA_SAMPLES {
-                        1 => (&frame.view, None),
-                        _ => (&multisampled_framebuffer, Some(&frame.view)),
+                        1 => (&frame.output.view, None),
+                        _ => (&multisampled_framebuffer, Some(&frame.output.view)),
                     };
                     let color_attachment_desc = wgpu::RenderPassColorAttachmentDescriptor {
                         attachment,
                         resolve_target,
-                        load_op: wgpu::LoadOp::Clear,
-                        store_op: wgpu::StoreOp::Store,
-                        clear_color: wgpu::Color::BLACK,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                            store: true,
+                        },
                     };
 
                     let render_pass_desc = wgpu::RenderPassDescriptor {
@@ -197,9 +201,7 @@ fn main() {
                     {
                         let mut render_pass = encoder.begin_render_pass(&render_pass_desc);
                         let slot = 0;
-                        let offset = 0;
-                        let size = 0; // `0` indicates that size should be reamining part of buffer.
-                        render_pass.set_vertex_buffer(slot, &render.vertex_buffer, offset, size);
+                        render_pass.set_vertex_buffer(slot, render.vertex_buffer.slice(..));
                         let instance_range = 0..1;
                         for cmd in render.commands {
                             match cmd {
@@ -225,7 +227,7 @@ fn main() {
                     }
                 }
 
-                queue.submit(&[encoder.finish()]);
+                queue.submit(Some(encoder.finish()));
             }
             _ => (),
         }
@@ -245,7 +247,6 @@ fn create_multisampled_framebuffer(
     let multisampled_frame_descriptor = &wgpu::TextureDescriptor {
         label: Some("conrod_msaa_texture"),
         size: multisampled_texture_extent,
-        array_layer_count: 1,
         mip_level_count: 1,
         sample_count: sample_count,
         dimension: wgpu::TextureDimension::D2,
@@ -254,7 +255,7 @@ fn create_multisampled_framebuffer(
     };
     device
         .create_texture(multisampled_frame_descriptor)
-        .create_default_view()
+        .create_view(&wgpu::TextureViewDescriptor::default())
 }
 
 fn create_logo_texture(
@@ -272,7 +273,6 @@ fn create_logo_texture(
     let logo_tex = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("conrod_rust_logo_texture"),
         size: logo_tex_extent,
-        array_layer_count: 1,
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
@@ -282,20 +282,25 @@ fn create_logo_texture(
 
     // Upload the pixel data.
     let data = &image.into_raw()[..];
-    let buffer = device.create_buffer_with_data(data, wgpu::BufferUsage::COPY_SRC);
+    let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("conrod_buffer_init_descriptor"),
+        contents: data,
+        usage: wgpu::BufferUsage::COPY_SRC,
+    });
 
     // Submit command for copying pixel data to the texture.
     let pixel_size_bytes = 4; // Rgba8, as above.
     let buffer_copy_view = wgpu::BufferCopyView {
         buffer: &buffer,
-        offset: 0,
-        bytes_per_row: width * pixel_size_bytes,
-        rows_per_image: height,
+        layout: wgpu::TextureDataLayout {
+            offset: 0,
+            bytes_per_row: width * pixel_size_bytes,
+            rows_per_image: height,
+        },
     };
     let texture_copy_view = wgpu::TextureCopyView {
         texture: &logo_tex,
         mip_level: 0,
-        array_layer: 0,
         origin: wgpu::Origin3d::ZERO,
     };
     let extent = wgpu::Extent3d {
@@ -308,7 +313,7 @@ fn create_logo_texture(
     };
     let mut encoder = device.create_command_encoder(&cmd_encoder_desc);
     encoder.copy_buffer_to_texture(buffer_copy_view, texture_copy_view, extent);
-    queue.submit(&[encoder.finish()]);
+    queue.submit(Some(encoder.finish()));
 
     logo_tex
 }

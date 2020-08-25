@@ -16,7 +16,7 @@ edition = "2018"
 
 [dependencies]
 conrod_core = { path = "../../conrod_core", version = "0.70" }
-wgpu = "0.5"
+wgpu = "0.6"
 
 [dev-dependencies]
 conrod_example_shared = { path = "../conrod_example_shared", version = "0.70" }
