@@ -29,7 +29,7 @@ with the above steps.
 
 ## Running the Conrod Examples
 
-We can test that everything is working by cloning the github repository and running the examples.
+You can view the examples by cloning the github repository and running the examples.
 First, open up the command line on your system and follow these steps:
 
 1. Clone the repo
@@ -44,25 +44,19 @@ First, open up the command line on your system and follow these steps:
   cd conrod
   ```
 
-3. Test that conrod builds without problems
-
-  ```txt
-  cargo build --release
-  ```
-
-4. Change to the `conrod_glium` backend directory (it has the most examples)
-
-  ```txt
-  cd backends/conrod_glium
-  ```
-
-5. Build and run the examples (with --release optimisations turned on)!
+3. Build and run an example (with --release optimisations turned on)!
 
   ```txt
   cargo run --release --example all_winit_glium
   cargo run --release --example canvas
   cargo run --release --example primitives
   cargo run --release --example text
+  ```
+
+  Hint: You can get a list of all available examples by running:
+
+  ```txt
+  cargo run --example
   ```
 
 If you ran into any issues with these steps, please let us know by filing an issue at the Conrod
