@@ -539,7 +539,7 @@ fn default_image_tex_desc() -> wgpu::TextureDescriptor<'static> {
     }
 }
 
-fn sampler_desc<'a>() -> wgpu::SamplerDescriptor<'a> {
+fn sampler_desc() -> wgpu::SamplerDescriptor<'static> {
     wgpu::SamplerDescriptor {
         label: Some("conrod_sample_descriptor"),
         address_mode_u: wgpu::AddressMode::ClampToEdge,
