@@ -6,6 +6,7 @@ use conrod_core::{
     Rect, Scalar,
 };
 use std::collections::{HashMap, HashSet};
+use wgpu::util::DeviceExt;
 
 /// A loaded wgpu texture and it's width/height
 pub struct Image {
@@ -121,7 +122,7 @@ impl mesh::ImageDimensions for Image {
 
 impl Image {
     pub fn texture_component_type(&self) -> wgpu::TextureComponentType {
-        texture_format_to_component_type(self.texture_format)
+        self.texture_format.into()
     }
 }
 
@@ -161,14 +162,8 @@ impl Renderer {
         let mesh = Mesh::with_glyph_cache_dimensions(glyph_cache_dims);
 
         // Load shader modules.
-        let vs = include_bytes!("shaders/vert.spv");
-        let vs_spirv = wgpu::read_spirv(std::io::Cursor::new(&vs[..]))
-            .expect("failed to read hard-coded SPIRV");
-        let vs_mod = device.create_shader_module(&vs_spirv);
-        let fs = include_bytes!("shaders/frag.spv");
-        let fs_spirv = wgpu::read_spirv(std::io::Cursor::new(&fs[..]))
-            .expect("failed to read hard-coded SPIRV");
-        let fs_mod = device.create_shader_module(&fs_spirv);
+        let vs_mod = device.create_shader_module(wgpu::include_spirv!("shaders/vert.spv"));
+        let fs_mod = device.create_shader_module(wgpu::include_spirv!("shaders/frag.spv"));
 
         // Create the glyph cache texture.
         let glyph_cache_tex_desc = glyph_cache_tex_desc(glyph_cache_dims);
@@ -186,7 +181,7 @@ impl Renderer {
         // Create at least one render pipeline for the default texture.
         let mut render_pipelines = HashMap::new();
 
-        let default_tex_component_ty = texture_format_to_component_type(DEFAULT_IMAGE_TEX_FORMAT);
+        let default_tex_component_ty = DEFAULT_IMAGE_TEX_FORMAT.into();
         let bind_group_layout = bind_group_layout(device, default_tex_component_ty);
         let pipeline_layout = pipeline_layout(device, &bind_group_layout);
         let render_pipeline = render_pipeline(
@@ -296,7 +291,7 @@ impl Renderer {
         // Ensure we have:
         // - a bind group layout and render pipeline for each unique texture component type.
         // - a bind group ready for each image in the map.
-        let default_tct = texture_format_to_component_type(DEFAULT_IMAGE_TEX_FORMAT);
+        let default_tct = DEFAULT_IMAGE_TEX_FORMAT.into();
         let unique_tex_component_types: HashSet<_> = image_map
             .values()
             .map(|img| img.texture_component_type())
@@ -344,7 +339,11 @@ impl Renderer {
         let vertices = mesh.vertices();
         let vertices_bytes = vertices_as_bytes(vertices);
         let usage = wgpu::BufferUsage::VERTEX;
-        let vertex_buffer = device.create_buffer_with_data(vertices_bytes, usage);
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("conrod_buffer_init_descriptor"),
+            contents: vertices_bytes,
+            usage,
+        });
 
         // Keep track of the currently set bind group.
         #[derive(PartialEq)]
@@ -450,16 +449,22 @@ impl<'a> GlyphCacheCommand<'a> {
     /// > if you try to map an existing buffer, it will give it to you only after all the gpu use
     /// > of the buffer is over. So you can't do it every frame reasonably
     pub fn create_buffer(&self, device: &wgpu::Device) -> wgpu::Buffer {
-        device.create_buffer_with_data(&self.glyph_cache_pixel_buffer, wgpu::BufferUsage::COPY_SRC)
+        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("conrod_buffer_init_descriptor"),
+            contents: &self.glyph_cache_pixel_buffer,
+            usage: wgpu::BufferUsage::COPY_SRC,
+        })
     }
 
     /// Create the copy view ready for copying the pixel data to the texture.
     pub fn buffer_copy_view<'b>(&self, buffer: &'b wgpu::Buffer) -> wgpu::BufferCopyView<'b> {
         wgpu::BufferCopyView {
             buffer,
-            offset: 0,
-            bytes_per_row: self.width,
-            rows_per_image: self.height,
+            layout: wgpu::TextureDataLayout {
+                offset: 0,
+                bytes_per_row: self.width,
+                rows_per_image: self.height,
+            },
         }
     }
 
@@ -468,7 +473,6 @@ impl<'a> GlyphCacheCommand<'a> {
         wgpu::TextureCopyView {
             texture: &self.glyph_cache_texture,
             mip_level: 0,
-            array_layer: 0,
             origin: wgpu::Origin3d::ZERO,
         }
     }
@@ -507,7 +511,6 @@ fn glyph_cache_tex_desc([width, height]: [u32; 2]) -> wgpu::TextureDescriptor<'s
     wgpu::TextureDescriptor {
         label: Some("conrod_wgpu_glyph_cache_texture"),
         size: texture_extent,
-        array_layer_count: 1,
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
@@ -528,7 +531,6 @@ fn default_image_tex_desc() -> wgpu::TextureDescriptor<'static> {
     wgpu::TextureDescriptor {
         label: Some("conrod_wgpu_image_texture"),
         size: texture_extent,
-        array_layer_count: 1,
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
@@ -537,8 +539,9 @@ fn default_image_tex_desc() -> wgpu::TextureDescriptor<'static> {
     }
 }
 
-fn sampler_desc() -> wgpu::SamplerDescriptor {
+fn sampler_desc() -> wgpu::SamplerDescriptor<'static> {
     wgpu::SamplerDescriptor {
+        label: Some("conrod_sample_descriptor"),
         address_mode_u: wgpu::AddressMode::ClampToEdge,
         address_mode_v: wgpu::AddressMode::ClampToEdge,
         address_mode_w: wgpu::AddressMode::ClampToEdge,
@@ -547,7 +550,8 @@ fn sampler_desc() -> wgpu::SamplerDescriptor {
         mipmap_filter: wgpu::FilterMode::Linear,
         lod_min_clamp: -100.0,
         lod_max_clamp: 100.0,
-        compare: wgpu::CompareFunction::Always,
+        compare: Some(wgpu::CompareFunction::Always),
+        anisotropy_clamp: None,
     }
 }
 
@@ -563,11 +567,13 @@ fn bind_group_layout(
             component_type: GLYPH_TEX_COMPONENT_TY,
             dimension: wgpu::TextureViewDimension::D2,
         },
+        count: None,
     };
     let sampler_binding = wgpu::BindGroupLayoutEntry {
         binding: 1,
         visibility: wgpu::ShaderStage::FRAGMENT,
-        ty: wgpu::BindingType::Sampler { comparison: false },
+        ty: wgpu::BindingType::Sampler { comparison: true },
+        count: None,
     };
     let image_texture_binding = wgpu::BindGroupLayoutEntry {
         binding: 2,
@@ -577,15 +583,16 @@ fn bind_group_layout(
             component_type: img_tex_component_ty,
             dimension: wgpu::TextureViewDimension::D2,
         },
+        count: None,
     };
-    let bindings = &[
+    let entries = &[
         glyph_cache_texture_binding,
         sampler_binding,
         image_texture_binding,
     ];
     let desc = wgpu::BindGroupLayoutDescriptor {
         label: Some("conrod_bind_group_layout"),
-        bindings,
+        entries,
     };
     device.create_bind_group_layout(&desc)
 }
@@ -598,31 +605,31 @@ fn bind_group(
     image: &wgpu::Texture,
 ) -> wgpu::BindGroup {
     // Glyph cache texture view.
-    let glyph_cache_tex_view = glyph_cache_tex.create_default_view();
-    let glyph_cache_tex_binding = wgpu::Binding {
+    let glyph_cache_tex_view = glyph_cache_tex.create_view(&wgpu::TextureViewDescriptor::default());
+    let glyph_cache_tex_binding = wgpu::BindGroupEntry {
         binding: 0,
         resource: wgpu::BindingResource::TextureView(&glyph_cache_tex_view),
     };
 
     // Sampler binding.
-    let sampler_binding = wgpu::Binding {
+    let sampler_binding = wgpu::BindGroupEntry {
         binding: 1,
         resource: wgpu::BindingResource::Sampler(&sampler),
     };
 
     // Image texture view.
-    let image_tex_view = image.create_default_view();
-    let image_tex_binding = wgpu::Binding {
+    let image_tex_view = image.create_view(&wgpu::TextureViewDescriptor::default());
+    let image_tex_binding = wgpu::BindGroupEntry {
         binding: 2,
         resource: wgpu::BindingResource::TextureView(&image_tex_view),
     };
 
-    let bindings = &[glyph_cache_tex_binding, sampler_binding, image_tex_binding];
+    let entries = &[glyph_cache_tex_binding, sampler_binding, image_tex_binding];
     let label = Some("conrod_bind_group");
     let desc = wgpu::BindGroupDescriptor {
         label,
         layout,
-        bindings,
+        entries,
     };
     device.create_bind_group(&desc)
 }
@@ -632,7 +639,9 @@ fn pipeline_layout(
     bind_group_layout: &wgpu::BindGroupLayout,
 ) -> wgpu::PipelineLayout {
     let desc = wgpu::PipelineLayoutDescriptor {
+        label: Some("conrod_pipeline_layout_descriptor"),
         bind_group_layouts: &[&bind_group_layout],
+        push_constant_ranges: &[],
     };
     device.create_pipeline_layout(&desc)
 }
@@ -692,9 +701,7 @@ fn render_pipeline(
     let raster_desc = wgpu::RasterizationStateDescriptor {
         front_face: wgpu::FrontFace::Ccw,
         cull_mode: wgpu::CullMode::None,
-        depth_bias: 0,
-        depth_bias_slope_scale: 0.0,
-        depth_bias_clamp: 0.0,
+        ..Default::default()
     };
     let color_state_desc = wgpu::ColorStateDescriptor {
         format: dst_format,
@@ -721,7 +728,8 @@ fn render_pipeline(
         vertex_buffers: &[vertex_buffer_desc],
     };
     let desc = wgpu::RenderPipelineDescriptor {
-        layout,
+        label: Some("conrod_render_pipeline_descriptor"),
+        layout: Some(layout),
         vertex_stage: vs_desc,
         fragment_stage: Some(fs_desc),
         rasterization_state: Some(raster_desc),
@@ -740,50 +748,4 @@ fn vertices_as_bytes(s: &[mesh::Vertex]) -> &[u8] {
     let len = s.len() * std::mem::size_of::<mesh::Vertex>();
     let ptr = s.as_ptr() as *const u8;
     unsafe { std::slice::from_raw_parts(ptr, len) }
-}
-
-// TODO: Remove this when this lands https://github.com/gfx-rs/wgpu/pull/628
-fn texture_format_to_component_type(format: wgpu::TextureFormat) -> wgpu::TextureComponentType {
-    match format {
-        wgpu::TextureFormat::R8Uint
-        | wgpu::TextureFormat::R16Uint
-        | wgpu::TextureFormat::Rg8Uint
-        | wgpu::TextureFormat::R32Uint
-        | wgpu::TextureFormat::Rg16Uint
-        | wgpu::TextureFormat::Rgba8Uint
-        | wgpu::TextureFormat::Rg32Uint
-        | wgpu::TextureFormat::Rgba16Uint
-        | wgpu::TextureFormat::Rgba32Uint => wgpu::TextureComponentType::Uint,
-
-        wgpu::TextureFormat::R8Sint
-        | wgpu::TextureFormat::R16Sint
-        | wgpu::TextureFormat::Rg8Sint
-        | wgpu::TextureFormat::R32Sint
-        | wgpu::TextureFormat::Rg16Sint
-        | wgpu::TextureFormat::Rgba8Sint
-        | wgpu::TextureFormat::Rg32Sint
-        | wgpu::TextureFormat::Rgba16Sint
-        | wgpu::TextureFormat::Rgba32Sint => wgpu::TextureComponentType::Sint,
-
-        wgpu::TextureFormat::R8Unorm
-        | wgpu::TextureFormat::R8Snorm
-        | wgpu::TextureFormat::R16Float
-        | wgpu::TextureFormat::R32Float
-        | wgpu::TextureFormat::Rg8Unorm
-        | wgpu::TextureFormat::Rg8Snorm
-        | wgpu::TextureFormat::Rg16Float
-        | wgpu::TextureFormat::Rg11b10Float
-        | wgpu::TextureFormat::Rg32Float
-        | wgpu::TextureFormat::Rgba8Snorm
-        | wgpu::TextureFormat::Rgba16Float
-        | wgpu::TextureFormat::Rgba32Float
-        | wgpu::TextureFormat::Rgba8Unorm
-        | wgpu::TextureFormat::Rgba8UnormSrgb
-        | wgpu::TextureFormat::Bgra8Unorm
-        | wgpu::TextureFormat::Bgra8UnormSrgb
-        | wgpu::TextureFormat::Rgb10a2Unorm
-        | wgpu::TextureFormat::Depth32Float
-        | wgpu::TextureFormat::Depth24Plus
-        | wgpu::TextureFormat::Depth24PlusStencil8 => wgpu::TextureComponentType::Float,
-    }
 }
