@@ -30,4 +30,4 @@ conrod_example_shared = { path = "../conrod_example_shared", version = "0.70" }
 find_folder = "0.3.0"
 image = "0.23"
 petgraph = "0.4"
-piston_window = "0.110"
+piston_window = "0.113"
