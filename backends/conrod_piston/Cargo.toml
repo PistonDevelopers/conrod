@@ -22,7 +22,7 @@ path = "./src/lib.rs"
 
 [dependencies]
 conrod_core = { path = "../../conrod_core", version = "0.70" }
-piston2d-graphics = { version = "0.36" }
+piston2d-graphics = { version = "0.37" }
 pistoncore-input = "1.0.0"
 
 [dev-dependencies]
