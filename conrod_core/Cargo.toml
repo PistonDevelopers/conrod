@@ -24,7 +24,7 @@ wasm-bindgen = [ "instant/wasm-bindgen" ]
 conrod_derive = { path = "../conrod_derive", version = "0.70" }
 daggy = "0.5"
 fnv = "1.0"
-num = "0.2"
+num = "0.3"
 pistoncore-input = "1.0.0"
 rusttype = { version = "0.8", features = ["gpu_cache"] }
 instant = "0.1"
