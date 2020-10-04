@@ -106,6 +106,50 @@ fn ui_should_reset_global_input_after_widget_are_set() {
 
 
 #[test]
+fn drag_delta_xy_should_add_up_to_total_delta_xy() {
+
+    let ui = &mut windowless_ui();
+    ui.theme.mouse_drag_threshold = 2.0;
+    let long_distance = 10.0; // Initial movement to trigger drag
+    let small_distance = 1.0; // Subsequent smaller movements below drag threshold
+    // Move mouse to (0,0)
+    test_handling_basic_input_event(ui, Input::Motion(Motion::MouseCursor { x: 0.0, y: 0.0 }));
+    // Press left mouse button
+    test_handling_basic_input_event(ui, Input::Press(Button::Mouse(MouseButton::Left)));
+
+    // Move mouse (above drag threshold)
+    test_handling_basic_input_event(ui, Input::Motion(Motion::MouseCursor { x: long_distance, y: 0.0 }));
+    assert_event_was_pushed(ui, event::Event::Ui(event::Ui::Drag(None, event::Drag {
+        button: MouseButton::Left,
+        origin: [0.0, 0.0],
+        from: [ 0.0, 0.0],
+        to: [ long_distance, 0.0],
+        delta_xy: [long_distance, 0.0],
+        total_delta_xy: [long_distance, 0.0],
+        modifiers: Default::default()
+    })));
+
+    // Move mouse a bunch more, below the drag threshold. This should still trigger drag events
+    // anyway because we are already dragging
+    for i in 0..3 {
+        let from_x = long_distance + (i as f64) * small_distance;
+        let to_x = long_distance + (i + 1) as f64 * small_distance;
+        test_handling_basic_input_event(ui, Input::Motion(Motion::MouseCursor { x: to_x, y: 0.0 }));
+        assert_event_was_pushed(ui, event::Event::Ui(event::Ui::Drag(None, event::Drag {
+            button: MouseButton::Left,
+            origin: [0.0, 0.0],
+            from: [ from_x, 0.0],
+            to: [ to_x, 0.0],
+            delta_xy: [small_distance, 0.0],
+            total_delta_xy: [to_x, 0.0],
+            modifiers: Default::default()
+        })));
+    }
+
+}
+
+
+#[test]
 fn ui_should_push_input_events_to_aggregator() {
     let ui = &mut windowless_ui();
 
