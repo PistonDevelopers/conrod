@@ -43,31 +43,6 @@ jobs:
         command: test
         args: --doc --verbose
 
-  cargo-test-all-features:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Update apt
-      run: sudo apt update
-    - name: Install libxcb dev tools
-      run: sudo apt-get install libxcb-composite0-dev
-    - name: Install stable
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
-    - name: Run all features
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --lib --bins --all-features --verbose
-    - name: Test docs all features
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --doc --all-features --verbose
-
   cargo-check-examples:
     runs-on: ubuntu-latest
     steps:
