@@ -120,6 +120,11 @@ jobs:
       run: cargo publish --token $CRATESIO_TOKEN --manifest-path backends/conrod_winit/Cargo.toml
     - name: wait for crates.io
       run: sleep 5
+    - name: Cargo publish conrod_example_shared
+      continue-on-error: true
+      run: cargo publish --token $CRATESIO_TOKEN --manifest-path backends/conrod_example_shared/Cargo.toml
+    - name: wait for crates.io
+      run: sleep 5
     - name: Cargo publish conrod_gfx
       continue-on-error: true
       run: cargo publish --token $CRATESIO_TOKEN --manifest-path backends/conrod_gfx/Cargo.toml
