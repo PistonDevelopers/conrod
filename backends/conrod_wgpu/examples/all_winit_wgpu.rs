@@ -7,7 +7,7 @@ use winit::{
 };
 
 // Generate the winit <-> conrod_core type conversion fns.
-conrod_winit::v021_conversion_fns!();
+conrod_winit::v023_conversion_fns!();
 
 const LOGO_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
 const MSAA_SAMPLES: u32 = 4;
