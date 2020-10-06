@@ -15,15 +15,14 @@ use glium::Surface;
 
 fn main() {
     // Build the window.
-    let mut events_loop = glium::glutin::EventsLoop::new();
-    let window = glium::glutin::WindowBuilder::new()
+    let event_loop = glium::glutin::event_loop::EventLoop::new();
+    let window = glium::glutin::window::WindowBuilder::new()
         .with_title("Conrod with glium!")
-        .with_dimensions((WIN_W, WIN_H).into());
+        .with_inner_size(glium::glutin::dpi::LogicalSize::new(WIN_W, WIN_H));
     let context = glium::glutin::ContextBuilder::new()
         .with_vsync(true)
         .with_multisampling(4);
-    let display = glium::Display::new(window, context, &events_loop).unwrap();
-    let display = support::GliumDisplayWinitWrapper(display);
+    let display = glium::Display::new(window, context, &event_loop).unwrap();
 
     // Construct our `Ui`.
     let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
@@ -57,7 +56,7 @@ fn main() {
     }
 
     let mut image_map = conrod_core::image::Map::new();
-    let rust_logo = image_map.insert(load_rust_logo(&display.0));
+    let rust_logo = image_map.insert(load_rust_logo(&display));
 
     // A demonstration of some app state that we want to control with the conrod GUI.
     let mut app = conrod_example_shared::DemoApp::new(rust_logo);
@@ -71,52 +70,61 @@ fn main() {
     // - a `Vec` for collecting `backend::glium::Vertex`s generated when translating the
     // `conrod_core::render::Primitive`s.
     // - a `Vec` of commands that describe how to draw the vertices.
-    let mut renderer = Renderer::new(&display.0).unwrap();
+    let mut renderer = Renderer::new(&display).unwrap();
 
     // Start the loop:
     //
-    // - Poll the window for available events.
+    // - Send available events to the `Ui`.
     // - Update the widgets via the `conrod_example_shared::gui` fn.
     // - Render the current state of the `Ui`.
     // - Repeat.
-    let mut event_loop = support::EventLoop::new();
-    'main: loop {
-        // Handle all events.
-        for event in event_loop.next(&mut events_loop) {
-            // Use the `winit` backend feature to convert the winit event to a conrod one.
-            if let Some(event) = support::convert_event(event.clone(), &display) {
-                ui.handle_event(event);
-                event_loop.needs_update();
-            }
+    support::run_loop(display, event_loop, move |request, display| {
+        match request {
+            support::Request::Event {
+                event,
+                should_update_ui,
+                should_exit,
+            } => {
+                // Use the `winit` backend feature to convert the winit event to a conrod one.
+                if let Some(event) = support::convert_event(&event, &display.gl_window().window()) {
+                    ui.handle_event(event);
+                    *should_update_ui = true;
+                }
 
-            match event {
-                glium::glutin::Event::WindowEvent { event, .. } => match event {
-                    // Break from the loop upon `Escape`.
-                    glium::glutin::WindowEvent::CloseRequested
-                    | glium::glutin::WindowEvent::KeyboardInput {
-                        input:
-                            glium::glutin::KeyboardInput {
-                                virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
-                                ..
-                            },
-                        ..
-                    } => break 'main,
-                    _ => (),
-                },
-                _ => (),
+                match event {
+                    glium::glutin::event::Event::WindowEvent { event, .. } => match event {
+                        // Break from the loop upon `Escape`.
+                        glium::glutin::event::WindowEvent::CloseRequested
+                        | glium::glutin::event::WindowEvent::KeyboardInput {
+                            input:
+                                glium::glutin::event::KeyboardInput {
+                                    virtual_keycode:
+                                        Some(glium::glutin::event::VirtualKeyCode::Escape),
+                                    ..
+                                },
+                            ..
+                        } => *should_exit = true,
+                        _ => {}
+                    },
+                    _ => {}
+                }
+            }
+            support::Request::SetUi { needs_redraw } => {
+                // Instantiate a GUI demonstrating every widget type provided by conrod.
+                conrod_example_shared::gui(&mut ui.set_widgets(), &ids, &mut app);
+
+                *needs_redraw = ui.has_changed();
+            }
+            support::Request::Redraw => {
+                // Render the `Ui` and then display it on the screen.
+                let primitives = ui.draw();
+
+                renderer.fill(display, primitives, &image_map);
+                let mut target = display.draw();
+                target.clear_color(0.0, 0.0, 0.0, 1.0);
+                renderer.draw(display, &mut target, &image_map).unwrap();
+                target.finish().unwrap();
             }
         }
-
-        // Instantiate a GUI demonstrating every widget type provided by conrod.
-        conrod_example_shared::gui(&mut ui.set_widgets(), &ids, &mut app);
-
-        // Draw the `Ui`.
-        if let Some(primitives) = ui.draw_if_changed() {
-            renderer.fill(&display.0, primitives, &image_map);
-            let mut target = display.0.draw();
-            target.clear_color(0.0, 0.0, 0.0, 1.0);
-            renderer.draw(&display.0, &mut target, &image_map).unwrap();
-            target.finish().unwrap();
-        }
-    }
+    })
 }
