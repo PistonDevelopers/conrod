@@ -1,12 +1,11 @@
 //! The primitive widget used for displaying text.
 
-use {Color, Colorable, FontSize, Ui, Widget};
 use position::{Dimension, Scalar};
 use std;
 use text;
 use utils;
 use widget;
-
+use {Color, Colorable, FontSize, Ui, Widget};
 
 /// Displays some given text centered within a rectangular area.
 ///
@@ -79,9 +78,7 @@ pub struct State {
     pub line_infos: Vec<text::line::Info>,
 }
 
-
 impl<'a> Text<'a> {
-
     /// Build a new **Text** widget.
     pub fn new(text: &'a str) -> Self {
         Text {
@@ -111,7 +108,7 @@ impl<'a> Text<'a> {
 
     /// A method for specifying the `Font` used for displaying the `Text`.
     pub fn font_id(mut self, font_id: text::font::Id) -> Self {
-        self.style.font_id =  Some(Some(font_id));
+        self.style.font_id = Some(Some(font_id));
         self
     }
 
@@ -136,14 +133,12 @@ impl<'a> Text<'a> {
         self.justify(text::Justify::Right)
     }
 
-    builder_methods!{
+    builder_methods! {
         pub font_size { style.font_size = Some(FontSize) }
         pub justify { style.justify = Some(text::Justify) }
         pub line_spacing { style.line_spacing = Some(Scalar) }
     }
-
 }
-
 
 impl<'a> Widget for Text<'a> {
     type State = State;
@@ -166,7 +161,9 @@ impl<'a> Widget for Text<'a> {
     /// The `Font` used by the `Text` is retrieved in order to determine the width of each line. If
     /// the font used by the `Text` cannot be found, a dimension of `Absolute(0.0)` is returned.
     fn default_x_dimension(&self, ui: &Ui) -> Dimension {
-        let font = match self.style.font_id(&ui.theme)
+        let font = match self
+            .style
+            .font_id(&ui.theme)
             .or(ui.fonts.ids().next())
             .and_then(|id| ui.fonts.get(id))
         {
@@ -190,7 +187,9 @@ impl<'a> Widget for Text<'a> {
     fn default_y_dimension(&self, ui: &Ui) -> Dimension {
         use position::Sizeable;
 
-        let font = match self.style.font_id(&ui.theme)
+        let font = match self
+            .style
+            .font_id(&ui.theme)
             .or(ui.fonts.ids().next())
             .and_then(|id| ui.fonts.get(id))
         {
@@ -205,14 +204,12 @@ impl<'a> Widget for Text<'a> {
             Some(wrap) => match self.get_w(ui) {
                 None => text.lines().count(),
                 Some(max_w) => match wrap {
-                    Wrap::Character =>
-                        text::line::infos(text, font, font_size)
-                            .wrap_by_character(max_w)
-                            .count(),
-                    Wrap::Whitespace =>
-                        text::line::infos(text, font, font_size)
-                            .wrap_by_whitespace(max_w)
-                            .count(),
+                    Wrap::Character => text::line::infos(text, font, font_size)
+                        .wrap_by_character(max_w)
+                        .count(),
+                    Wrap::Whitespace => text::line::infos(text, font, font_size)
+                        .wrap_by_whitespace(max_w)
+                        .count(),
                 },
             },
         };
@@ -223,13 +220,20 @@ impl<'a> Widget for Text<'a> {
 
     /// Update the state of the Text.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { rect, state, style, ui, .. } = args;
+        let widget::UpdateArgs {
+            rect,
+            state,
+            style,
+            ui,
+            ..
+        } = args;
         let Text { text, .. } = self;
 
         let maybe_wrap = style.maybe_wrap(ui.theme());
         let font_size = style.font_size(ui.theme());
 
-        let font = match style.font_id(&ui.theme)
+        let font = match style
+            .font_id(&ui.theme)
             .or(ui.fonts.ids().next())
             .and_then(|id| ui.fonts.get(id))
         {
@@ -239,12 +243,13 @@ impl<'a> Widget for Text<'a> {
 
         // Produces an iterator yielding info for each line within the `text`.
         let new_line_infos = || match maybe_wrap {
-            None =>
-                text::line::infos(text, font, font_size),
-            Some(Wrap::Character) =>
-                text::line::infos(text, font, font_size).wrap_by_character(rect.w()),
-            Some(Wrap::Whitespace) =>
-                text::line::infos(text, font, font_size).wrap_by_whitespace(rect.w()),
+            None => text::line::infos(text, font, font_size),
+            Some(Wrap::Character) => {
+                text::line::infos(text, font, font_size).wrap_by_character(rect.w())
+            }
+            Some(Wrap::Whitespace) => {
+                text::line::infos(text, font, font_size).wrap_by_whitespace(rect.w())
+            }
         };
 
         // If the string is different, we must update both the string and the line breaks.
@@ -256,8 +261,8 @@ impl<'a> Widget for Text<'a> {
 
         // Otherwise, we'll check to see if we have to update the line breaks.
         } else {
-            use utils::write_if_different;
             use std::borrow::Cow;
+            use utils::write_if_different;
 
             // Compare the line_infos and only collect the new ones if they are different.
             let maybe_new_line_infos = {
@@ -273,7 +278,6 @@ impl<'a> Widget for Text<'a> {
             }
         }
     }
-
 }
 
 impl<'a> Colorable for Text<'a> {

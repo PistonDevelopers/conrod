@@ -5,8 +5,8 @@
 //! produce a sequence of commands describing the order in which draw commands should occur and
 //! whether or not the `Scizzor` should be updated between draws.
 
-use crate::{color, image, render};
 use crate::text::{self, rt};
+use crate::{color, image, render};
 use crate::{Rect, Scalar};
 use std::{fmt, ops};
 
@@ -543,10 +543,7 @@ impl Mesh {
     /// These commands describe the order in which unique draw commands and scizzor updates should
     /// occur.
     pub fn commands(&self) -> Commands {
-        let Mesh {
-            ref commands,
-            ..
-        } = *self;
+        let Mesh { ref commands, .. } = *self;
         Commands {
             commands: commands.iter(),
         }
@@ -563,17 +560,11 @@ impl Mesh {
 impl<'a> Iterator for Commands<'a> {
     type Item = Command;
     fn next(&mut self) -> Option<Self::Item> {
-        let Commands {
-            ref mut commands,
-        } = *self;
+        let Commands { ref mut commands } = *self;
         commands.next().map(|command| match *command {
             PreparedCommand::Scizzor(scizzor) => Command::Scizzor(scizzor),
-            PreparedCommand::Plain(ref range) => {
-                Command::Draw(Draw::Plain(range.clone()))
-            }
-            PreparedCommand::Image(id, ref range) => {
-                Command::Draw(Draw::Image(id, range.clone()))
-            }
+            PreparedCommand::Plain(ref range) => Command::Draw(Draw::Plain(range.clone())),
+            PreparedCommand::Image(id, ref range) => Command::Draw(Draw::Image(id, range.clone())),
         })
     }
 }

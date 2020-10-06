@@ -1,5 +1,4 @@
-
-use color::{Color, hsl, hsla, rgb, rgba};
+use color::{hsl, hsla, rgb, rgba, Color};
 use ui::Ui;
 
 /// Font size used throughout Conrod.
@@ -7,7 +6,6 @@ pub type FontSize = u32;
 
 /// Widgets that may display some label.
 pub trait Labelable<'a>: Sized {
-
     /// Set the label for the widget.
     fn label(self, text: &'a str) -> Self;
 
@@ -51,5 +49,4 @@ pub trait Labelable<'a>: Sized {
     fn large_font(self, ui: &Ui) -> Self {
         self.label_font_size(ui.theme.font_size_large)
     }
-
 }

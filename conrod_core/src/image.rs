@@ -2,8 +2,8 @@
 //!
 //! - [Map](./struct.Map.html)
 
-use std;
 use fnv;
+use std;
 
 /// Unique image identifier.
 ///
@@ -35,7 +35,6 @@ pub struct NewIds {
     index_range: std::ops::Range<u32>,
 }
 
-
 impl<Img> std::ops::Deref for Map<Img> {
     type Target = HashMap<Img>;
     fn deref(&self) -> &Self::Target {
@@ -43,9 +42,7 @@ impl<Img> std::ops::Deref for Map<Img> {
     }
 }
 
-
 impl<Img> Map<Img> {
-
     /// Construct a new, empty `image::Map`.
     pub fn new() -> Self {
         Map {
@@ -101,7 +98,8 @@ impl<Img> Map<Img> {
     ///
     /// Note: Calling this will trigger a redraw the next time `Ui::draw_if_changed` is called.
     pub fn extend<I>(&mut self, images: I) -> NewIds
-        where I: IntoIterator<Item=Img>,
+    where
+        I: IntoIterator<Item = Img>,
     {
         self.trigger_redraw.set(true);
         let start_index = self.next_index;
@@ -110,9 +108,10 @@ impl<Img> Map<Img> {
             self.map.insert(Id(end_index), image);
             end_index += 1;
         }
-        NewIds { index_range: start_index..end_index }
+        NewIds {
+            index_range: start_index..end_index,
+        }
     }
-
 }
 
 impl Iterator for NewIds {

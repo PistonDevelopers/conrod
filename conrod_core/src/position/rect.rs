@@ -2,7 +2,6 @@
 
 use super::{Dimensions, Padding, Point, Range, Scalar};
 
-
 /// Defines a Rectangle's bounds across the x and y axes.
 ///
 /// This is a conrod-specific Rectangle in that it's designed to help with layout.
@@ -27,9 +26,7 @@ pub enum Corner {
     BottomRight,
 }
 
-
 impl Rect {
-
     /// Construct a Rect from a given `Point` and `Dimensions`.
     pub fn from_xy_dim(xy: Point, dim: Dimensions) -> Self {
         Rect {
@@ -40,17 +37,33 @@ impl Rect {
 
     /// Construct a Rect from the coordinates of two points.
     pub fn from_corners(a: Point, b: Point) -> Self {
-        let (left, right) = if a[0] < b[0] { (a[0], b[0]) } else { (b[0], a[0]) };
-        let (bottom, top) = if a[1] < b[1] { (a[1], b[1]) } else { (b[1], a[1]) };
+        let (left, right) = if a[0] < b[0] {
+            (a[0], b[0])
+        } else {
+            (b[0], a[0])
+        };
+        let (bottom, top) = if a[1] < b[1] {
+            (a[1], b[1])
+        } else {
+            (b[1], a[1])
+        };
         Rect {
-            x: Range { start: left, end: right },
-            y: Range { start: bottom, end: top },
+            x: Range {
+                start: left,
+                end: right,
+            },
+            y: Range {
+                start: bottom,
+                end: top,
+            },
         }
     }
 
     /// The Rect representing the area in which two Rects overlap.
     pub fn overlap(self, other: Self) -> Option<Self> {
-        self.x.overlap(other.x).and_then(|x| self.y.overlap(other.y).map(|y| Rect { x: x, y: y }))
+        self.x
+            .overlap(other.x)
+            .and_then(|x| self.y.overlap(other.y).map(|y| Rect { x: x, y: y }))
     }
 
     /// The Rect that encompass the two given sets of Rect.
@@ -176,12 +189,18 @@ impl Rect {
 
     /// Shift the Rect along the x axis.
     pub fn shift_x(self, x: Scalar) -> Self {
-        Rect { x: self.x.shift(x), ..self }
+        Rect {
+            x: self.x.shift(x),
+            ..self
+        }
     }
 
     /// Shift the Rect along the y axis.
     pub fn shift_y(self, y: Scalar) -> Self {
-        Rect { y: self.y.shift(y), ..self }
+        Rect {
+            y: self.y.shift(y),
+            ..self
+        }
     }
 
     /// Shift the Rect by the given Point.
@@ -191,12 +210,18 @@ impl Rect {
 
     /// Returns a `Rect` with a position relative to the given position on the *x* axis.
     pub fn relative_to_x(self, x: Scalar) -> Self {
-        Rect { x: self.x.shift(-x), ..self }
+        Rect {
+            x: self.x.shift(-x),
+            ..self
+        }
     }
 
     /// Returns a `Rect` with a position relative to the given position on the *y* axis.
     pub fn relative_to_y(self, y: Scalar) -> Self {
-        Rect { y: self.y.shift(-y), ..self }
+        Rect {
+            y: self.y.shift(-y),
+            ..self
+        }
     }
 
     /// Returns a `Rect` with a position relative to the given position.
@@ -211,28 +236,43 @@ impl Rect {
 
     /// The Rect with some padding applied to the left edge.
     pub fn pad_left(self, pad: Scalar) -> Self {
-        Rect { x: self.x.pad_start(pad), ..self }
+        Rect {
+            x: self.x.pad_start(pad),
+            ..self
+        }
     }
 
     /// The Rect with some padding applied to the right edge.
     pub fn pad_right(self, pad: Scalar) -> Self {
-        Rect { x: self.x.pad_end(pad), ..self }
+        Rect {
+            x: self.x.pad_end(pad),
+            ..self
+        }
     }
 
     /// The rect with some padding applied to the bottom edge.
     pub fn pad_bottom(self, pad: Scalar) -> Self {
-        Rect { y: self.y.pad_start(pad), ..self }
+        Rect {
+            y: self.y.pad_start(pad),
+            ..self
+        }
     }
 
     /// The Rect with some padding applied to the top edge.
     pub fn pad_top(self, pad: Scalar) -> Self {
-        Rect { y: self.y.pad_end(pad), ..self }
+        Rect {
+            y: self.y.pad_end(pad),
+            ..self
+        }
     }
 
     /// The Rect with some padding amount applied to each edge.
     pub fn pad(self, pad: Scalar) -> Self {
         let Rect { x, y } = self;
-        Rect { x: x.pad(pad), y: y.pad(pad) }
+        Rect {
+            x: x.pad(pad),
+            y: y.pad(pad),
+        }
     }
 
     /// The Rect with some padding applied.
@@ -405,5 +445,4 @@ impl Rect {
             (Edge::End, Edge::End) => Corner::TopRight,
         }
     }
-
 }

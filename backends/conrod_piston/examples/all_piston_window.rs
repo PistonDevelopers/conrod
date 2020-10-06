@@ -2,14 +2,14 @@
 
 extern crate conrod_core;
 extern crate conrod_example_shared;
+extern crate conrod_piston;
 extern crate find_folder;
 extern crate piston_window;
-extern crate conrod_piston;
 
-use self::piston_window::{PistonWindow, UpdateEvent, Window, WindowSettings};
-use self::piston_window::{Flip, G2d, G2dTexture, Texture, TextureSettings};
-use self::piston_window::OpenGL;
 use self::piston_window::texture::UpdateTexture;
+use self::piston_window::OpenGL;
+use self::piston_window::{Flip, G2d, G2dTexture, Texture, TextureSettings};
+use self::piston_window::{PistonWindow, UpdateEvent, Window, WindowSettings};
 
 pub fn main() {
     const WIDTH: u32 = conrod_example_shared::WIN_W;
@@ -31,7 +31,9 @@ pub fn main() {
         .build();
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
-    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let assets = find_folder::Search::KidsThenParents(3, 5)
+        .for_folder("assets")
+        .unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
@@ -51,7 +53,9 @@ pub fn main() {
         let buffer_len = WIDTH as usize * HEIGHT as usize;
         let init = vec![128; buffer_len];
         let settings = TextureSettings::new();
-        let texture = G2dTexture::from_memory_alpha(&mut texture_context, &init, WIDTH, HEIGHT, &settings).unwrap();
+        let texture =
+            G2dTexture::from_memory_alpha(&mut texture_context, &init, WIDTH, HEIGHT, &settings)
+                .unwrap();
         (cache, texture)
     };
 
@@ -60,7 +64,9 @@ pub fn main() {
 
     // Load the rust logo from file to a piston_window texture.
     let rust_logo: G2dTexture = {
-        let assets = find_folder::Search::ParentsThenKids(5, 3).for_folder("assets").unwrap();
+        let assets = find_folder::Search::ParentsThenKids(5, 3)
+            .for_folder("assets")
+            .unwrap();
         let path = assets.join("images/rust.png");
         let settings = TextureSettings::new();
         Texture::from_path(&mut texture_context, &path, Flip::None, &settings).unwrap()
@@ -75,10 +81,12 @@ pub fn main() {
 
     // Poll events from the window.
     while let Some(event) = window.next() {
-
         // Convert the src event to a conrod event.
         let size = window.size();
-        let (win_w, win_h) = (size.width as conrod_core::Scalar, size.height as conrod_core::Scalar);
+        let (win_w, win_h) = (
+            size.width as conrod_core::Scalar,
+            size.height as conrod_core::Scalar,
+        );
         if let Some(e) = conrod_piston::event::convert(event.clone(), win_w, win_h) {
             ui.handle_event(e);
         }
@@ -90,35 +98,44 @@ pub fn main() {
 
         window.draw_2d(&event, |context, graphics, device| {
             if let Some(primitives) = ui.draw_if_changed() {
-
                 // A function used for caching glyphs to the texture cache.
                 let cache_queued_glyphs = |_graphics: &mut G2d,
                                            cache: &mut G2dTexture,
                                            rect: conrod_core::text::rt::Rect<u32>,
-                                           data: &[u8]|
-                    {
-                        let offset = [rect.min.x, rect.min.y];
-                        let size = [rect.width(), rect.height()];
-                        let format = piston_window::texture::Format::Rgba8;
-                        text_vertex_data.clear();
-                        text_vertex_data.extend(data.iter().flat_map(|&b| vec![255, 255, 255, b]));
-                        UpdateTexture::update(cache, &mut texture_context, format, &text_vertex_data[..], offset, size)
-                            .expect("failed to update texture")
-                    };
+                                           data: &[u8]| {
+                    let offset = [rect.min.x, rect.min.y];
+                    let size = [rect.width(), rect.height()];
+                    let format = piston_window::texture::Format::Rgba8;
+                    text_vertex_data.clear();
+                    text_vertex_data.extend(data.iter().flat_map(|&b| vec![255, 255, 255, b]));
+                    UpdateTexture::update(
+                        cache,
+                        &mut texture_context,
+                        format,
+                        &text_vertex_data[..],
+                        offset,
+                        size,
+                    )
+                    .expect("failed to update texture")
+                };
 
                 // Specify how to get the drawable texture from the image. In this case, the image
                 // *is* the texture.
-                fn texture_from_image<T>(img: &T) -> &T { img }
+                fn texture_from_image<T>(img: &T) -> &T {
+                    img
+                }
 
                 // Draw the conrod `render::Primitives`.
-                conrod_piston::draw::primitives(primitives,
-                                                context,
-                                                graphics,
-                                                &mut text_texture_cache,
-                                                &mut glyph_cache,
-                                                &image_map,
-                                                cache_queued_glyphs,
-                                                texture_from_image);
+                conrod_piston::draw::primitives(
+                    primitives,
+                    context,
+                    graphics,
+                    &mut text_texture_cache,
+                    &mut glyph_cache,
+                    &image_map,
+                    cache_queued_glyphs,
+                    texture_from_image,
+                );
 
                 texture_context.encoder.flush(device);
             }

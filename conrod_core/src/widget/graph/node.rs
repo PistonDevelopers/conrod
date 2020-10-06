@@ -1,10 +1,10 @@
 //! A default container widget to use for nodes that exist within a `Graph` widget.
 
-use {widget, color, Color, Point, Positionable, Scalar, Sizeable, Widget, Ui};
 use graph;
 use position::{Axis, Direction, Range, Rect};
 use std::iter::once;
 use std::ops::{Deref, DerefMut};
+use {color, widget, Color, Point, Positionable, Scalar, Sizeable, Ui, Widget};
 
 /// A widget that acts as a convenience container for some `Node`'s unique widgets.
 #[derive(Clone, Debug, WidgetCommon_)]
@@ -58,7 +58,9 @@ pub struct Style {
     #[conrod(default = "SocketLayout { side: SocketSide::Left, direction: Direction::Backwards }")]
     pub input_socket_layout: Option<SocketLayout>,
     /// Default layout for node output sockets.
-    #[conrod(default = "SocketLayout { side: SocketSide::Right, direction: Direction::Backwards }")]
+    #[conrod(
+        default = "SocketLayout { side: SocketSide::Right, direction: Direction::Backwards }"
+    )]
     pub output_socket_layout: Option<SocketLayout>,
 }
 
@@ -114,7 +116,10 @@ pub struct State {
 /// Describes whether a socket is associated with a node's inputs or outputs.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[allow(missing_docs)]
-pub enum SocketType { Input, Output }
+pub enum SocketType {
+    Input,
+    Output,
+}
 
 /// The event produced by the `Node` widget.
 #[derive(Clone, Debug)]
@@ -206,7 +211,6 @@ impl<W> DerefMut for Event<W> {
     }
 }
 
-
 // A multiplier for the scalar direction.
 fn direction_scalar(direction: Direction) -> Scalar {
     match direction {
@@ -256,8 +260,7 @@ fn socket_step_and_start(
     inner_rect: Rect,
     socket_length: Scalar,
     side_scalar: Scalar,
-) -> ([Scalar; 2], Point)
-{
+) -> ([Scalar; 2], Point) {
     let direction_scalar = direction_scalar(direction);
     let socket_range = rect_range(axis, inner_rect);
     let socket_position_range = socket_range.pad(socket_length / 2.0);
@@ -276,13 +279,13 @@ fn socket_step_and_start(
             let x = socket_start_scalar;
             let y = side_scalar;
             (step, [x, y])
-        },
+        }
         Axis::Y => {
             let step = [0.0, step];
             let x = side_scalar;
             let y = socket_start_scalar;
             (step, [x, y])
-        },
+        }
     };
     (step, socket_start_position)
 }
@@ -299,14 +302,19 @@ fn socket_rectangle(
     let SocketLayout { side, direction } = layout;
     let (axis, side_scalar) = side_axis_and_scalar(node_rect, side, border);
     let inner_rect = node_rect.pad(border);
-    let (step, start_pos) = socket_step_and_start(n_sockets, axis, direction, inner_rect,
-                                                  socket_length, side_scalar);
+    let (step, start_pos) = socket_step_and_start(
+        n_sockets,
+        axis,
+        direction,
+        inner_rect,
+        socket_length,
+        side_scalar,
+    );
     let xy = socket_position(index, start_pos, step);
     let socket_dim = socket_rect_dim(axis, border, socket_length);
     let rect = Rect::from_xy_dim(xy, socket_dim);
     rect
 }
-
 
 /// Retrieve the `Rect` for the given socket on the given node.
 ///
@@ -317,27 +325,27 @@ pub fn socket_rect(
     socket_index: usize,
     ui: &Ui,
 ) -> Option<Rect> {
-    ui.widget_graph()
-        .widget(node_id)
-        .and_then(|container| {
-            let unique = container.state_and_style::<State, Style>();
-            let &graph::UniqueWidgetState { ref state, ref style } = match unique {
-                None => return None,
-                Some(unique) => unique,
-            };
-            let rect = container.rect;
-            let border = style.border(&ui.theme);
-            let socket_length = style.socket_length(&ui.theme);
+    ui.widget_graph().widget(node_id).and_then(|container| {
+        let unique = container.state_and_style::<State, Style>();
+        let &graph::UniqueWidgetState {
+            ref state,
+            ref style,
+        } = match unique {
+            None => return None,
+            Some(unique) => unique,
+        };
+        let rect = container.rect;
+        let border = style.border(&ui.theme);
+        let socket_length = style.socket_length(&ui.theme);
 
-            let (n_sockets, layout) = match socket_type {
-                SocketType::Input => (state.inputs, style.input_socket_layout(&ui.theme)),
-                SocketType::Output => (state.outputs, style.output_socket_layout(&ui.theme)),
-            };
+        let (n_sockets, layout) = match socket_type {
+            SocketType::Input => (state.inputs, style.input_socket_layout(&ui.theme)),
+            SocketType::Output => (state.outputs, style.output_socket_layout(&ui.theme)),
+        };
 
-            let rect = socket_rectangle(socket_index, n_sockets, rect, border, layout,
-                                        socket_length);
-            Some(rect)
-        })
+        let rect = socket_rectangle(socket_index, n_sockets, rect, border, layout, socket_length);
+        Some(rect)
+    })
 }
 
 /// Returns a `Rect` for an edge's start and end nodes.
@@ -360,35 +368,36 @@ where
 ///
 /// Returns `None` if no node is found for the given `widget::Id`.
 pub fn socket_rects(node_id: widget::Id, ui: &Ui) -> Option<(SocketRects, SocketRects)> {
-    ui.widget_graph()
-        .widget(node_id)
-        .and_then(|container| {
-            let unique = container.state_and_style::<State, Style>();
-            let &graph::UniqueWidgetState { ref state, ref style } = match unique {
-                None => return None,
-                Some(unique) => unique,
-            };
-            let rect = container.rect;
-            let border = style.border(&ui.theme);
-            let socket_length = style.socket_length(&ui.theme);
-            let input_socket_rects = SocketRects {
-                index: 0,
-                n_sockets: state.inputs,
-                node_rect: rect,
-                border,
-                layout: style.input_socket_layout(&ui.theme),
-                socket_length,
-            };
-            let output_socket_rects = SocketRects {
-                index: 0,
-                n_sockets: state.outputs,
-                node_rect: rect,
-                border,
-                layout: style.output_socket_layout(&ui.theme),
-                socket_length,
-            };
-            Some((input_socket_rects, output_socket_rects))
-        })
+    ui.widget_graph().widget(node_id).and_then(|container| {
+        let unique = container.state_and_style::<State, Style>();
+        let &graph::UniqueWidgetState {
+            ref state,
+            ref style,
+        } = match unique {
+            None => return None,
+            Some(unique) => unique,
+        };
+        let rect = container.rect;
+        let border = style.border(&ui.theme);
+        let socket_length = style.socket_length(&ui.theme);
+        let input_socket_rects = SocketRects {
+            index: 0,
+            n_sockets: state.inputs,
+            node_rect: rect,
+            border,
+            layout: style.input_socket_layout(&ui.theme),
+            socket_length,
+        };
+        let output_socket_rects = SocketRects {
+            index: 0,
+            n_sockets: state.outputs,
+            node_rect: rect,
+            border,
+            layout: style.output_socket_layout(&ui.theme),
+            socket_length,
+        };
+        Some((input_socket_rects, output_socket_rects))
+    })
 }
 
 /// The rectangle for each socket (either inputs or outputs only).
@@ -451,8 +460,20 @@ where
     }
 
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
-        let Node { widget, inputs, outputs, .. } = self;
+        let widget::UpdateArgs {
+            id,
+            state,
+            style,
+            rect,
+            ui,
+            ..
+        } = args;
+        let Node {
+            widget,
+            inputs,
+            outputs,
+            ..
+        } = self;
         let socket_length = style.socket_length(&ui.theme);
         let border = style.border(&ui.theme);
 
@@ -468,15 +489,13 @@ where
         let output_socket_layout = style.output_socket_layout(&ui.theme);
 
         // A function for producing the rectangles of sockets along some axis.
-        let socket_rectangles = |n_sockets, layout| {
-            SocketRects {
-                index: 0,
-                n_sockets,
-                layout,
-                node_rect: rect,
-                border,
-                socket_length,
-            }
+        let socket_rectangles = |n_sockets, layout| SocketRects {
+            index: 0,
+            n_sockets,
+            layout,
+            node_rect: rect,
+            border,
+            socket_length,
         };
 
         // Whether or not the given point is over a socket.
@@ -495,25 +514,38 @@ where
         };
 
         #[derive(Copy, Clone)]
-        enum Interaction { Hover, Press }
-        let maybe_socket_interaction = ui.widget_input(id)
-            .mouse()
-            .and_then(|m| match m.buttons.left().is_down() {
-                // If the mouse isn't down, we must be hovering over the widget.
-                false => over_socket(m.abs_xy()).map(|(ty, ix)| (ty, ix, Interaction::Hover)),
-                // Otherwise we're currently pressing some part of the widget.
-                true => {
-                    // If the left mouse button was just pressed, check to see if over a socket.
-                    if ui.widget_input(id).presses().mouse().left().next().is_some() {
-                        let maybe_socket = over_socket(m.abs_xy());
-                        if maybe_socket.is_some() {
-                            state.update(|state| state.capturing_socket = maybe_socket);
+        enum Interaction {
+            Hover,
+            Press,
+        }
+        let maybe_socket_interaction =
+            ui.widget_input(id)
+                .mouse()
+                .and_then(|m| match m.buttons.left().is_down() {
+                    // If the mouse isn't down, we must be hovering over the widget.
+                    false => over_socket(m.abs_xy()).map(|(ty, ix)| (ty, ix, Interaction::Hover)),
+                    // Otherwise we're currently pressing some part of the widget.
+                    true => {
+                        // If the left mouse button was just pressed, check to see if over a socket.
+                        if ui
+                            .widget_input(id)
+                            .presses()
+                            .mouse()
+                            .left()
+                            .next()
+                            .is_some()
+                        {
+                            let maybe_socket = over_socket(m.abs_xy());
+                            if maybe_socket.is_some() {
+                                state.update(|state| state.capturing_socket = maybe_socket);
+                            }
                         }
+                        // If some socket is captured by the mouse, it's pressed.
+                        state
+                            .capturing_socket
+                            .map(|(ty, ix)| (ty, ix, Interaction::Press))
                     }
-                    // If some socket is captured by the mouse, it's pressed.
-                    state.capturing_socket.map(|(ty, ix)| (ty, ix, Interaction::Press))
-                },
-            });
+                });
 
         // The triangles for the inner rectangle surface first.
         let inner_rect = rect.pad(border);
@@ -529,18 +561,17 @@ where
         let border_color = style.border_color(&ui.theme);
         let border_color = match maybe_socket_interaction.is_some() {
             true => border_color,
-            false => {
-                ui.widget_input(id)
-                    .mouse()
-                    .map(|m| match inner_rect.is_over(m.abs_xy()) {
-                        true => border_color,
-                        false => match m.buttons.left().is_down() {
-                            true => border_color.clicked(),
-                            false => border_color.highlighted(),
-                        },
-                    })
-                    .unwrap_or(border_color)
-            },
+            false => ui
+                .widget_input(id)
+                .mouse()
+                .map(|m| match inner_rect.is_over(m.abs_xy()) {
+                    true => border_color,
+                    false => match m.buttons.left().is_down() {
+                        true => border_color.clicked(),
+                        false => border_color.highlighted(),
+                    },
+                })
+                .unwrap_or(border_color),
         };
 
         let border_radius = style.border_radius(&ui.theme).min(border);
@@ -575,8 +606,10 @@ where
         };
 
         // Triangles for sockets.
-        let input_socket_triangles = socket_triangles(SocketType::Input, inputs, input_socket_layout);
-        let output_socket_triangles = socket_triangles(SocketType::Output, outputs, output_socket_layout);
+        let input_socket_triangles =
+            socket_triangles(SocketType::Input, inputs, input_socket_layout);
+        let output_socket_triangles =
+            socket_triangles(SocketType::Output, outputs, output_socket_layout);
 
         // Submit the triangles for the graphical elements of the widget.
         let triangles = inner_triangles

@@ -1,20 +1,10 @@
 //! The `BorderedRectangle` widget and related items.
 
-use {
-    Color,
-    Colorable,
-    Dimensions,
-    Borderable,
-    Point,
-    Positionable,
-    Rect,
-    Scalar,
-    Sizeable,
-    Widget,
-};
 use widget;
 use widget::triangles::Triangle;
-
+use {
+    Borderable, Color, Colorable, Dimensions, Point, Positionable, Rect, Scalar, Sizeable, Widget,
+};
 
 /// A filled rectangle widget that may or may not have some border.
 #[derive(Copy, Clone, Debug, WidgetCommon_)]
@@ -53,19 +43,17 @@ pub struct State {
 }
 
 impl BorderedRectangle {
-
     /// Build a new **BorderedRectangle**.
     pub fn new(dim: Dimensions) -> Self {
         BorderedRectangle {
             common: widget::CommonBuilder::default(),
             style: Style::default(),
-        }.wh(dim)
+        }
+        .wh(dim)
     }
 
     builder_method!(pub with_style { style = Style });
-
 }
-
 
 impl Widget for BorderedRectangle {
     type State = State;
@@ -84,7 +72,14 @@ impl Widget for BorderedRectangle {
 
     /// Update the state of the Rectangle.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
+        let widget::UpdateArgs {
+            id,
+            state,
+            style,
+            rect,
+            ui,
+            ..
+        } = args;
 
         let border = style.border(&ui.theme);
         if let Some(triangles) = border_triangles(rect, border) {
@@ -104,22 +99,18 @@ impl Widget for BorderedRectangle {
             .graphics_for(id)
             .set(state.ids.rectangle, ui);
     }
-
 }
-
 
 impl Colorable for BorderedRectangle {
     builder_method!(color { style.color = Some(Color) });
 }
 
-
 impl Borderable for BorderedRectangle {
-    builder_methods!{
+    builder_methods! {
         border { style.border = Some(Scalar) }
         border_color { style.border_color = Some(Color) }
     }
 }
-
 
 /// The eight triangles that describe a rectangular border.
 ///
@@ -201,7 +192,14 @@ impl RoundedBorderTriangles {
         let inner_end = Some(last_inner);
         let last_points = [last_outer, last_inner];
         let is_next_outer = true;
-        RoundedBorderTriangles { outer, inner, is_next_outer, last_points, outer_end, inner_end }
+        RoundedBorderTriangles {
+            outer,
+            inner,
+            is_next_outer,
+            last_points,
+            outer_end,
+            inner_end,
+        }
     }
 }
 

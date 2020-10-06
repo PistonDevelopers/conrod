@@ -1,25 +1,32 @@
 //! A backend for converting src events to conrod's `Input` type.
 
-use conrod_core::{Point, Scalar, input, event};
+use conrod_core::{event, input, Point, Scalar};
 pub use piston_input::{GenericEvent, UpdateEvent};
 
 /// Converts any `GenericEvent` to an `Input` event for conrod.
 ///
 /// The given `width` and `height` must be `Scalar` (DPI agnostic) values.
 pub fn convert<E>(event: E, win_w: Scalar, win_h: Scalar) -> Option<event::Input>
-    where E: GenericEvent,
+where
+    E: GenericEvent,
 {
     // Translate the coordinates from top-left-origin-with-y-down to centre-origin-with-y-up.
     let translate_coords = |xy: Point| (xy[0] - win_w / 2.0, -(xy[1] - win_h / 2.0));
 
     if let Some(xy) = event.mouse_cursor_args() {
         let (x, y) = translate_coords(xy);
-        return Some(event::Input::Motion(input::Motion::MouseCursor { x: x, y: y }));
+        return Some(event::Input::Motion(input::Motion::MouseCursor {
+            x: x,
+            y: y,
+        }));
     }
 
     if let Some(rel_xy) = event.mouse_relative_args() {
         let (rel_x, rel_y) = translate_coords(rel_xy);
-        return Some(event::Input::Motion(input::Motion::MouseRelative { x: rel_x, y: rel_y }));
+        return Some(event::Input::Motion(input::Motion::MouseRelative {
+            x: rel_x,
+            y: rel_y,
+        }));
     }
 
     if let Some(xy) = event.mouse_scroll_args() {
@@ -41,7 +48,11 @@ pub fn convert<E>(event: E, win_w: Scalar, win_h: Scalar) -> Option<event::Input
             ::piston_input::Touch::Cancel => input::touch::Phase::Cancel,
             ::piston_input::Touch::End => input::touch::Phase::End,
         };
-        let touch = input::Touch { id: id, xy: xy, phase: phase };
+        let touch = input::Touch {
+            id: id,
+            xy: xy,
+            phase: phase,
+        };
         return Some(event::Input::Touch(touch));
     }
 
@@ -58,7 +69,10 @@ pub fn convert<E>(event: E, win_w: Scalar, win_h: Scalar) -> Option<event::Input
     }
 
     if let Some(args) = event.resize_args() {
-        return Some(event::Input::Resize(args.window_size[0], args.window_size[1]));
+        return Some(event::Input::Resize(
+            args.window_size[0],
+            args.window_size[1],
+        ));
     }
 
     if let Some(b) = event.focus_args() {

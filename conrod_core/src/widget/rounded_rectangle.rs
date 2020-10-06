@@ -3,14 +3,14 @@
 //! The roundedness of the corners is specified with a `radius`. This indicates the radius of the
 //! circle used to draw the corners.
 
-use {Color, Colorable, Dimensions, Point, Positionable, Range, Rect, Scalar, Sizeable, Theme,
-     Widget};
 use graph;
 use std::f64::consts::PI;
 use widget;
-use widget::primitive::shape::Style;
 use widget::primitive::shape::oval::Circumference;
-
+use widget::primitive::shape::Style;
+use {
+    Color, Colorable, Dimensions, Point, Positionable, Range, Rect, Scalar, Sizeable, Theme, Widget,
+};
 
 /// Draws a rectangle with corners rounded via the given radius.
 #[derive(Copy, Clone, Debug, WidgetCommon_)]
@@ -46,7 +46,8 @@ impl RoundedRectangle {
             style: style,
             radius: radius,
             corner_resolution: DEFAULT_CORNER_RESOLUTION,
-        }.wh(dim)
+        }
+        .wh(dim)
     }
 
     /// Build a new filled rounded rectangle.
@@ -65,7 +66,11 @@ impl RoundedRectangle {
     }
 
     /// Build an outlined rounded rectangle rather than a filled one.
-    pub fn outline_styled(dim: Dimensions, radius: Scalar, line_style: widget::line::Style) -> Self {
+    pub fn outline_styled(
+        dim: Dimensions,
+        radius: Scalar,
+        line_style: widget::line::Style,
+    ) -> Self {
         RoundedRectangle::styled(dim, radius, Style::outline_styled(line_style))
     }
 
@@ -97,8 +102,19 @@ impl Widget for RoundedRectangle {
 
     /// Update the state of the Rectangle.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
-        let RoundedRectangle { radius, corner_resolution, .. } = self;
+        let widget::UpdateArgs {
+            id,
+            state,
+            style,
+            rect,
+            ui,
+            ..
+        } = args;
+        let RoundedRectangle {
+            radius,
+            corner_resolution,
+            ..
+        } = self;
         let points = points(rect, radius, corner_resolution);
         let (x, y, w, h) = rect.x_y_w_h();
         widget::Polygon::styled(points, *style)
@@ -139,8 +155,14 @@ pub fn points(rect: Rect, radius: Scalar, corner_resolution: usize) -> Points {
     // First corner is the top right corner.
     let radius_2 = radius * 2.0;
     let corner_rect = Rect {
-        x: Range { start: r - radius_2, end: r },
-        y: Range { start: t - radius_2, end: t },
+        x: Range {
+            start: r - radius_2,
+            end: r,
+        },
+        y: Range {
+            start: t - radius_2,
+            end: t,
+        },
     };
     let corner = Circumference::new_section(corner_rect, corner_resolution, CORNER_RADIANS);
     Points {
@@ -174,8 +196,9 @@ impl Iterator for Points {
             };
             *corner_index += 1;
             let offset_radians = *corner_index as Scalar * CORNER_RADIANS;
-            *corner_points = Circumference::new_section(*corner_rect, corner_resolution, CORNER_RADIANS)
-                .offset_radians(offset_radians);
+            *corner_points =
+                Circumference::new_section(*corner_rect, corner_resolution, CORNER_RADIANS)
+                    .offset_radians(offset_radians);
         }
     }
 }

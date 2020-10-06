@@ -3,22 +3,14 @@
 //! Reacts to events for selection of one or more files, de-selection, deletion and
 //! double-clicking.
 
-use {
-    Borderable,
-    color,
-    Color,
-    Colorable,
-    FontSize,
-    Labelable,
-    Positionable,
-    Sizeable,
-    Scalar,
-    Widget,
-};
 use event;
 use std;
-use widget;
 use std::cmp::Ordering;
+use widget;
+use {
+    color, Borderable, Color, Colorable, FontSize, Labelable, Positionable, Scalar, Sizeable,
+    Widget,
+};
 
 /// For viewing, selecting, double-clicking, etc the contents of a directory.
 #[derive(WidgetCommon_)]
@@ -128,7 +120,7 @@ fn is_file_hidden(path: &std::path::PathBuf) -> bool {
 fn check_hidden(show_hidden: bool, types: super::Types, path: &std::path::PathBuf) -> bool {
     // Reject hidden files or directories
     if is_file_hidden(path) && !show_hidden {
-        return false
+        return false;
     }
 
     match types {
@@ -136,27 +128,26 @@ fn check_hidden(show_hidden: bool, types: super::Types, path: &std::path::PathBu
         super::Types::WithExtension(valid_exts) => {
             // We only filter files by extension
             if path.is_dir() {
-                return true
+                return true;
             }
 
             // Check for valid extensions.
-            let ext = path.extension()
+            let ext = path
+                .extension()
                 .and_then(|ext| ext.to_str())
                 .map(str::to_ascii_lowercase)
                 .unwrap_or_else(String::new);
             if valid_exts.iter().any(|&valid_ext| &ext == valid_ext) {
-                return true
+                return true;
             } else {
-                return false
+                return false;
             }
-        },
+        }
         super::Types::Directories => return path.is_dir(),
     }
 }
 
-
 impl<'a> DirectoryView<'a> {
-
     /// Begin building a `DirectoryNavigator` widget that displays only files of the given types.
     pub fn new(directory: &'a std::path::Path, types: super::Types<'a>) -> Self {
         DirectoryView {
@@ -186,10 +177,9 @@ impl<'a> DirectoryView<'a> {
         self
     }
 
-    builder_methods!{
+    builder_methods! {
         pub font_size { style.font_size = Some(FontSize) }
     }
-
 }
 
 impl<'a> Widget for DirectoryView<'a> {
@@ -210,8 +200,17 @@ impl<'a> Widget for DirectoryView<'a> {
     }
 
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
-        let DirectoryView { directory, types, .. } = self;
+        let widget::UpdateArgs {
+            id,
+            state,
+            style,
+            rect,
+            ui,
+            ..
+        } = args;
+        let DirectoryView {
+            directory, types, ..
+        } = self;
 
         if directory != &state.directory {
             state.update(|state| {
@@ -221,28 +220,28 @@ impl<'a> Widget for DirectoryView<'a> {
 
             let show_hidden = self.show_hidden;
             let mut entries: Vec<_> = match std::fs::read_dir(directory).ok() {
-                Some(entries) => {
-                    entries.filter_map(|e| e.ok())
-                        .filter_map(|f| {
-                            let path = f.path();
-                            if check_hidden(show_hidden, types, &path) {
-                                Some(path)
-                            } else {
-                                None
-                            }
-                        }).collect()
-                }
+                Some(entries) => entries
+                    .filter_map(|e| e.ok())
+                    .filter_map(|f| {
+                        let path = f.path();
+                        if check_hidden(show_hidden, types, &path) {
+                            Some(path)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect(),
                 None => return Vec::new(),
             };
             // Sort directories before files and alphabetically otherwise
-            entries.sort_by(|a,b| {
-              if a.is_dir() && !b.is_dir() {
-                Ordering::Less
-              } else if !a.is_dir() && b.is_dir() {
-                Ordering::Greater
-              } else {
-                a.cmp(b)
-              }
+            entries.sort_by(|a, b| {
+                if a.is_dir() && !b.is_dir() {
+                    Ordering::Less
+                } else if !a.is_dir() && b.is_dir() {
+                    Ordering::Greater
+                } else {
+                    a.cmp(b)
+                }
             });
 
             state.update(|state| {
@@ -259,9 +258,11 @@ impl<'a> Widget for DirectoryView<'a> {
         let color = style.color(&ui.theme);
         let font_size = style.font_size(&ui.theme);
         let file_h = font_size as Scalar * 2.0;
-        let unselected_rect_color = style.unselected_color(&ui.theme)
+        let unselected_rect_color = style
+            .unselected_color(&ui.theme)
             .unwrap_or_else(|| color.plain_contrast().plain_contrast());
-        let text_color = style.text_color(&ui.theme)
+        let text_color = style
+            .text_color(&ui.theme)
             .unwrap_or_else(|| color.plain_contrast());
 
         // Color the background of the directory view.
@@ -276,25 +277,32 @@ impl<'a> Widget for DirectoryView<'a> {
         let mut events = Vec::new();
 
         let list_h = rect.h().min(state.entries.len() as Scalar * file_h);
-        let (mut list_events, scrollbar) =
-            widget::ListSelect::multiple(state.entries.len())
-                .flow_down()
-                .item_size(file_h)
-                .scrollbar_on_top()
-                .w_h(rect.w(), list_h)
-                .mid_top_of(id)
-                .set(state.ids.list_select, ui);
+        let (mut list_events, scrollbar) = widget::ListSelect::multiple(state.entries.len())
+            .flow_down()
+            .item_size(file_h)
+            .scrollbar_on_top()
+            .w_h(rect.w(), list_h)
+            .mid_top_of(id)
+            .set(state.ids.list_select, ui);
 
         // A helper method for collecting all selected entries.
-        let collect_selected = |entries: &[Entry]| entries.iter()
-            .filter_map(|e| if e.is_selected { Some(e.path.clone()) } else { None })
-            .collect();
+        let collect_selected = |entries: &[Entry]| {
+            entries
+                .iter()
+                .filter_map(|e| {
+                    if e.is_selected {
+                        Some(e.path.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        };
 
         while let Some(event) = list_events.next(ui, |i| state.entries[i].is_selected) {
             use widget::list_select;
 
             match event {
-
                 // Instantiate a `Button` for each item.
                 list_select::Event::Item(item) => {
                     use position::{Place, Relative};
@@ -303,7 +311,9 @@ impl<'a> Widget for DirectoryView<'a> {
                     let is_directory = entry.path.is_dir();
 
                     // Get the file/directory name.
-                    let entry_name = state.entries[item.i].path.file_name()
+                    let entry_name = state.entries[item.i]
+                        .path
+                        .file_name()
                         .and_then(|name| name.to_str())
                         .map_or_else(String::new, |s| {
                             let mut string = s.to_string();
@@ -332,42 +342,59 @@ impl<'a> Widget for DirectoryView<'a> {
                         .label_x(Relative::Place(Place::Start(Some(font_size as Scalar))))
                         .left_justify_label();
                     item.set(button, ui);
-                },
+                }
 
                 // Update the state's selection.
                 list_select::Event::Selection(selection) => {
                     match selection {
-                        list_select::Selection::Add(indices) =>
-                            state.update(|state| for i in indices {
+                        list_select::Selection::Add(indices) => state.update(|state| {
+                            for i in indices {
                                 state.entries[i].is_selected = true;
-                            }),
-                        list_select::Selection::Remove(indices) =>
-                            state.update(|state| for i in indices {
+                            }
+                        }),
+                        list_select::Selection::Remove(indices) => state.update(|state| {
+                            for i in indices {
                                 state.entries[i].is_selected = false;
-                            }),
+                            }
+                        }),
                     }
                     events.push(Event::Selection(collect_selected(&state.entries)));
-                },
+                }
 
                 // Propagate the interaction events.
-                list_select::Event::Click(e) =>
-                    events.push(Event::Click(e, collect_selected(&state.entries))),
-                list_select::Event::DoubleClick(e) =>
-                    events.push(Event::DoubleClick(e, collect_selected(&state.entries))),
-                list_select::Event::Press(e) =>
-                    events.push(Event::Press(e, collect_selected(&state.entries))),
-                list_select::Event::Release(e) =>
-                    events.push(Event::Release(e, collect_selected(&state.entries))),
+                list_select::Event::Click(e) => {
+                    events.push(Event::Click(e, collect_selected(&state.entries)))
+                }
+                list_select::Event::DoubleClick(e) => {
+                    events.push(Event::DoubleClick(e, collect_selected(&state.entries)))
+                }
+                list_select::Event::Press(e) => {
+                    events.push(Event::Press(e, collect_selected(&state.entries)))
+                }
+                list_select::Event::Release(e) => {
+                    events.push(Event::Release(e, collect_selected(&state.entries)))
+                }
             }
         }
 
-        if let Some(s) = scrollbar { s.set(ui); }
+        if let Some(s) = scrollbar {
+            s.set(ui);
+        }
 
         // If the scrollable `Rectangle` was pressed, deselect all entries.
-        if ui.widget_input(id).presses().mouse().left().next().is_some() {
+        if ui
+            .widget_input(id)
+            .presses()
+            .mouse()
+            .left()
+            .next()
+            .is_some()
+        {
             // Deselect all entries.
-            state.update(|state| for entry in &mut state.entries {
-                entry.is_selected = false;
+            state.update(|state| {
+                for entry in &mut state.entries {
+                    entry.is_selected = false;
+                }
             });
             events.push(Event::Selection(Vec::new()));
         }

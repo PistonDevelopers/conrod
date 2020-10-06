@@ -1,0 +1,130 @@
+name: conrod
+on: [push, pull_request]
+jobs:
+  rustfmt-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install stable
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+        components: rustfmt
+    - name: Run rustfmt
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: --all -- --check
+
+  cargo-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Update apt
+      run: sudo apt update
+    - name: Install libxcb dev tools
+      run: sudo apt-get install libxcb-composite0-dev
+    - name: Install stable
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    - name: Run default features
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --lib --bins --verbose
+    - name: Test docs
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --doc --verbose
+
+  cargo-check-examples:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Update apt
+      run: sudo apt update
+    - name: Install libxcb dev tools
+      run: sudo apt-get install libxcb-composite0-dev
+    - name: Install stable
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    - name: Run check
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+        args: --examples --verbose
+
+  cargo-publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    env:
+      CRATESIO_TOKEN: ${{ secrets.CRATESIO_TOKEN }}
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Update apt
+      run: sudo apt update
+    - name: Install libxcb dev tools
+      run: sudo apt-get install libxcb-composite0-dev
+    - name: Install stable
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    - name: Cargo publish conrod_derive
+      continue-on-error: true
+      run: cargo publish --token $CRATESIO_TOKEN --manifest-path conrod_derive/Cargo.toml
+    - name: wait for crates.io
+      run: sleep 5
+    - name: Cargo publish conrod_core
+      continue-on-error: true
+      run: cargo publish --token $CRATESIO_TOKEN --manifest-path conrod_core/Cargo.toml
+    - name: wait for crates.io
+      run: sleep 5
+    - name: Cargo publish conrod_winit
+      continue-on-error: true
+      run: cargo publish --token $CRATESIO_TOKEN --manifest-path backends/conrod_winit/Cargo.toml
+    - name: wait for crates.io
+      run: sleep 5
+    - name: Cargo publish conrod_example_shared
+      continue-on-error: true
+      run: cargo publish --token $CRATESIO_TOKEN --manifest-path backends/conrod_example_shared/Cargo.toml
+    - name: wait for crates.io
+      run: sleep 5
+    - name: Cargo publish conrod_gfx
+      continue-on-error: true
+      run: cargo publish --token $CRATESIO_TOKEN --manifest-path backends/conrod_gfx/Cargo.toml
+    - name: wait for crates.io
+      run: sleep 5
+    - name: Cargo publish conrod_glium
+      continue-on-error: true
+      run: cargo publish --token $CRATESIO_TOKEN --manifest-path backends/conrod_glium/Cargo.toml
+    - name: wait for crates.io
+      run: sleep 5
+    - name: Cargo publish conrod_piston
+      continue-on-error: true
+      run: cargo publish --token $CRATESIO_TOKEN --manifest-path backends/conrod_piston/Cargo.toml
+    - name: wait for crates.io
+      run: sleep 5
+    - name: Cargo publish conrod_rendy
+      continue-on-error: true
+      run: cargo publish --token $CRATESIO_TOKEN --manifest-path backends/conrod_rendy/Cargo.toml
+    - name: wait for crates.io
+      run: sleep 5
+    - name: Cargo publish conrod_vulkano
+      continue-on-error: true
+      run: cargo publish --token $CRATESIO_TOKEN --manifest-path backends/conrod_vulkano/Cargo.toml
+    - name: wait for crates.io
+      run: sleep 5
+    - name: Cargo publish conrod_wgpu
+      continue-on-error: true
+      run: cargo publish --token $CRATESIO_TOKEN --manifest-path backends/conrod_wgpu/Cargo.toml

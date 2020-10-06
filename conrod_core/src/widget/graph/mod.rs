@@ -1,6 +1,5 @@
 //! A widget for viewing and controlling graph structures.
 
-use {color, widget, Color, Colorable, Point, Positionable, Scalar, Widget, Ui, UiCell};
 use std::any::{Any, TypeId};
 use std::cell::Cell;
 use std::collections::{HashMap, VecDeque};
@@ -9,6 +8,7 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex, Weak};
 use utils::{iter_diff, IterDiff};
+use {color, widget, Color, Colorable, Point, Positionable, Scalar, Ui, UiCell, Widget};
 
 pub use self::node::{Node, SocketLayout, SocketSide};
 
@@ -24,7 +24,7 @@ impl<T> NodeId for T where T: 'static + Copy + Clone + PartialEq + Eq + Hash + S
 ///
 /// All positions are relative to the centre of the `Graph` widget.
 ///
-/// Nodes can be moved by 
+/// Nodes can be moved by
 #[derive(Clone, Debug, PartialEq)]
 pub struct Layout<NI>
 where
@@ -58,7 +58,7 @@ pub struct Graph<'a, N, E>
 where
     N: Iterator,
     N::Item: NodeId,
-    E: Iterator<Item=(NodeSocket<N::Item>, NodeSocket<N::Item>)>,
+    E: Iterator<Item = (NodeSocket<N::Item>, NodeSocket<N::Item>)>,
 {
     /// Data necessary and common for all widget builder types.
     #[conrod(common_builder)]
@@ -189,12 +189,19 @@ where
     //
     // If there are no more `Id`s available for the type, a new one will be generated from the
     // given `widget::id::Generator`.
-    fn next_id_for_node<T>(&mut self, node_id: NI, generator: &mut widget::id::Generator) -> widget::Id
+    fn next_id_for_node<T>(
+        &mut self,
+        node_id: NI,
+        generator: &mut widget::id::Generator,
+    ) -> widget::Id
     where
         T: Any,
     {
         let type_id = TypeId::of::<T>();
-        let type_widget_ids = self.type_widget_ids.entry(type_id).or_insert_with(TypeWidgetIds::default);
+        let type_widget_ids = self
+            .type_widget_ids
+            .entry(type_id)
+            .or_insert_with(TypeWidgetIds::default);
         let widget_id = type_widget_ids.next_id(generator);
         self.node_widget_ids.insert(node_id, widget_id);
         widget_id
@@ -209,7 +216,10 @@ where
         T: Any,
     {
         let type_id = TypeId::of::<T>();
-        let type_widget_ids = self.type_widget_ids.entry(type_id).or_insert_with(TypeWidgetIds::default);
+        let type_widget_ids = self
+            .type_widget_ids
+            .entry(type_id)
+            .or_insert_with(TypeWidgetIds::default);
         let widget_id = type_widget_ids.next_id(generator);
         widget_id
     }
@@ -352,7 +362,7 @@ pub struct Nodes<'a, NI: 'a + NodeId> {
     lifetime: PhantomData<&'a NI>,
 }
 
-// Node data stored within the 
+// Node data stored within the
 #[derive(Copy, Clone)]
 struct NodeInner {
     point: Point,
@@ -401,7 +411,7 @@ pub struct Edges<'a, NI: 'a + NodeId> {
 
 /// A context for an edge yielded during the edge instantiation stage.
 ///
-/// Tyis type can 
+/// Tyis type can
 pub struct Edge<'a, NI: NodeId> {
     // The `widget::Id` of the `Edge`'s parent `Graph` widget.
     graph_id: widget::Id,
@@ -463,10 +473,17 @@ impl<NI> SessionEvents<NI>
 where
     NI: NodeId,
 {
-    /// All events that have occurred since the last 
+    /// All events that have occurred since the last
     pub fn events(&self) -> Events<NI> {
-        let shared = self.session.shared.upgrade().expect("failed to access `Shared` state");
-        Events { shared, lifetime: PhantomData }
+        let shared = self
+            .session
+            .shared
+            .upgrade()
+            .expect("failed to access `Shared` state");
+        Events {
+            shared,
+            lifetime: PhantomData,
+        }
     }
 
     /// Transition from the **SessionEvents** into **SessionNodes** for instantiating nodes.
@@ -482,7 +499,8 @@ where
 {
     type Item = Event<NI>;
     fn next(&mut self) -> Option<Self::Item> {
-        self.shared.lock()
+        self.shared
+            .lock()
             .ok()
             .and_then(|mut guard| guard.events.pop_front())
     }
@@ -495,8 +513,17 @@ where
     /// Produce an iterator yielding a `NodeContext` for each node present in the graph.
     pub fn nodes(&mut self) -> Nodes<NI> {
         let graph_id = self.session.graph_id;
-        let shared = self.session.shared.upgrade().expect("failed to access `Shared` state");
-        Nodes { index: 0, shared, graph_id, lifetime: PhantomData }
+        let shared = self
+            .session
+            .shared
+            .upgrade()
+            .expect("failed to access `Shared` state");
+        Nodes {
+            index: 0,
+            shared,
+            graph_id,
+            lifetime: PhantomData,
+        }
     }
 
     /// Transition from the **SessionNodes** into **SessionEdges** for instantiating edges.
@@ -514,21 +541,21 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let index = self.index;
         self.index += 1;
-        self.shared.lock()
+        self.shared
+            .lock()
             .ok()
             .and_then(|guard| {
-                guard.node_ids
+                guard
+                    .node_ids
                     .get(index)
                     .and_then(|&id| guard.nodes.get(&id).map(|&inner| (id, inner)))
             })
-            .map(|(node_id, NodeInner { point })| {
-                NodeContext {
-                    node_id,
-                    point,
-                    graph_id: self.graph_id,
-                    shared: self.shared.clone(),
-                    lifetime: PhantomData,
-                }
+            .map(|(node_id, NodeInner { point })| NodeContext {
+                node_id,
+                point,
+                graph_id: self.graph_id,
+                shared: self.shared.clone(),
+                lifetime: PhantomData,
             })
     }
 }
@@ -540,8 +567,17 @@ where
     /// Produce an iterator yielding an `Edge` for each node present in the graph.
     pub fn edges(&mut self) -> Edges<NI> {
         let graph_id = self.session.graph_id;
-        let shared = self.session.shared.upgrade().expect("failed to access `Shared` state");
-        Edges { index: 0, shared, graph_id, lifetime: PhantomData }
+        let shared = self
+            .session
+            .shared
+            .upgrade()
+            .expect("failed to access `Shared` state");
+        Edges {
+            index: 0,
+            shared,
+            graph_id,
+            lifetime: PhantomData,
+        }
     }
 }
 
@@ -553,19 +589,15 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let index = self.index;
         self.index += 1;
-        self.shared.lock()
-            .ok()
-            .and_then(|guard| {
-                guard.edges.get(index).map(|&(start, end)| {
-                    Edge {
-                        graph_id: self.graph_id,
-                        shared: self.shared.clone(),
-                        start: start,
-                        end: end,
-                        lifetime: PhantomData,
-                    }
-                })
+        self.shared.lock().ok().and_then(|guard| {
+            guard.edges.get(index).map(|&(start, end)| Edge {
+                graph_id: self.graph_id,
+                shared: self.shared.clone(),
+                start: start,
+                end: end,
+                lifetime: PhantomData,
             })
+        })
     }
 }
 
@@ -583,7 +615,7 @@ where
         self.point
     }
 
-    /// Specify the widget to use 
+    /// Specify the widget to use
     pub fn widget<W>(self, widget: W) -> NodeWidget<'a, NI, W> {
         NodeWidget {
             node: self,
@@ -605,11 +637,12 @@ where
             None => {
                 // Request a `widget::Id` from the `WidgetIdMap`.
                 let mut shared = self.node.shared.lock().unwrap();
-                let id = shared.widget_id_map
+                let id = shared
+                    .widget_id_map
                     .next_id_for_node::<W>(self.node_id, &mut ui.widget_id_generator());
                 self.widget_id.set(Some(id));
                 id
-            },
+            }
         }
     }
 
@@ -618,9 +651,17 @@ where
     where
         M: FnOnce(W) -> W,
     {
-        let NodeWidget { node, mut widget, widget_id } = self;
+        let NodeWidget {
+            node,
+            mut widget,
+            widget_id,
+        } = self;
         widget = map(widget);
-        NodeWidget { node, widget, widget_id }
+        NodeWidget {
+            node,
+            widget,
+            widget_id,
+        }
     }
 
     /// Set the given widget for the node at `node_id()`.
@@ -667,7 +708,7 @@ where
         (self.start, self.end)
     }
 
-    /// Specify the widget to use 
+    /// Specify the widget to use
     pub fn widget<W>(self, widget: W) -> EdgeWidget<'a, NI, W> {
         EdgeWidget {
             edge: self,
@@ -694,7 +735,11 @@ where
         .and_then(|container| container.state_and_style::<State<NI>, Style>())
         .and_then(|unique| {
             let shared = unique.state.shared.lock().unwrap();
-            shared.widget_id_map.node_widget_ids.get(&node_id).map(|&id| id)
+            shared
+                .widget_id_map
+                .node_widget_ids
+                .get(&node_id)
+                .map(|&id| id)
         })
 }
 
@@ -715,9 +760,20 @@ where
         .and_then(|container| container.state_and_style::<State<NI>, Style>())
         .map(|unique| {
             let shared = unique.state.shared.lock().unwrap();
-            let a = shared.widget_id_map.node_widget_ids.get(&edge.start.id).map(|&id| id);
-            let b = shared.widget_id_map.node_widget_ids.get(&edge.end.id).map(|&id| id);
-            (a.expect("no `widget::Id` for start node"), b.expect("no `widget::Id` for end node"))
+            let a = shared
+                .widget_id_map
+                .node_widget_ids
+                .get(&edge.start.id)
+                .map(|&id| id);
+            let b = shared
+                .widget_id_map
+                .node_widget_ids
+                .get(&edge.end.id)
+                .map(|&id| id);
+            (
+                a.expect("no `widget::Id` for start node"),
+                b.expect("no `widget::Id` for end node"),
+            )
         })
         .expect("no graph associated with edge's `graph_id` was found")
 }
@@ -734,10 +790,12 @@ where
             None => {
                 // Request a `widget::Id` from the `WidgetIdMap`.
                 let mut shared = self.edge.shared.lock().unwrap();
-                let id = shared.widget_id_map.next_id_for_edge::<W>(&mut ui.widget_id_generator());
+                let id = shared
+                    .widget_id_map
+                    .next_id_for_edge::<W>(&mut ui.widget_id_generator());
                 self.widget_id.set(Some(id));
                 id
-            },
+            }
         }
     }
 
@@ -746,18 +804,24 @@ where
     where
         M: FnOnce(W) -> W,
     {
-        let EdgeWidget { edge, mut widget, widget_id } = self;
+        let EdgeWidget {
+            edge,
+            mut widget,
+            widget_id,
+        } = self;
         widget = map(widget);
-        EdgeWidget { edge, widget, widget_id }
+        EdgeWidget {
+            edge,
+            widget,
+            widget_id,
+        }
     }
 
     /// Set the given widget for the edge.
     pub fn set(self, ui: &mut UiCell) -> W::Event {
         let widget_id = self.widget_id(ui);
         let EdgeWidget { edge, widget, .. } = self;
-        widget
-            .parent(edge.graph_id)
-            .set(widget_id, ui)
+        widget.parent(edge.graph_id).set(widget_id, ui)
     }
 }
 
@@ -765,13 +829,13 @@ impl<'a, N, E> Graph<'a, N, E>
 where
     N: Iterator,
     N::Item: NodeId,
-    E: Iterator<Item=(NodeSocket<N::Item>, NodeSocket<N::Item>)>,
+    E: Iterator<Item = (NodeSocket<N::Item>, NodeSocket<N::Item>)>,
 {
     /// Begin building a new **Graph** widget.
     pub fn new<NI, EI>(nodes: NI, edges: EI, layout: &'a Layout<NI::Item>) -> Self
     where
-        NI: IntoIterator<IntoIter=N, Item=N::Item>,
-        EI: IntoIterator<IntoIter=E, Item=(NodeSocket<N::Item>, NodeSocket<N::Item>)>,
+        NI: IntoIterator<IntoIter = N, Item = N::Item>,
+        EI: IntoIterator<IntoIter = E, Item = (NodeSocket<N::Item>, NodeSocket<N::Item>)>,
     {
         Graph {
             common: widget::CommonBuilder::default(),
@@ -793,7 +857,7 @@ impl<'a, N, E> Widget for Graph<'a, N, E>
 where
     N: Iterator,
     N::Item: NodeId,
-    E: Iterator<Item=(NodeSocket<N::Item>, NodeSocket<N::Item>)>,
+    E: Iterator<Item = (NodeSocket<N::Item>, NodeSocket<N::Item>)>,
 {
     type State = State<N::Item>;
     type Style = Style;
@@ -806,8 +870,17 @@ where
         let edges = Vec::new();
         let type_widget_ids = HashMap::new();
         let node_widget_ids = HashMap::new();
-        let widget_id_map = WidgetIdMap { type_widget_ids, node_widget_ids };
-        let shared = Shared { events, nodes, node_ids, edges, widget_id_map };
+        let widget_id_map = WidgetIdMap {
+            type_widget_ids,
+            node_widget_ids,
+        };
+        let shared = Shared {
+            events,
+            nodes,
+            node_ids,
+            edges,
+            widget_id_map,
+        };
         State {
             ids: Ids::new(id_gen),
             shared: Arc::new(Mutex::new(shared)),
@@ -819,8 +892,20 @@ where
     }
 
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
-        let Graph { nodes, edges, layout, .. } = self;
+        let widget::UpdateArgs {
+            id,
+            state,
+            style,
+            rect,
+            ui,
+            ..
+        } = args;
+        let Graph {
+            nodes,
+            edges,
+            layout,
+            ..
+        } = self;
         let mut shared = state.shared.lock().unwrap();
 
         // Reset the WidgetIdMap indices.
@@ -832,13 +917,13 @@ where
                 IterDiff::FirstMismatch(i, mismatch) => {
                     shared.node_ids.truncate(i);
                     shared.node_ids.extend(mismatch);
-                },
+                }
                 IterDiff::Longer(remaining) => {
                     shared.node_ids.extend(remaining);
-                },
+                }
                 IterDiff::Shorter(total) => {
                     shared.node_ids.truncate(total);
-                },
+                }
             },
             None => (),
         }
@@ -849,13 +934,13 @@ where
                 IterDiff::FirstMismatch(i, mismatch) => {
                     shared.edges.truncate(i);
                     shared.edges.extend(mismatch);
-                },
+                }
                 IterDiff::Longer(remaining) => {
                     shared.edges.extend(remaining);
-                },
+                }
                 IterDiff::Shorter(total) => {
                     shared.edges.truncate(total);
-                },
+                }
             },
             None => (),
         }
@@ -870,25 +955,37 @@ where
             let point = layout.map.get(&node_id).map(|&p| p).unwrap_or([0.0; 2]);
 
             // Check to see if this widget has been dragged since the last update.
-            let point = match shared.widget_id_map.node_widget_ids.get(&node_id).map(|&w| w) {
+            let point = match shared
+                .widget_id_map
+                .node_widget_ids
+                .get(&node_id)
+                .map(|&w| w)
+            {
                 None => point,
                 Some(widget_id) => {
-                    let (dragged_x, dragged_y) = ui.widget_input(widget_id)
+                    let (dragged_x, dragged_y) = ui
+                        .widget_input(widget_id)
                         .drags()
                         .left()
-                        .fold((0.0, 0.0), |(x, y), d| (x + d.delta_xy[0], y + d.delta_xy[1]));
+                        .fold((0.0, 0.0), |(x, y), d| {
+                            (x + d.delta_xy[0], y + d.delta_xy[1])
+                        });
 
                     // If dragging would not move the widget, we're done.
                     if dragged_x == 0.0 && dragged_y == 0.0 {
                         point
                     } else {
                         let to = [point[0] + dragged_x, point[1] + dragged_y];
-                        let node_event = NodeEvent::Dragged { node_id, from: point, to };
+                        let node_event = NodeEvent::Dragged {
+                            node_id,
+                            from: point,
+                            to,
+                        };
                         let event = Event::Node(node_event);
                         shared.events.push_back(event);
                         to
                     }
-                },
+                }
             };
 
             let node = NodeInner { point };

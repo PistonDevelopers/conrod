@@ -20,18 +20,20 @@ pub type Id = daggy::NodeIndex<u32>;
 ///
 /// `Generator` is used by the `widget_ids!` macro and the types and fields that it generates in
 /// order to generate unique `widget::Id`s for each of the generated fields.
-pub struct Generator<'a> { widget_graph: &'a mut Graph }
+pub struct Generator<'a> {
+    widget_graph: &'a mut Graph,
+}
 
 /// A list of lazily generated `widget::Id`s.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct List(Vec<Id>);
 /// An iterator-like type for producing indices from a `List`.
 #[allow(missing_copy_implementations)]
-pub struct ListWalk { i: usize }
-
+pub struct ListWalk {
+    i: usize,
+}
 
 impl<'a> Generator<'a> {
-
     /// Constructor for a new `widget::Id` generator.
     pub fn new(widget_graph: &'a mut Graph) -> Self {
         Generator {
@@ -50,12 +52,9 @@ impl<'a> Generator<'a> {
     pub fn next(&mut self) -> Id {
         self.widget_graph.add_placeholder()
     }
-
 }
 
-
 impl List {
-
     /// Construct a cache for multiple indices.
     pub fn new() -> Self {
         List(Vec::new())
@@ -79,7 +78,6 @@ impl List {
             self.0.pop();
         }
     }
-
 }
 
 impl std::ops::Deref for List {
@@ -90,7 +88,6 @@ impl std::ops::Deref for List {
 }
 
 impl ListWalk {
-
     /// Yield the next index, generating one if it does not yet exist.
     pub fn next(&mut self, &mut List(ref mut ids): &mut List, id_gen: &mut Generator) -> Id {
         while self.i >= ids.len() {
@@ -100,9 +97,7 @@ impl ListWalk {
         self.i += 1;
         ix
     }
-
 }
-
 
 /// A macro used to generate a struct with a field for each unique identifier given.
 /// Each field can then be used to generate unique `widget::Id`s.
@@ -146,7 +141,7 @@ impl ListWalk {
 ///
 /// ```ignore
 /// widget::Button::new().set(ids.button, ui);
-/// 
+///
 /// ids.toggles.resize(5, &mut ui.widget_id_generator());
 /// for &id in &ids.toggles {
 ///     widget::Toggle::new(true).set(id, ui);
@@ -355,7 +350,6 @@ macro_rules! widget_ids {
     };
 
 }
-
 
 #[test]
 fn test() {

@@ -1,9 +1,11 @@
-#[macro_use] extern crate conrod_core;
+#[macro_use]
+extern crate conrod_core;
 extern crate glium;
 
-extern crate find_folder;
 extern crate conrod_glium;
-#[macro_use] extern crate conrod_winit;
+extern crate find_folder;
+#[macro_use]
+extern crate conrod_winit;
 
 mod support;
 
@@ -78,7 +80,9 @@ fn main() {
 
                 let ui = &mut ui.set_widgets();
 
-                widget::Canvas::new().color(color::DARK_CHARCOAL).set(ids.canvas, ui);
+                widget::Canvas::new()
+                    .color(color::DARK_CHARCOAL)
+                    .set(ids.canvas, ui);
 
                 let min_x = 0.0;
                 let max_x = std::f64::consts::PI * 2.0;

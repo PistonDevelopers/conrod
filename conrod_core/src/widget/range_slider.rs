@@ -1,11 +1,11 @@
 //! A widget for specifying start and end values for some linear range.
 
-use {Color, Colorable, FontSize, Borderable, Labelable, Positionable, Widget};
 use num::Float;
 use position::{Padding, Range, Rect, Scalar};
 use text;
 use utils;
 use widget;
+use {Borderable, Color, Colorable, FontSize, Labelable, Positionable, Widget};
 
 /// Linear range selection.
 #[derive(WidgetCommon_)]
@@ -94,7 +94,6 @@ pub struct Event<T> {
     end: Option<T>,
 }
 
-
 impl<T> Iterator for Event<T> {
     type Item = (Edge, T);
     fn next(&mut self) -> Option<Self::Item> {
@@ -107,7 +106,6 @@ impl<T> Iterator for Event<T> {
         None
     }
 }
-
 
 impl<'a, T> RangeSlider<'a, T> {
     /// Construct a new RangeSlider widget.
@@ -177,8 +175,23 @@ where
 
     /// Update the state of the range slider.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { id, state, rect, style, ui, .. } = args;
-        let RangeSlider { start, end, min, max, maybe_label, skew, .. } = self;
+        let widget::UpdateArgs {
+            id,
+            state,
+            rect,
+            style,
+            ui,
+            ..
+        } = args;
+        let RangeSlider {
+            start,
+            end,
+            min,
+            max,
+            maybe_label,
+            skew,
+            ..
+        } = self;
 
         let border = style.border(ui.theme());
         let inner_rect = rect.pad(border);
@@ -211,7 +224,6 @@ where
             use input;
 
             match widget_event {
-
                 // - If over the range and within the range_end_grab_threshold, snap the end to
                 // the cursor.
                 // - Else if over the range, begin dragging the range.
@@ -225,7 +237,10 @@ where
                     if inner_rect.is_over(abs_press_xy) {
                         let start_x = value_to_x(new_start);
                         let end_x = value_to_x(new_end);
-                        let handle_rect = Rect { x: Range::new(start_x, end_x), y: inner_rect.y };
+                        let handle_rect = Rect {
+                            x: Range::new(start_x, end_x),
+                            y: inner_rect.y,
+                        };
                         let length_x = end_x - start_x;
                         let grab_edge_threshold = length_x / 10.0;
                         if handle_rect.is_over(abs_press_xy) {
@@ -263,21 +278,23 @@ where
                             }
                         }
                     }
-                },
+                }
 
                 // Drags either the Start, End or the whole handle depending on where it was pressed.
-                event::Widget::Drag(drag_event) if drag_event.button == input::MouseButton::Left => {
+                event::Widget::Drag(drag_event)
+                    if drag_event.button == input::MouseButton::Left =>
+                {
                     match maybe_drag {
                         Some(Drag::Edge(Edge::Start)) => {
                             let abs_drag_to = inner_rect.x() + drag_event.to[0];
                             let v = x_to_value(abs_drag_to);
                             new_start = utils::clamp(v, min, new_end);
-                        },
+                        }
                         Some(Drag::Edge(Edge::End)) => {
                             let abs_drag_to = inner_rect.x() + drag_event.to[0];
                             let v = x_to_value(abs_drag_to);
                             new_end = utils::clamp(v, new_start, max);
-                        },
+                        }
                         Some(Drag::Handle) => {
                             let drag_amt = drag_event.delta_xy[0];
                             let end_x = value_to_x(new_end);
@@ -291,32 +308,36 @@ where
                                 new_end = x_to_value(dragged_end);
                             } else {
                                 let min_x = inner_rect.left();
-                                let dragged_start = utils::clamp(start_x + drag_amt, min_x, start_x);
+                                let dragged_start =
+                                    utils::clamp(start_x + drag_amt, min_x, start_x);
                                 let distance_dragged = dragged_start - start_x;
                                 let dragged_end = end_x + distance_dragged;
                                 new_start = x_to_value(dragged_start);
                                 new_end = x_to_value(dragged_end);
                             }
-                        },
+                        }
                         None => (),
                     }
-                },
+                }
 
                 event::Widget::Release(release) => {
                     if let event::Button::Mouse(input::MouseButton::Left, _) = release.button {
                         maybe_drag = None;
                     }
-                },
+                }
 
                 _ => (),
             }
-
         }
 
         // If the value has just changed, or if the slider has been clicked/released, produce an
         // event.
         let event = Event {
-            start: if start != new_start { Some(new_start) } else { None },
+            start: if start != new_start {
+                Some(new_start)
+            } else {
+                None
+            },
             end: if end != new_end { Some(new_end) } else { None },
         };
 
@@ -325,14 +346,18 @@ where
         }
 
         // The **Rectangle** for the border.
-        let interaction_color = |ui: &::ui::UiCell, color: Color|
-            ui.widget_input(id).mouse()
-                .map(|mouse| if mouse.buttons.left().is_down() {
-                    color.clicked()
-                } else {
-                    color.highlighted()
+        let interaction_color = |ui: &::ui::UiCell, color: Color| {
+            ui.widget_input(id)
+                .mouse()
+                .map(|mouse| {
+                    if mouse.buttons.left().is_down() {
+                        color.clicked()
+                    } else {
+                        color.highlighted()
+                    }
                 })
-                .unwrap_or(color);
+                .unwrap_or(color)
+        };
 
         let border_color = interaction_color(&ui, style.border_color(ui.theme()));
         widget::Rectangle::fill(rect.dim())
@@ -353,7 +378,10 @@ where
             end_x = end_x.max(start_x + min_visible_len);
         }
 
-        let slider_rect = Rect { x: Range::new(start_x, end_x), y: inner_rect.y };
+        let slider_rect = Rect {
+            x: Range::new(start_x, end_x),
+            y: inner_rect.y,
+        };
         let color = interaction_color(&ui, style.color(ui.theme()));
         let slider_xy_offset = [slider_rect.x() - rect.x(), slider_rect.y() - rect.y()];
         widget::Rectangle::fill(slider_rect.dim())
@@ -380,23 +408,21 @@ where
 
         event
     }
-
 }
-
 
 impl<'a, T> Colorable for RangeSlider<'a, T> {
     builder_method!(color { style.color = Some(Color) });
 }
 
 impl<'a, T> Borderable for RangeSlider<'a, T> {
-    builder_methods!{
+    builder_methods! {
         border { style.border = Some(Scalar) }
         border_color { style.border_color = Some(Color) }
     }
 }
 
 impl<'a, T> Labelable<'a> for RangeSlider<'a, T> {
-    builder_methods!{
+    builder_methods! {
         label { maybe_label = Some(&'a str) }
         label_color { style.label_color = Some(Color) }
         label_font_size { style.label_font_size = Some(FontSize) }

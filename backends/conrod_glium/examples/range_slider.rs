@@ -1,8 +1,10 @@
 //! A simple example demonstrating the `RangeSlider` widget.
 
-#[macro_use] extern crate conrod_core;
+#[macro_use]
+extern crate conrod_core;
 extern crate conrod_glium;
-#[macro_use] extern crate conrod_winit;
+#[macro_use]
+extern crate conrod_winit;
 extern crate find_folder;
 extern crate glium;
 
@@ -35,7 +37,9 @@ fn main() {
     let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
-    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let assets = find_folder::Search::KidsThenParents(3, 5)
+        .for_folder("assets")
+        .unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
@@ -107,7 +111,9 @@ fn set_ui(
 ) {
     use conrod_core::{color, widget, Colorable, Positionable, Sizeable, Widget};
 
-    widget::Canvas::new().color(color::DARK_CHARCOAL).set(ids.canvas, ui);
+    widget::Canvas::new()
+        .color(color::DARK_CHARCOAL)
+        .set(ids.canvas, ui);
 
     const PAD: conrod_core::Scalar = 20.0;
     let (ref mut start, ref mut end) = *oval_range;
@@ -119,12 +125,12 @@ fn set_ui(
         .h(30.0)
         .mid_top_with_margin_on(ids.canvas, PAD)
         .set(ids.range_slider, ui)
-        {
-            match edge {
-                widget::range_slider::Edge::Start => *start = value,
-                widget::range_slider::Edge::End => *end = value,
-            }
+    {
+        match edge {
+            widget::range_slider::Edge::Start => *start = value,
+            widget::range_slider::Edge::End => *end = value,
         }
+    }
 
     let range_slider_w = ui.w_of(ids.range_slider).unwrap();
     let w = (*end - *start) * range_slider_w;

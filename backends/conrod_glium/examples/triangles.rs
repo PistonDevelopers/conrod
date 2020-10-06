@@ -2,16 +2,16 @@
 
 #[macro_use]
 extern crate conrod_core;
-extern crate glium;
 extern crate conrod_glium;
+extern crate glium;
 #[macro_use]
 extern crate conrod_winit;
 extern crate find_folder;
 
 mod support;
 
-use conrod_core::{color, widget, Widget};
 use conrod_core::widget::triangles::Triangle;
+use conrod_core::{color, widget, Widget};
 use glium::Surface;
 
 fn main() {
@@ -36,7 +36,9 @@ fn main() {
     let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
-    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let assets = find_folder::Search::KidsThenParents(3, 5)
+        .for_folder("assets")
+        .unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
@@ -83,7 +85,11 @@ fn main() {
                 let ui = &mut ui.set_widgets();
                 let rect = ui.rect_of(ui.window).unwrap();
                 let (l, r, b, t) = rect.l_r_b_t();
-                let (c1, c2, c3) = (color::RED.to_rgb(), color::GREEN.to_rgb(), color::BLUE.to_rgb());
+                let (c1, c2, c3) = (
+                    color::RED.to_rgb(),
+                    color::GREEN.to_rgb(),
+                    color::BLUE.to_rgb(),
+                );
 
                 let triangles = [
                     Triangle([([l, b], c1), ([l, t], c2), ([r, t], c3)]),

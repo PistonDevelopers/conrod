@@ -8,7 +8,10 @@ pub fn impl_widget_common(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
     let ident = &ast.ident;
     let common_field = common_builder_field(ast).unwrap();
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
-    let dummy_const = syn::Ident::new(&format!("_IMPL_WIDGET_COMMON_FOR_{}", ident), proc_macro2::Span::call_site());
+    let dummy_const = syn::Ident::new(
+        &format!("_IMPL_WIDGET_COMMON_FOR_{}", ident),
+        proc_macro2::Span::call_site(),
+    );
 
     let impl_item = quote! {
         impl #impl_generics _conrod::widget::Common for #ident #ty_generics #where_clause {
@@ -37,7 +40,10 @@ pub fn impl_widget_common_(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
     let ident = &ast.ident;
     let common_field = common_builder_field(ast).unwrap();
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
-    let dummy_const = syn::Ident::new(&format!("_IMPL_WIDGET_COMMON_FOR_{}", ident), proc_macro2::Span::call_site());
+    let dummy_const = syn::Ident::new(
+        &format!("_IMPL_WIDGET_COMMON_FOR_{}", ident),
+        proc_macro2::Span::call_site(),
+    );
 
     let impl_item = quote! {
         impl #impl_generics ::widget::Common for #ident #ty_generics #where_clause {
@@ -58,10 +64,8 @@ pub fn impl_widget_common_(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
     }
 }
 
-
 // Find the name of the struct and the field with the `CommonBuilder` attribute.
 fn common_builder_field(ast: &syn::DeriveInput) -> Result<&syn::Ident, Error> {
-
     // Ensure we are deriving for a struct.
     let body = match ast.data {
         syn::Data::Struct(ref body) => body,
@@ -69,8 +73,8 @@ fn common_builder_field(ast: &syn::DeriveInput) -> Result<&syn::Ident, Error> {
     };
 
     // We can only derive `WidgetCommon` for structs with fields.
-     match body.fields {
-        syn::Fields::Named(_) => {},
+    match body.fields {
+        syn::Fields::Named(_) => {}
         syn::Fields::Unnamed(_) => return Err(Error::TupleStruct),
         syn::Fields::Unit => return Err(Error::UnitStruct),
     };
@@ -83,7 +87,7 @@ fn common_builder_field(ast: &syn::DeriveInput) -> Result<&syn::Ident, Error> {
         // First, search for the attribute.
         for attr in &field.attrs {
             if let Ok(_meta) = attr.parse_meta() {
-                let mut is_conrod=false;
+                let mut is_conrod = false;
                 let mut has_common_builder = false;
                 if let syn::Meta::List(_metalist) = _meta {
                     if _metalist.path.is_ident("conrod") {
@@ -92,7 +96,10 @@ fn common_builder_field(ast: &syn::DeriveInput) -> Result<&syn::Ident, Error> {
 
                     has_common_builder = _metalist.nested.iter().any(|v| match *v {
                         syn::NestedMeta::Meta(syn::Meta::Path(ref p))
-                            if p.is_ident("common_builder") => true,
+                            if p.is_ident("common_builder") =>
+                        {
+                            true
+                        }
                         _ => false,
                     });
                 }
@@ -119,7 +126,6 @@ fn common_builder_field(ast: &syn::DeriveInput) -> Result<&syn::Ident, Error> {
     Ok(common_field)
 }
 
-
 // Errors that might be returned from `name_and_common_builder_field`.
 #[derive(Debug)]
 enum Error {
@@ -136,20 +142,20 @@ impl std::error::Error for Error {}
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let s = match *self {
-            Error::NotStruct =>
-                "#[derive(WidgetCommon)] is only defined for structs",
-            Error::TupleStruct =>
-                "#[derive(WidgetCommon)] is not defined for tuple structs",
-            Error::UnitStruct =>
-                "#[derive(WidgetCommon)] is not defined for unit structs",
-            Error::MultipleCommonBuilderFields =>
-                "Found multiple #[conrod(common_builder)] attributes when only one is required",
-            Error::UnnamedCommonBuilderField =>
-                "Cannot use #[conrod(common_builder)] attribute on unnamed fields",
-            Error::NoCommonBuilderField =>
+            Error::NotStruct => "#[derive(WidgetCommon)] is only defined for structs",
+            Error::TupleStruct => "#[derive(WidgetCommon)] is not defined for tuple structs",
+            Error::UnitStruct => "#[derive(WidgetCommon)] is not defined for unit structs",
+            Error::MultipleCommonBuilderFields => {
+                "Found multiple #[conrod(common_builder)] attributes when only one is required"
+            }
+            Error::UnnamedCommonBuilderField => {
+                "Cannot use #[conrod(common_builder)] attribute on unnamed fields"
+            }
+            Error::NoCommonBuilderField => {
                 "`#[derive(WidgetCommon)]` requires a struct with one field of type \
                  `conrod::widget::CommonBuilder` that has the `#[conrod(common_builder)]` \
-                 attribute",
+                 attribute"
+            }
         };
         write!(f, "{}", s)
     }

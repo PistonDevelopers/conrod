@@ -1,7 +1,8 @@
 extern crate proc_macro;
 
 extern crate proc_macro2;
-#[macro_use] extern crate quote;
+#[macro_use]
+extern crate quote;
 extern crate syn;
 
 mod common;
@@ -44,11 +45,10 @@ pub fn widget_style_(input: TokenStream) -> TokenStream {
 fn impl_derive(
     input: TokenStream,
     generate_derive: fn(&syn::DeriveInput) -> proc_macro2::TokenStream,
-) -> TokenStream
-{
+) -> TokenStream {
     // Parse the input TokenStream representation.
     let ast = syn::parse(input).unwrap();
-    
+
     // Build the implementation.
     let gen = generate_derive(&ast);
     // Return the generated impl.

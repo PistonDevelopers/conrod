@@ -1,10 +1,10 @@
 //! A wrapper around the `List` widget providing the ability to select one or more items.
 
-use {Color, Positionable, Scalar, Sizeable, Ui, Widget};
-use {event, graph, input, widget};
-use std;
 use input::keyboard::ModifierKey;
 use input::state::mouse::Button;
+use std;
+use {event, graph, input, widget};
+use {Color, Positionable, Scalar, Sizeable, Ui, Widget};
 
 /// A wrapper around the `List` widget that handles single and multiple selection logic.
 #[derive(Clone, WidgetCommon_)]
@@ -46,25 +46,29 @@ pub trait Mode {
     type Selection;
 
     /// Update the `PendingEvents` in accordance with the given `Click` event.
-    fn click_selection<F, D, S>(&self,
-                                event::Click,
-                                i: usize,
-                                num_items: usize,
-                                &State,
-                                is_selected: F,
-                                &mut PendingEvents<Self::Selection, D, S>)
-        where F: Fn(usize) -> bool;
+    fn click_selection<F, D, S>(
+        &self,
+        event::Click,
+        i: usize,
+        num_items: usize,
+        &State,
+        is_selected: F,
+        &mut PendingEvents<Self::Selection, D, S>,
+    ) where
+        F: Fn(usize) -> bool;
 
     /// Update the `PendingEvents` in accordance with the given `KeyPress` event.
-    fn key_selection<F, D, S>(&self,
-                              event::KeyPress,
-                              i: usize,
-                              num_items: usize,
-                              &State,
-                              is_selected: F,
-                              &mut PendingEvents<Self::Selection, D, S>)
-        where F: Fn(usize) -> bool,
-              D: Direction;
+    fn key_selection<F, D, S>(
+        &self,
+        event::KeyPress,
+        i: usize,
+        num_items: usize,
+        &State,
+        is_selected: F,
+        &mut PendingEvents<Self::Selection, D, S>,
+    ) where
+        F: Fn(usize) -> bool,
+        D: Direction;
 }
 
 widget_ids! {
@@ -86,7 +90,8 @@ pub type PendingEvents<Selection, D, S> = std::collections::VecDeque<Event<Selec
 
 /// An iterator-like type for yielding `ListSelect` `Event`s.
 pub struct Events<M, D, S>
-    where M: Mode,
+where
+    M: Mode,
 {
     id: widget::Id,
     items: widget::list::Items<D, S>,
@@ -130,47 +135,48 @@ pub enum Selection<H: std::hash::BuildHasher = std::collections::hash_map::Rando
     Remove(std::collections::HashSet<usize, H>),
 }
 
-
 impl<H: std::hash::BuildHasher> Selection<H> {
-
     /// Update the given slice of `bool`s with this `Selection`.
     ///
     /// Each index in the `Selection` represents and index into the slice.
     pub fn update_bool_slice(&self, slice: &mut [bool]) {
         match *self {
-            Selection::Add(ref indices) =>
+            Selection::Add(ref indices) => {
                 for &i in indices {
                     if let Some(b) = slice.get_mut(i) {
                         *b = true;
                     }
-                },
-            Selection::Remove(ref indices) =>
+                }
+            }
+            Selection::Remove(ref indices) => {
                 for &i in indices {
                     if let Some(b) = slice.get_mut(i) {
                         *b = false;
                     }
-                },
+                }
+            }
         }
     }
 
     /// Update the given set of selected indices with this `Selection`.
     pub fn update_index_set<T>(&self, set: &mut std::collections::HashSet<usize, T>)
-        where T: std::hash::BuildHasher
+    where
+        T: std::hash::BuildHasher,
     {
         match *self {
-            Selection::Add(ref indices) =>
+            Selection::Add(ref indices) => {
                 for &i in indices {
                     set.insert(i);
-                },
-            Selection::Remove(ref indices) =>
+                }
+            }
+            Selection::Remove(ref indices) => {
                 for &i in indices {
                     set.remove(&i);
-                },
+                }
+            }
         }
     }
-
 }
-
 
 impl ListSelect<Single, widget::list::Down, widget::list::Dynamic> {
     /// Construct a new ListSelect, allowing one selected item at a time.
@@ -187,14 +193,22 @@ impl ListSelect<Multiple, widget::list::Down, widget::list::Dynamic> {
 }
 
 impl<M, D, S> ListSelect<M, D, S>
-    where M: Mode,
-          D: Direction,
-          S: widget::list::ItemSize,
+where
+    M: Mode,
+    D: Direction,
+    S: widget::list::ItemSize,
 {
-
     /// Flows items from top to bottom.
     pub fn flow_down(self) -> ListSelect<M, widget::list::Down, S> {
-        let ListSelect { common, num_items, mode, item_size, style, item_instantiation, .. } = self;
+        let ListSelect {
+            common,
+            num_items,
+            mode,
+            item_size,
+            style,
+            item_instantiation,
+            ..
+        } = self;
         ListSelect {
             common: common,
             num_items: num_items,
@@ -208,7 +222,15 @@ impl<M, D, S> ListSelect<M, D, S>
 
     /// Flows items from left to right.
     pub fn flow_right(self) -> ListSelect<M, widget::list::Right, S> {
-        let ListSelect { common, num_items, mode, item_size, style, item_instantiation, .. } = self;
+        let ListSelect {
+            common,
+            num_items,
+            mode,
+            item_size,
+            style,
+            item_instantiation,
+            ..
+        } = self;
         ListSelect {
             common: common,
             num_items: num_items,
@@ -222,7 +244,15 @@ impl<M, D, S> ListSelect<M, D, S>
 
     /// Flows items from right to left.
     pub fn flow_left(self) -> ListSelect<M, widget::list::Left, S> {
-        let ListSelect { common, num_items, mode, item_size, style, item_instantiation, .. } = self;
+        let ListSelect {
+            common,
+            num_items,
+            mode,
+            item_size,
+            style,
+            item_instantiation,
+            ..
+        } = self;
         ListSelect {
             common: common,
             num_items: num_items,
@@ -236,7 +266,15 @@ impl<M, D, S> ListSelect<M, D, S>
 
     /// Flows items from bottom to top.
     pub fn flow_up(self) -> ListSelect<M, widget::list::Up, S> {
-        let ListSelect { common, num_items, mode, item_size, style, item_instantiation, .. } = self;
+        let ListSelect {
+            common,
+            num_items,
+            mode,
+            item_size,
+            style,
+            item_instantiation,
+            ..
+        } = self;
         ListSelect {
             common: common,
             num_items: num_items,
@@ -252,7 +290,14 @@ impl<M, D, S> ListSelect<M, D, S>
     /// flowing. When a `List` is constructed with this method, all items will have a fixed, equal
     /// length.
     pub fn item_size(self, length: Scalar) -> ListSelect<M, D, widget::list::Fixed> {
-        let ListSelect { common, num_items, mode, direction, style, .. } = self;
+        let ListSelect {
+            common,
+            num_items,
+            mode,
+            direction,
+            style,
+            ..
+        } = self;
         ListSelect {
             common: common,
             num_items: num_items,
@@ -271,7 +316,8 @@ impl<M> ListSelect<M, widget::list::Down, widget::list::Dynamic> {
     /// This method is only useful when using a custom `Mode`, otherwise `ListSelect::single` or
     /// `ListSelect::multiple` will probably be more suitable.
     pub fn new(num_items: usize, mode: M) -> Self
-        where M: Mode,
+    where
+        M: Mode,
     {
         ListSelect {
             common: widget::CommonBuilder::default(),
@@ -286,7 +332,6 @@ impl<M> ListSelect<M, widget::list::Down, widget::list::Dynamic> {
 }
 
 impl<M, D, S> ListSelect<M, D, S> {
-
     /// Specifies that the `List` should be scrollable and should provide a `Scrollbar` to the
     /// right of the items.
     pub fn scrollbar_next_to(mut self) -> Self {
@@ -312,11 +357,9 @@ impl<M, D, S> ListSelect<M, D, S> {
         self.style.scrollbar_color = Some(color);
         self
     }
-
 }
 
 impl<M, D> ListSelect<M, D, widget::list::Fixed> {
-
     /// Indicates that an `Item` should be instatiated for every element in the list, regardless of
     /// whether or not the `Item` would be visible.
     ///
@@ -341,13 +384,13 @@ impl<M, D> ListSelect<M, D, widget::list::Fixed> {
         self.item_instantiation = widget::list::ItemInstantiation::OnlyVisible;
         self
     }
-
 }
 
 impl<M, D, S> Widget for ListSelect<M, D, S>
-    where M: Mode,
-          D: Direction,
-          S: widget::list::ItemSize,
+where
+    M: Mode,
+    D: Direction,
+    S: widget::list::ItemSize,
 {
     type State = State;
     type Style = widget::list::Style;
@@ -366,8 +409,20 @@ impl<M, D, S> Widget for ListSelect<M, D, S>
 
     /// Update the state of the ListSelect.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { id, state, style, ui, .. } = args;
-        let ListSelect { num_items, item_size, item_instantiation, mode, .. } = self;
+        let widget::UpdateArgs {
+            id,
+            state,
+            style,
+            ui,
+            ..
+        } = args;
+        let ListSelect {
+            num_items,
+            item_size,
+            item_instantiation,
+            mode,
+            ..
+        } = self;
 
         // Make sure that `last_selected_entry` refers to an actual selected value in the list.
         // If not push first selected item, if any.
@@ -376,7 +431,6 @@ impl<M, D, S> Widget for ListSelect<M, D, S>
                 state.update(|state| state.last_selected_entry.set(None));
             }
         }
-
 
         let mut list = widget::List::<D, _>::from_item_size(num_items, item_size);
 
@@ -404,14 +458,15 @@ impl<M, D, S> Widget for ListSelect<M, D, S>
 }
 
 impl<M, D, S> Events<M, D, S>
-    where M: Mode,
-          D: Direction,
-          S: widget::list::ItemSize,
+where
+    M: Mode,
+    D: Direction,
+    S: widget::list::ItemSize,
 {
-
     /// Yield the next `Event`.
     pub fn next<F>(&mut self, ui: &Ui, is_selected: F) -> Option<Event<M::Selection, D, S>>
-        where F: Fn(usize) -> bool,
+    where
+        F: Fn(usize) -> bool,
     {
         let Events {
             id,
@@ -455,13 +510,12 @@ impl<M, D, S> Events<M, D, S>
         // Check for any events that may have occurred to this widget.
         for widget_event in ui.widget_input(item.widget_id).events() {
             match widget_event {
-
                 // Produce a `DoubleClick` event.
                 event::Widget::DoubleClick(click) => {
                     if let input::MouseButton::Left = click.button {
                         pending_events.push_back(Event::DoubleClick(click));
                     }
-                },
+                }
 
                 // Check if the entry has been `Click`ed.
                 event::Widget::Click(click) => {
@@ -469,9 +523,8 @@ impl<M, D, S> Events<M, D, S>
 
                     let state = state();
                     ensure_last_selected_validity(state);
-                    mode.click_selection(click, i, num_items, state,
-                                         &is_selected, pending_events);
-                },
+                    mode.click_selection(click, i, num_items, state, &is_selected, pending_events);
+                }
 
                 // Check for whether or not the item should be selected.
                 event::Widget::Press(press) => {
@@ -480,28 +533,40 @@ impl<M, D, S> Events<M, D, S>
                     if let Some(key_press) = press.key() {
                         let state = state();
                         ensure_last_selected_validity(state);
-                        mode.key_selection(key_press, i, num_items, state,
-                                           &is_selected, pending_events);
+                        mode.key_selection(
+                            key_press,
+                            i,
+                            num_items,
+                            state,
+                            &is_selected,
+                            pending_events,
+                        );
                     }
-                },
-                
+                }
+
                 event::Widget::Tap(_) => {
-                    let dummy_click=event::Click{
-                        button:Button::Left,
-                        xy:[200.0,123.0],
-                        modifiers:ModifierKey::NO_MODIFIER
+                    let dummy_click = event::Click {
+                        button: Button::Left,
+                        xy: [200.0, 123.0],
+                        modifiers: ModifierKey::NO_MODIFIER,
                     };
                     pending_events.push_back(Event::Click(dummy_click.clone()));
                     let state = state();
                     ensure_last_selected_validity(state);
-                    mode.click_selection(dummy_click, i, num_items, state,
-                                         &is_selected, pending_events);
-                },
+                    mode.click_selection(
+                        dummy_click,
+                        i,
+                        num_items,
+                        state,
+                        &is_selected,
+                        pending_events,
+                    );
+                }
                 // Produce a `Release` event.
                 event::Widget::Release(release) => {
                     let event = Event::Release(release);
                     pending_events.push_back(event);
-                },
+                }
 
                 _ => (),
             }
@@ -514,39 +579,42 @@ impl<M, D, S> Events<M, D, S>
             Some(event) => {
                 pending_events.push_back(item_event);
                 Some(event)
-            },
+            }
             None => Some(item_event),
         }
     }
-
 }
 
 impl Mode for Single {
     type Selection = usize;
 
-    fn click_selection<F, D, S>(&self,
-                                _: event::Click,
-                                i: usize,
-                                _num_items: usize,
-                                state: &State,
-                                _is_selected: F,
-                                pending: &mut PendingEvents<Self::Selection, D, S>)
-        where F: Fn(usize) -> bool,
+    fn click_selection<F, D, S>(
+        &self,
+        _: event::Click,
+        i: usize,
+        _num_items: usize,
+        state: &State,
+        _is_selected: F,
+        pending: &mut PendingEvents<Self::Selection, D, S>,
+    ) where
+        F: Fn(usize) -> bool,
     {
         state.last_selected_entry.set(Some(i));
         let event = Event::Selection(i);
         pending.push_back(event);
     }
 
-    fn key_selection<F, D, S>(&self,
-                              press: event::KeyPress,
-                              _i: usize,
-                              num_items: usize,
-                              state: &State,
-                              _is_selected: F,
-                              pending: &mut PendingEvents<Self::Selection, D, S>)
-        where F: Fn(usize) -> bool,
-              D: Direction,
+    fn key_selection<F, D, S>(
+        &self,
+        press: event::KeyPress,
+        _i: usize,
+        num_items: usize,
+        state: &State,
+        _is_selected: F,
+        pending: &mut PendingEvents<Self::Selection, D, S>,
+    ) where
+        F: Fn(usize) -> bool,
+        D: Direction,
     {
         let i = match state.last_selected_entry.get() {
             Some(i) => i,
@@ -554,7 +622,13 @@ impl Mode for Single {
         };
 
         let selection = match D::key_direction(press.key) {
-            Some(ListDirection::Backward) => if i == 0 { 0 } else { i - 1 },
+            Some(ListDirection::Backward) => {
+                if i == 0 {
+                    0
+                } else {
+                    i - 1
+                }
+            }
             Some(ListDirection::Forward) => std::cmp::min(i + 1, num_items - 1),
             None => return,
         };
@@ -563,27 +637,29 @@ impl Mode for Single {
         let event = Event::Selection(selection);
         pending.push_back(event);
     }
-
 }
 
 impl Mode for Multiple {
     type Selection = Selection;
 
-    fn click_selection<F, D, S>(&self,
-                                click: event::Click,
-                                i: usize,
-                                num_items: usize,
-                                state: &State,
-                                is_selected: F,
-                                pending: &mut PendingEvents<Self::Selection, D, S>)
-        where F: Fn(usize) -> bool,
+    fn click_selection<F, D, S>(
+        &self,
+        click: event::Click,
+        i: usize,
+        num_items: usize,
+        state: &State,
+        is_selected: F,
+        pending: &mut PendingEvents<Self::Selection, D, S>,
+    ) where
+        F: Fn(usize) -> bool,
     {
-        let shift = click.modifiers.contains(input::keyboard::ModifierKey::SHIFT);
+        let shift = click
+            .modifiers
+            .contains(input::keyboard::ModifierKey::SHIFT);
         let alt = click.modifiers.contains(input::keyboard::ModifierKey::ALT)
-               || click.modifiers.contains(input::keyboard::ModifierKey::CTRL);
+            || click.modifiers.contains(input::keyboard::ModifierKey::CTRL);
 
         let event = match state.last_selected_entry.get() {
-
             Some(idx) if shift => {
                 let start = std::cmp::min(idx, i);
                 let end = std::cmp::max(idx, i);
@@ -591,7 +667,7 @@ impl Mode for Multiple {
                 state.last_selected_entry.set(Some(i));
                 let selection = (start..end + 1).collect();
                 Event::Selection(Selection::Add(selection))
-            },
+            }
 
             Some(_) | None if alt => {
                 let selection = std::iter::once(i).collect();
@@ -601,7 +677,7 @@ impl Mode for Multiple {
                 } else {
                     Event::Selection(Selection::Remove(selection))
                 }
-            },
+            }
 
             _ => {
                 let old_selection = (0..num_items).filter(|&i| is_selected(i)).collect();
@@ -610,22 +686,23 @@ impl Mode for Multiple {
                 let selection = std::iter::once(i).collect();
                 state.last_selected_entry.set(Some(i));
                 Event::Selection(Selection::Add(selection))
-            },
-
+            }
         };
 
         pending.push_back(event);
     }
 
-    fn key_selection<F, D, S>(&self,
-                              press: event::KeyPress,
-                              _i: usize,
-                              num_items: usize,
-                              state: &State,
-                              is_selected: F,
-                              pending: &mut PendingEvents<Self::Selection, D, S>)
-        where F: Fn(usize) -> bool,
-              D: Direction,
+    fn key_selection<F, D, S>(
+        &self,
+        press: event::KeyPress,
+        _i: usize,
+        num_items: usize,
+        state: &State,
+        is_selected: F,
+        pending: &mut PendingEvents<Self::Selection, D, S>,
+    ) where
+        F: Fn(usize) -> bool,
+        D: Direction,
     {
         let i = match state.last_selected_entry.get() {
             Some(i) => i,
@@ -635,18 +712,30 @@ impl Mode for Multiple {
         let alt = press.modifiers.contains(input::keyboard::ModifierKey::ALT);
 
         let end = match D::key_direction(press.key) {
-            Some(ListDirection::Backward) =>
-                if i == 0 || alt { 0 } else { i - 1 },
+            Some(ListDirection::Backward) => {
+                if i == 0 || alt {
+                    0
+                } else {
+                    i - 1
+                }
+            }
             Some(ListDirection::Forward) => {
                 let last_idx = num_items - 1;
-                if i >= last_idx || alt { last_idx } else { i + 1 }
-            },
+                if i >= last_idx || alt {
+                    last_idx
+                } else {
+                    i + 1
+                }
+            }
             None => return,
         };
 
         state.last_selected_entry.set(Some(end));
 
-        let selection = if press.modifiers.contains(input::keyboard::ModifierKey::SHIFT) {
+        let selection = if press
+            .modifiers
+            .contains(input::keyboard::ModifierKey::SHIFT)
+        {
             let start = std::cmp::min(i, end);
             let end = std::cmp::max(i, end) + 1;
             (start..end).collect()
@@ -660,7 +749,6 @@ impl Mode for Multiple {
         let event = Event::Selection(Selection::Add(selection));
         pending.push_back(event);
     }
-
 }
 
 impl Direction for widget::list::Down {

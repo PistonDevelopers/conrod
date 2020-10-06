@@ -173,7 +173,7 @@ macro_rules! builder_methods {
         $crate::builder_method!($fn_name { $($assignee).+ = Some($Type) });
         builder_methods!($($rest)*);
     };
-    
+
     (pub $fn_name:ident { $($assignee:ident).+ = $Type:ty } $($rest:tt)*) => {
         $crate::builder_method!(pub $fn_name { $($assignee).+ = $Type });
         builder_methods!($($rest)*);

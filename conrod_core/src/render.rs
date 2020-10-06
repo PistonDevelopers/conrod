@@ -8,8 +8,6 @@
 //!
 //! This is the only module in which the src graphics crate will be used directly.
 
-
-use {Color, FontSize, Point, Rect, Scalar};
 use color;
 use graph::{self, Graph};
 use image;
@@ -17,9 +15,9 @@ use position::{Align, Dimensions};
 use std;
 use text;
 use theme::Theme;
-use widget::{self, Widget};
 use widget::triangles::{ColoredPoint, Triangle};
-
+use widget::{self, Widget};
+use {Color, FontSize, Point, Rect, Scalar};
 
 /// An iterator-like type that yields a reference to each primitive in order of depth for
 /// rendering.
@@ -57,7 +55,6 @@ pub struct OwnedPrimitives {
     texts_string: String,
 }
 
-
 /// A trait that allows the user to remain generic over types yielding `Primitive`s.
 ///
 /// This trait is implemented for both the `Primitives` and `WalkOwnedPrimitives` types.
@@ -78,7 +75,6 @@ impl<'a> PrimitiveWalker for WalkOwnedPrimitives<'a> {
     }
 }
 
-
 /// Data required for rendering a single primitive widget.
 pub struct Primitive<'a> {
     /// The id of the widget within the widget graph.
@@ -95,15 +91,14 @@ pub struct Primitive<'a> {
 
 /// The unique kind for each primitive element in the Ui.
 pub enum PrimitiveKind<'a> {
-
     /// A filled `Rectangle`.
     ///
     /// These are produced by the `Rectangle` and `BorderedRectangle` primitive widgets. A `Filled`
     /// `Rectangle` widget produces a single `Rectangle`. The `BorderedRectangle` produces two
     /// `Rectangle`s, the first for the outer border and the second for the inner on top.
     Rectangle {
-        /// The fill colour for the rectangle. 
-        color: Color
+        /// The fill colour for the rectangle.
+        color: Color,
     },
 
     /// A series of consecutive `Triangles` that are all the same color.
@@ -111,7 +106,7 @@ pub enum PrimitiveKind<'a> {
         /// The color of all triangles.
         color: color::Rgba,
         /// An ordered slice of triangles.
-        triangles: &'a [Triangle<Point>]
+        triangles: &'a [Triangle<Point>],
     },
 
     /// A series of consecutive `Triangles` with unique colors per vertex.
@@ -119,7 +114,7 @@ pub enum PrimitiveKind<'a> {
     /// This variant is produced by the general purpose `Triangles` primitive widget.
     TrianglesMultiColor {
         /// An ordered slice of multicolored triangles.
-        triangles: &'a [Triangle<ColoredPoint>]
+        triangles: &'a [Triangle<ColoredPoint>],
     },
 
     /// A single `Image`, produced by the primitive `Image` widget.
@@ -155,7 +150,6 @@ pub enum PrimitiveKind<'a> {
     /// They can then retrieve the unique state of the widget and cast it to its actual type using
     /// either of the `Container::state_and_style` or `Container::unique_widget_state` methods.
     Other(&'a graph::Container),
-
 }
 
 /// A type used for producing a `PositionedGlyph` iterator.
@@ -174,7 +168,6 @@ pub struct Text<'a> {
     y_align: Align,
     line_spacing: Scalar,
 }
-
 
 #[derive(Clone)]
 struct OwnedPrimitive {
@@ -231,9 +224,7 @@ pub struct WalkOwnedPrimitives<'a> {
     positioned_glyphs: Vec<text::PositionedGlyph>,
 }
 
-
 impl<'a> Text<'a> {
-
     /// Produces a list of `PositionedGlyph`s which may be used to cache and render the text.
     ///
     /// `dpi_factor`, aka "dots per inch factor" is a multiplier representing the density of
@@ -266,33 +257,34 @@ impl<'a> Text<'a> {
         // Produce the text layout iterators.
         let line_infos = line_infos.iter().cloned();
         let lines = line_infos.clone().map(|info| &text[info.byte_range()]);
-        let line_rects = text::line::rects(line_infos, font_size, rect,
-                                           justify, y_align, line_spacing);
+        let line_rects =
+            text::line::rects(line_infos, font_size, rect, justify, y_align, line_spacing);
 
         // Clear the existing glyphs and fill the buffer with glyphs for this Text.
         positioned_glyphs.clear();
         let scale = text::f32_pt_to_scale(font_size as f32 * dpi_factor);
         for (line, line_rect) in lines.zip(line_rects) {
-            let (x, y) = (trans_x(line_rect.left()) as f32, trans_y(line_rect.bottom()) as f32);
+            let (x, y) = (
+                trans_x(line_rect.left()) as f32,
+                trans_y(line_rect.bottom()) as f32,
+            );
             let point = text::rt::Point { x: x, y: y };
             positioned_glyphs.extend(font.layout(line, scale, point).map(|g| g.standalone()));
         }
 
         positioned_glyphs
     }
-
 }
 
-
 impl<'a> Primitives<'a> {
-
     /// Constructor for the `Primitives` iterator.
-    pub fn new(graph: &'a Graph,
-               depth_order: &'a [widget::Id],
-               theme: &'a Theme,
-               fonts: &'a text::font::Map,
-               window_dim: Dimensions) -> Self
-    {
+    pub fn new(
+        graph: &'a Graph,
+        depth_order: &'a [widget::Id],
+        theme: &'a Theme,
+        fonts: &'a text::font::Map,
+        window_dim: Dimensions,
+    ) -> Self {
         Primitives {
             crop_stack: Vec::new(),
             depth_order: depth_order.iter(),
@@ -320,7 +312,7 @@ impl<'a> Primitives<'a> {
 
         while let Some(widget) = next_widget(depth_order, graph, crop_stack, window_rect) {
             use widget::primitive::point_path::{State as PointPathState, Style as PointPathStyle};
-            use widget::primitive::shape::polygon::{State as PolygonState};
+            use widget::primitive::shape::polygon::State as PolygonState;
             use widget::primitive::shape::Style as ShapeStyle;
 
             type TrianglesSingleColorState =
@@ -332,7 +324,8 @@ impl<'a> Primitives<'a> {
             let rect = container.rect;
 
             fn state_type_id<W>() -> std::any::TypeId
-                where W: Widget,
+            where
+                W: Widget,
             {
                 std::any::TypeId::of::<W::State>()
             }
@@ -346,39 +339,37 @@ impl<'a> Primitives<'a> {
                         ShapeStyle::Fill(_) => {
                             let kind = PrimitiveKind::Rectangle { color: color };
                             return Some(new_primitive(id, kind, scizzor, rect));
-                        },
+                        }
                         ShapeStyle::Outline(ref line_style) => {
                             let (l, r, b, t) = rect.l_r_b_t();
-                            let array = [
-                                [l, b],
-                                [l, t],
-                                [r, t],
-                                [r, b],
-                                [l, b],
-                            ];
+                            let array = [[l, b], [l, t], [r, t], [r, b], [l, b]];
                             let cap = line_style.get_cap(theme);
                             let thickness = line_style.get_thickness(theme);
                             let points = array.iter().cloned();
-                            let triangles = match widget::point_path::triangles(points, cap, thickness) {
-                                None => &[],
-                                Some(iter) => {
-                                    triangles.extend(iter);
-                                    &triangles[..]
-                                },
-                            };
+                            let triangles =
+                                match widget::point_path::triangles(points, cap, thickness) {
+                                    None => &[],
+                                    Some(iter) => {
+                                        triangles.extend(iter);
+                                        &triangles[..]
+                                    }
+                                };
                             let kind = PrimitiveKind::TrianglesSingleColor {
                                 color: color.to_rgb(),
                                 triangles: &triangles,
                             };
                             return Some(new_primitive(id, kind, scizzor, rect));
-                        },
+                        }
                     }
                 }
-
             } else if container.type_id == std::any::TypeId::of::<TrianglesSingleColorState>() {
                 type Style = widget::triangles::SingleColor;
-                if let Some(tris) = container.state_and_style::<TrianglesSingleColorState, Style>() {
-                    let graph::UniqueWidgetState { ref state, ref style } = *tris;
+                if let Some(tris) = container.state_and_style::<TrianglesSingleColorState, Style>()
+                {
+                    let graph::UniqueWidgetState {
+                        ref state,
+                        ref style,
+                    } = *tris;
                     let widget::triangles::SingleColor(color) = *style;
                     let kind = PrimitiveKind::TrianglesSingleColor {
                         color: color,
@@ -386,23 +377,27 @@ impl<'a> Primitives<'a> {
                     };
                     return Some(new_primitive(id, kind, scizzor, rect));
                 }
-
             } else if container.type_id == std::any::TypeId::of::<TrianglesMultiColorState>() {
                 type Style = widget::triangles::MultiColor;
                 if let Some(tris) = container.state_and_style::<TrianglesMultiColorState, Style>() {
                     let graph::UniqueWidgetState { ref state, .. } = *tris;
-                    let kind = PrimitiveKind::TrianglesMultiColor { triangles: &state.triangles };
+                    let kind = PrimitiveKind::TrianglesMultiColor {
+                        triangles: &state.triangles,
+                    };
                     return Some(new_primitive(id, kind, scizzor, rect));
                 }
-
             } else if container.type_id == state_type_id::<widget::Oval<widget::oval::Full>>() {
-                if let Some(oval) = container.unique_widget_state::<widget::Oval<widget::oval::Full>>() {
-                    let graph::UniqueWidgetState { ref style, ref state } = *oval;
+                if let Some(oval) =
+                    container.unique_widget_state::<widget::Oval<widget::oval::Full>>()
+                {
+                    let graph::UniqueWidgetState {
+                        ref style,
+                        ref state,
+                    } = *oval;
                     triangles.clear();
                     let points = widget::oval::circumference(rect, state.resolution);
                     let color = style.get_color(theme);
                     match *style {
-
                         ShapeStyle::Fill(_) => {
                             let triangles = {
                                 triangles.extend(points.triangles());
@@ -413,38 +408,43 @@ impl<'a> Primitives<'a> {
                                 triangles: &triangles,
                             };
                             return Some(new_primitive(id, kind, scizzor, rect));
-                        },
+                        }
 
                         ShapeStyle::Outline(ref line_style) => {
                             let cap = line_style.get_cap(theme);
                             let thickness = line_style.get_thickness(theme);
-                            let triangles = match widget::point_path::triangles(points, cap, thickness) {
-                                None => &[],
-                                Some(iter) => {
-                                    triangles.extend(iter);
-                                    &triangles[..]
-                                },
-                            };
+                            let triangles =
+                                match widget::point_path::triangles(points, cap, thickness) {
+                                    None => &[],
+                                    Some(iter) => {
+                                        triangles.extend(iter);
+                                        &triangles[..]
+                                    }
+                                };
                             let kind = PrimitiveKind::TrianglesSingleColor {
                                 color: color.to_rgb(),
                                 triangles: &triangles,
                             };
                             return Some(new_primitive(id, kind, scizzor, rect));
-                        },
+                        }
                     }
                 }
 
             // Oval subsection.
             } else if container.type_id == state_type_id::<widget::Oval<widget::oval::Section>>() {
-                if let Some(oval) = container.unique_widget_state::<widget::Oval<widget::oval::Section>>() {
-                    let graph::UniqueWidgetState { ref style, ref state } = *oval;
+                if let Some(oval) =
+                    container.unique_widget_state::<widget::Oval<widget::oval::Section>>()
+                {
+                    let graph::UniqueWidgetState {
+                        ref style,
+                        ref state,
+                    } = *oval;
                     triangles.clear();
                     let points = widget::oval::circumference(rect, state.resolution)
                         .section(state.section.radians)
                         .offset_radians(state.section.offset_radians);
                     let color = style.get_color(theme);
                     match *style {
-
                         ShapeStyle::Fill(_) => {
                             let triangles = {
                                 triangles.extend(points.triangles());
@@ -455,7 +455,7 @@ impl<'a> Primitives<'a> {
                                 triangles: &triangles,
                             };
                             return Some(new_primitive(id, kind, scizzor, rect));
-                        },
+                        }
 
                         ShapeStyle::Outline(ref line_style) => {
                             use std::iter::once;
@@ -463,69 +463,74 @@ impl<'a> Primitives<'a> {
                             let thickness = line_style.get_thickness(theme);
                             let middle = rect.xy();
                             let points = once(middle).chain(points).chain(once(middle));
-                            let triangles = match widget::point_path::triangles(points, cap, thickness) {
-                                None => &[],
-                                Some(iter) => {
-                                    triangles.extend(iter);
-                                    &triangles[..]
-                                },
-                            };
+                            let triangles =
+                                match widget::point_path::triangles(points, cap, thickness) {
+                                    None => &[],
+                                    Some(iter) => {
+                                        triangles.extend(iter);
+                                        &triangles[..]
+                                    }
+                                };
                             let kind = PrimitiveKind::TrianglesSingleColor {
                                 color: color.to_rgb(),
                                 triangles: &triangles,
                             };
                             return Some(new_primitive(id, kind, scizzor, rect));
-                        },
+                        }
                     }
                 }
-
             } else if container.type_id == std::any::TypeId::of::<PolygonState>() {
                 use widget::primitive::shape::Style;
                 if let Some(polygon) = container.state_and_style::<PolygonState, Style>() {
-                    let graph::UniqueWidgetState { ref state, ref style } = *polygon;
+                    let graph::UniqueWidgetState {
+                        ref state,
+                        ref style,
+                    } = *polygon;
                     triangles.clear();
 
                     let color = style.get_color(theme);
                     let points = state.points.iter().cloned();
                     match *style {
-
                         ShapeStyle::Fill(_) => {
                             let triangles = match widget::polygon::triangles(points) {
                                 None => &[],
                                 Some(iter) => {
                                     triangles.extend(iter);
                                     &triangles[..]
-                                },
+                                }
                             };
                             let kind = PrimitiveKind::TrianglesSingleColor {
                                 color: color.to_rgb(),
                                 triangles: &triangles,
                             };
                             return Some(new_primitive(id, kind, scizzor, rect));
-                        },
+                        }
 
                         ShapeStyle::Outline(ref line_style) => {
                             let cap = line_style.get_cap(theme);
                             let thickness = line_style.get_thickness(theme);
-                            let triangles = match widget::point_path::triangles(points, cap, thickness) {
-                                None => &[],
-                                Some(iter) => {
-                                    triangles.extend(iter);
-                                    &triangles[..]
-                                },
-                            };
+                            let triangles =
+                                match widget::point_path::triangles(points, cap, thickness) {
+                                    None => &[],
+                                    Some(iter) => {
+                                        triangles.extend(iter);
+                                        &triangles[..]
+                                    }
+                                };
                             let kind = PrimitiveKind::TrianglesSingleColor {
                                 color: color.to_rgb(),
                                 triangles: &triangles,
                             };
                             return Some(new_primitive(id, kind, scizzor, rect));
-                        },
+                        }
                     }
                 }
-
             } else if container.type_id == state_type_id::<widget::Line>() {
                 if let Some(line) = container.unique_widget_state::<widget::Line>() {
-                    let graph::UniqueWidgetState { ref state, ref style } = *line;
+                    let graph::UniqueWidgetState {
+                        ref state,
+                        ref style,
+                    } = *line;
                     triangles.clear();
                     let color = style.get_color(theme);
                     let cap = style.get_cap(theme);
@@ -536,7 +541,7 @@ impl<'a> Primitives<'a> {
                         Some(iter) => {
                             triangles.extend(iter);
                             &triangles[..]
-                        },
+                        }
                     };
                     let kind = PrimitiveKind::TrianglesSingleColor {
                         color: color.to_rgb(),
@@ -544,10 +549,14 @@ impl<'a> Primitives<'a> {
                     };
                     return Some(new_primitive(id, kind, scizzor, rect));
                 }
-
             } else if container.type_id == std::any::TypeId::of::<PointPathState>() {
-                if let Some(point_path) = container.state_and_style::<PointPathState, PointPathStyle>() {
-                    let graph::UniqueWidgetState { ref state, ref style } = *point_path;
+                if let Some(point_path) =
+                    container.state_and_style::<PointPathState, PointPathStyle>()
+                {
+                    let graph::UniqueWidgetState {
+                        ref state,
+                        ref style,
+                    } = *point_path;
                     triangles.clear();
                     let color = style.get_color(theme);
                     let cap = style.get_cap(theme);
@@ -558,7 +567,7 @@ impl<'a> Primitives<'a> {
                         Some(iter) => {
                             triangles.extend(iter);
                             &triangles[..]
-                        },
+                        }
                     };
                     let kind = PrimitiveKind::TrianglesSingleColor {
                         color: color.to_rgb(),
@@ -566,10 +575,12 @@ impl<'a> Primitives<'a> {
                     };
                     return Some(new_primitive(id, kind, scizzor, rect));
                 }
-
             } else if container.type_id == state_type_id::<widget::Text>() {
                 if let Some(text) = container.unique_widget_state::<widget::Text>() {
-                    let graph::UniqueWidgetState { ref state, ref style } = *text;
+                    let graph::UniqueWidgetState {
+                        ref state,
+                        ref style,
+                    } = *text;
                     let font_id = match style.font_id(theme).or_else(|| fonts.ids().next()) {
                         Some(id) => id,
                         None => continue,
@@ -606,11 +617,13 @@ impl<'a> Primitives<'a> {
                     };
                     return Some(new_primitive(id, kind, scizzor, rect));
                 }
-
             } else if container.type_id == state_type_id::<widget::Image>() {
                 use widget::primitive::image::{State, Style};
                 if let Some(image) = container.state_and_style::<State, Style>() {
-                    let graph::UniqueWidgetState { ref state, ref style } = *image;
+                    let graph::UniqueWidgetState {
+                        ref state,
+                        ref style,
+                    } = *image;
                     let color = style.maybe_color(theme);
                     let kind = PrimitiveKind::Image {
                         color: color,
@@ -641,7 +654,13 @@ impl<'a> Primitives<'a> {
         let mut texts_string = String::new();
         let mut max_glyphs = 0;
 
-        while let Some(Primitive { id, rect, scizzor, kind }) = self.next() {
+        while let Some(Primitive {
+            id,
+            rect,
+            scizzor,
+            kind,
+        }) = self.next()
+        {
             let new = |kind| OwnedPrimitive {
                 id: id,
                 rect: rect,
@@ -650,11 +669,10 @@ impl<'a> Primitives<'a> {
             };
 
             match kind {
-
                 PrimitiveKind::Rectangle { color } => {
                     let kind = OwnedPrimitiveKind::Rectangle { color: color };
                     primitives.push(new(kind));
-                },
+                }
 
                 PrimitiveKind::TrianglesSingleColor { color, triangles } => {
                     let start = primitive_triangles_single_color.len();
@@ -665,7 +683,7 @@ impl<'a> Primitives<'a> {
                         triangle_range: start..end,
                     };
                     primitives.push(new(kind));
-                },
+                }
 
                 PrimitiveKind::TrianglesMultiColor { triangles } => {
                     let start = primitive_triangles_multi_color.len();
@@ -675,18 +693,26 @@ impl<'a> Primitives<'a> {
                         triangle_range: start..end,
                     };
                     primitives.push(new(kind));
-                },
+                }
 
-                PrimitiveKind::Image { image_id, color, source_rect } => {
+                PrimitiveKind::Image {
+                    image_id,
+                    color,
+                    source_rect,
+                } => {
                     let kind = OwnedPrimitiveKind::Image {
                         image_id: image_id,
                         color: color,
                         source_rect: source_rect,
                     };
                     primitives.push(new(kind));
-                },
+                }
 
-                PrimitiveKind::Text { color, font_id, text } => {
+                PrimitiveKind::Text {
+                    color,
+                    font_id,
+                    text,
+                } => {
                     let Text {
                         window_dim,
                         text,
@@ -732,11 +758,10 @@ impl<'a> Primitives<'a> {
                         text: owned_text,
                     };
                     primitives.push(new(kind));
-                },
+                }
 
                 // TODO: Not sure how we should handle this yet.
                 PrimitiveKind::Other(_) => (),
-
             }
         }
 
@@ -749,12 +774,9 @@ impl<'a> Primitives<'a> {
             texts_string: texts_string,
         }
     }
-
 }
 
-
 impl OwnedPrimitives {
-
     /// Produce an iterator-like type for yielding `Primitive`s.
     pub fn walk(&self) -> WalkOwnedPrimitives {
         let OwnedPrimitives {
@@ -774,11 +796,9 @@ impl OwnedPrimitives {
             positioned_glyphs: Vec::with_capacity(max_glyphs),
         }
     }
-
 }
 
 impl<'a> WalkOwnedPrimitives<'a> {
-
     /// Yield the next `Primitive` in order or rendering depth, bottom to top.
     pub fn next(&mut self) -> Option<Primitive> {
         let WalkOwnedPrimitives {
@@ -790,88 +810,102 @@ impl<'a> WalkOwnedPrimitives<'a> {
             texts_str,
         } = *self;
 
-        primitives.next().map(move |&OwnedPrimitive { id, rect, scizzor, ref kind }| {
-            let new = |kind| Primitive {
-                id: id,
-                rect: rect,
-                scizzor: scizzor,
-                kind: kind,
-            };
+        primitives.next().map(
+            move |&OwnedPrimitive {
+                      id,
+                      rect,
+                      scizzor,
+                      ref kind,
+                  }| {
+                let new = |kind| Primitive {
+                    id: id,
+                    rect: rect,
+                    scizzor: scizzor,
+                    kind: kind,
+                };
 
-            match *kind {
+                match *kind {
+                    OwnedPrimitiveKind::Rectangle { color } => {
+                        let kind = PrimitiveKind::Rectangle { color: color };
+                        new(kind)
+                    }
 
-                OwnedPrimitiveKind::Rectangle { color } => {
-                    let kind = PrimitiveKind::Rectangle { color: color };
-                    new(kind)
-                },
+                    OwnedPrimitiveKind::TrianglesSingleColor {
+                        color,
+                        ref triangle_range,
+                    } => {
+                        let kind = PrimitiveKind::TrianglesSingleColor {
+                            color: color,
+                            triangles: &triangles_single_color[triangle_range.clone()],
+                        };
+                        new(kind)
+                    }
 
-                OwnedPrimitiveKind::TrianglesSingleColor { color, ref triangle_range } => {
-                    let kind = PrimitiveKind::TrianglesSingleColor {
-                        color: color,
-                        triangles: &triangles_single_color[triangle_range.clone()],
-                    };
-                    new(kind)
-                },
+                    OwnedPrimitiveKind::TrianglesMultiColor { ref triangle_range } => {
+                        let kind = PrimitiveKind::TrianglesMultiColor {
+                            triangles: &triangles_multi_color[triangle_range.clone()],
+                        };
+                        new(kind)
+                    }
 
-                OwnedPrimitiveKind::TrianglesMultiColor { ref triangle_range } => {
-                    let kind = PrimitiveKind::TrianglesMultiColor {
-                        triangles: &triangles_multi_color[triangle_range.clone()],
-                    };
-                    new(kind)
-                },
+                    OwnedPrimitiveKind::Text {
+                        color,
+                        font_id,
+                        ref text,
+                    } => {
+                        let OwnedText {
+                            ref str_byte_range,
+                            ref line_infos_range,
+                            ref font,
+                            window_dim,
+                            font_size,
+                            rect,
+                            justify,
+                            y_align,
+                            line_spacing,
+                        } = *text;
 
-                OwnedPrimitiveKind::Text { color, font_id, ref text } => {
-                    let OwnedText {
-                        ref str_byte_range,
-                        ref line_infos_range,
-                        ref font,
-                        window_dim,
-                        font_size,
-                        rect,
-                        justify,
-                        y_align,
-                        line_spacing,
-                    } = *text;
+                        let text_str = &texts_str[str_byte_range.clone()];
+                        let line_infos = &line_infos[line_infos_range.clone()];
 
-                    let text_str = &texts_str[str_byte_range.clone()];
-                    let line_infos = &line_infos[line_infos_range.clone()];
+                        let text = Text {
+                            positioned_glyphs: positioned_glyphs,
+                            window_dim: window_dim,
+                            text: text_str,
+                            line_infos: line_infos,
+                            font: font,
+                            font_size: font_size,
+                            rect: rect,
+                            justify: justify,
+                            y_align: y_align,
+                            line_spacing: line_spacing,
+                        };
 
-                    let text = Text {
-                        positioned_glyphs: positioned_glyphs,
-                        window_dim: window_dim,
-                        text: text_str,
-                        line_infos: line_infos,
-                        font: font,
-                        font_size: font_size,
-                        rect: rect,
-                        justify: justify,
-                        y_align: y_align,
-                        line_spacing: line_spacing,
-                    };
+                        let kind = PrimitiveKind::Text {
+                            color: color,
+                            font_id: font_id,
+                            text: text,
+                        };
+                        new(kind)
+                    }
 
-                    let kind = PrimitiveKind::Text {
-                        color: color,
-                        font_id: font_id,
-                        text: text,
-                    };
-                    new(kind)
-                },
-
-                OwnedPrimitiveKind::Image { image_id, color, source_rect } => {
-                    let kind = PrimitiveKind::Image {
-                        image_id: image_id,
-                        color: color,
-                        source_rect: source_rect,
-                    };
-                    new(kind)
-                },
-            }
-        })
+                    OwnedPrimitiveKind::Image {
+                        image_id,
+                        color,
+                        source_rect,
+                    } => {
+                        let kind = PrimitiveKind::Image {
+                            image_id: image_id,
+                            color: color,
+                            source_rect: source_rect,
+                        };
+                        new(kind)
+                    }
+                }
+            },
+        )
     }
-
 }
-
-
 
 /// Simplify the constructor for a `Primitive`.
 fn new_primitive(id: widget::Id, kind: PrimitiveKind, scizzor: Rect, rect: Rect) -> Primitive {
@@ -885,11 +919,12 @@ fn new_primitive(id: widget::Id, kind: PrimitiveKind, scizzor: Rect, rect: Rect)
 
 /// Retrieves the next visible widget from the `depth_order`, updating the `crop_stack` as
 /// necessary.
-fn next_widget<'a>(depth_order: &mut std::slice::Iter<widget::Id>,
-                   graph: &'a Graph,
-                   crop_stack: &mut Vec<(widget::Id, Rect)>,
-                   window_rect: Rect) -> Option<(widget::Id, Rect, &'a graph::Container)>
-{
+fn next_widget<'a>(
+    depth_order: &mut std::slice::Iter<widget::Id>,
+    graph: &'a Graph,
+    crop_stack: &mut Vec<(widget::Id, Rect)>,
+    window_rect: Rect,
+) -> Option<(widget::Id, Rect, &'a graph::Container)> {
     while let Some(&id) = depth_order.next() {
         let container = match graph.widget(id) {
             Some(container) => container,
@@ -908,12 +943,18 @@ fn next_widget<'a>(depth_order: &mut std::slice::Iter<widget::Id>,
         }
 
         // Check the stack for the current Context.
-        let scizzor = crop_stack.last().map(|&(_, scizzor)| scizzor).unwrap_or(window_rect);
+        let scizzor = crop_stack
+            .last()
+            .map(|&(_, scizzor)| scizzor)
+            .unwrap_or(window_rect);
 
         // If the current widget should crop its children, we need to add a rect for it to
         // the top of the crop stack.
         if container.crop_kids {
-            let scizzor_rect = container.kid_area.rect.overlap(scizzor)
+            let scizzor_rect = container
+                .kid_area
+                .rect
+                .overlap(scizzor)
                 .unwrap_or_else(|| Rect::from_xy_dim([0.0, 0.0], [0.0, 0.0]));
             crop_stack.push((id, scizzor_rect));
         }

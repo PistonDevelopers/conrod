@@ -35,7 +35,9 @@ fn main() {
     let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
-    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let assets = find_folder::Search::KidsThenParents(3, 5)
+        .for_folder("assets")
+        .unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
@@ -53,7 +55,8 @@ fn main() {
         fames ac ante ipsum primis in faucibus. Cras rhoncus nisi nec dolor bibendum pellentesque. \
         Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. \
         Quisque commodo nibh hendrerit nunc sollicitudin sodales. Cras vitae tempus ipsum. Nam \
-        magna est, efficitur suscipit dolor eu, consectetur consectetur urna.".to_owned();
+        magna est, efficitur suscipit dolor eu, consectetur consectetur urna."
+        .to_owned();
 
     // Poll events from the window.
     support::run_loop(display, event_loop, move |request, display| {
@@ -92,7 +95,9 @@ fn main() {
                 set_ui(ui.set_widgets(), &ids, &mut demo_text);
 
                 // Get the underlying winit window and update the mouse cursor as set by conrod.
-                display.gl_window().window()
+                display
+                    .gl_window()
+                    .window()
                     .set_cursor_icon(support::convert_mouse_cursor(ui.mouse_cursor()));
 
                 *needs_redraw = ui.has_changed();
@@ -128,9 +133,11 @@ fn set_ui(ref mut ui: conrod_core::UiCell, ids: &Ids, demo_text: &mut String) {
         .line_spacing(2.5)
         //.restrict_to_height(false) // Let the height grow infinitely and scroll.
         .set(ids.text_edit, ui)
-        {
-            *demo_text = edit;
-        }
+    {
+        *demo_text = edit;
+    }
 
-    widget::Scrollbar::y_axis(ids.canvas).auto_hide(true).set(ids.scrollbar, ui);
+    widget::Scrollbar::y_axis(ids.canvas)
+        .auto_hide(true)
+        .set(ids.scrollbar, ui);
 }

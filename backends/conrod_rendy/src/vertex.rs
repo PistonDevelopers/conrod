@@ -93,6 +93,11 @@ impl AsAttribute for Mode {
 
 impl AsVertex for Vertex {
     fn vertex() -> VertexFormat {
-        VertexFormat::new((Position::vertex(), TexCoords::vertex(), Color::vertex(), Mode::vertex()))
+        VertexFormat::new((
+            Position::vertex(),
+            TexCoords::vertex(),
+            Color::vertex(),
+            Mode::vertex(),
+        ))
     }
 }

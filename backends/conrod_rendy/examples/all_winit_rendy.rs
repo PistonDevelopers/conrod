@@ -1,5 +1,5 @@
 use conrod_example_shared::{WIN_H, WIN_W};
-use conrod_rendy::{UiTexture, UiPipeline, SimpleUiAux};
+use conrod_rendy::{SimpleUiAux, UiPipeline, UiTexture};
 use image;
 use rendy::{
     command::{Families, QueueId, QueueType},
@@ -125,20 +125,36 @@ pub fn run<B: Backend>(
                 }
             }
             Event::WindowEvent { event, .. } => match event {
-                WindowEvent::CloseRequested | WindowEvent::Destroyed => *control_flow = ControlFlow::Exit,
+                WindowEvent::CloseRequested | WindowEvent::Destroyed => {
+                    *control_flow = ControlFlow::Exit
+                }
                 WindowEvent::Resized(size) => {
                     let size = size.to_physical(window.hidpi_factor());
                     let win_size = [size.width as u32, size.height as u32];
-                    recreate_graph(win_size, &mut factory, &mut families, &window, &aux, &mut graph);
+                    recreate_graph(
+                        win_size,
+                        &mut factory,
+                        &mut families,
+                        &window,
+                        &aux,
+                        &mut graph,
+                    );
                 }
                 WindowEvent::HiDpiFactorChanged(dpi_factor) => {
                     aux.dpi_factor = dpi_factor;
                     let size = window.inner_size().to_physical(dpi_factor);
                     let win_size = [size.width as u32, size.height as u32];
-                    recreate_graph(win_size, &mut factory, &mut families, &window, &aux, &mut graph);
+                    recreate_graph(
+                        win_size,
+                        &mut factory,
+                        &mut families,
+                        &window,
+                        &aux,
+                        &mut graph,
+                    );
                 }
                 _ => (),
-            }
+            },
             _ => (),
         }
 
@@ -166,7 +182,11 @@ where
     let kind = Kind::D2(win_w, win_h, 1, 1);
     let levels = 1;
     let format = factory.get_surface_format(&surface);
-    let clear = Some(ClearValue { color: ClearColor { float32: CLEAR_COLOR, }, });
+    let clear = Some(ClearValue {
+        color: ClearColor {
+            float32: CLEAR_COLOR,
+        },
+    });
     let color = graph_builder.create_image(kind, levels, format, clear);
 
     // Create the UI graphics pipeline node.
@@ -178,10 +198,7 @@ where
     );
 
     // The pass for presenting the colour image to the surface.
-    graph_builder.add_node(
-        PresentNode::builder(factory, surface, color)
-            .with_dependency(pass),
-    );
+    graph_builder.add_node(PresentNode::builder(factory, surface, color).with_dependency(pass));
 
     graph_builder
         .build(factory, families, &aux)
@@ -195,14 +212,15 @@ fn recreate_graph<B>(
     window: &Window,
     aux: &SimpleUiAux<B>,
     graph: &mut Option<Graph<B, SimpleUiAux<B>>>,
-)
-where
+) where
     B: Backend,
 {
     if let Some(graph) = graph.take() {
         graph.dispose(factory, aux);
     }
-    let surface = factory.create_surface(window).expect("failed to create surface");
+    let surface = factory
+        .create_surface(window)
+        .expect("failed to create surface");
     *graph = Some(create_graph(win_size, factory, families, surface, aux));
 }
 
