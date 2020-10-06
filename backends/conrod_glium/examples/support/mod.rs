@@ -94,4 +94,4 @@ where
 
 // Conversion functions for converting between types from glium's version of `winit` and
 // `conrod_core`.
-conrod_winit::v022_conversion_fns!();
+conrod_winit::v023_conversion_fns!();
