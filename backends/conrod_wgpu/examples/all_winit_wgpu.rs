@@ -101,21 +101,20 @@ fn main() {
     // Demonstration app state that we'll control with our conrod GUI.
     let mut app = conrod_example_shared::DemoApp::new(rust_logo);
 
+    let sixteen_ms = std::time::Duration::from_millis(16);
+    let mut next_update = None;
+    let mut ui_update_needed = false;
     event_loop.run(move |event, _, control_flow| {
         if let Some(event) = convert_event(&event, &window) {
             ui.handle_event(event);
+            ui_update_needed = true;
         }
 
-        *control_flow = if cfg!(feature = "metal-auto-capture") {
-            ControlFlow::Exit
-        } else {
-            ControlFlow::Wait
-        };
-        match event {
+        match &event {
             event::Event::WindowEvent { event, .. } => match event {
                 // Recreate swapchain when window is resized.
                 event::WindowEvent::Resized(new_size) => {
-                    size = new_size;
+                    size = *new_size;
                     swap_chain_desc.width = new_size.width;
                     swap_chain_desc.height = new_size.height;
                     swap_chain = device.create_swap_chain(&surface, &swap_chain_desc);
@@ -135,25 +134,46 @@ fn main() {
                 }
                 | event::WindowEvent::CloseRequested => {
                     *control_flow = ControlFlow::Exit;
+                    return;
                 }
                 _ => {}
             },
+            _ => {}
+        }
 
-            event::Event::MainEventsCleared => {
-                // Update widgets if any event has happened
-                if ui.global_input().events().next().is_some() {
-                    let mut ui = ui.set_widgets();
-                    conrod_example_shared::gui(&mut ui, &ids, &mut app);
+        // We don't want to draw any faster than 60 FPS, so set the UI only on every 16ms, unless:
+        // - this is the very first event, or
+        // - we didn't request update on the last event and new events have arrived since then.
+        let should_set_ui_on_main_events_cleared = next_update.is_none() && ui_update_needed;
+        match (&event, should_set_ui_on_main_events_cleared) {
+            (event::Event::NewEvents(event::StartCause::Init { .. }), _)
+            | (event::Event::NewEvents(event::StartCause::ResumeTimeReached { .. }), _)
+            | (event::Event::MainEventsCleared, true) => {
+                next_update = Some(std::time::Instant::now() + sixteen_ms);
+                ui_update_needed = false;
+
+                // Instantiate a GUI demonstrating every widget type provided by conrod.
+                conrod_example_shared::gui(&mut ui.set_widgets(), &ids, &mut app);
+
+                if ui.has_changed() {
+                    // If the view has changed at all, request a redraw.
                     window.request_redraw();
+                } else {
+                    // We don't need to update the UI anymore until more events arrives.
+                    next_update = None;
                 }
             }
+            _ => (),
+        }
+        if let Some(next_update) = next_update {
+            *control_flow = ControlFlow::WaitUntil(next_update);
+        } else {
+            *control_flow = ControlFlow::Wait;
+        }
 
+        match &event {
             event::Event::RedrawRequested(_) => {
-                // If the view has changed at all, it's time to draw.
-                let primitives = match ui.draw_if_changed() {
-                    None => return,
-                    Some(ps) => ps,
-                };
+                let primitives = ui.draw();
 
                 // The window frame that we will draw to.
                 let frame = swap_chain.get_current_frame().unwrap();
@@ -228,7 +248,7 @@ fn main() {
 
                 queue.submit(Some(encoder.finish()));
             }
-            _ => (),
+            _ => {}
         }
     });
 }
