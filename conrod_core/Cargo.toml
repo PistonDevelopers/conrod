@@ -1,6 +1,6 @@
 [package]
 name = "conrod_core"
-version = "0.70.0"
+version = "0.71.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
@@ -21,7 +21,7 @@ stdweb = [ "instant/stdweb" ]
 wasm-bindgen = [ "instant/wasm-bindgen" ]
 
 [dependencies]
-conrod_derive = { path = "../conrod_derive", version = "0.70" }
+conrod_derive = { path = "../conrod_derive", version = "0.71" }
 daggy = "0.5"
 fnv = "1.0"
 num = "0.2"

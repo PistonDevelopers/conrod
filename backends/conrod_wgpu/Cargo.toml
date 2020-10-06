@@ -1,6 +1,6 @@
 [package]
 name = "conrod_wgpu"
-version = "0.70.0"
+version = "0.71.0"
 authors = [
     "mitchmindtree <mitchell.nordine@gmail.com>",
 ]
@@ -14,12 +14,12 @@ categories = ["gui"]
 edition = "2018"
 
 [dependencies]
-conrod_core = { path = "../../conrod_core", version = "0.70" }
+conrod_core = { path = "../../conrod_core", version = "0.71" }
 wgpu = "0.6"
 
 [dev-dependencies]
-conrod_example_shared = { path = "../conrod_example_shared", version = "0.70" }
-conrod_winit = { path = "../conrod_winit", version = "0.70" }
+conrod_example_shared = { path = "../conrod_example_shared", version = "0.71" }
+conrod_winit = { path = "../conrod_winit", version = "0.71" }
 find_folder = "0.3"
 futures = "0.3"
 image = "0.23"
