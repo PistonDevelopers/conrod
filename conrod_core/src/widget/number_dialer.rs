@@ -1,23 +1,12 @@
 //! A widget for precision control over any base-10 digit within a given value.
 
-use {
-    Color,
-    Colorable,
-    FontSize,
-    Borderable,
-    Labelable,
-    Point,
-    Positionable,
-    Scalar,
-    Widget,
-};
 use num::{Float, NumCast};
 use std::cmp::Ordering;
 use std::iter::repeat;
 use text;
 use utils::clamp;
 use widget;
-
+use {Borderable, Color, Colorable, FontSize, Labelable, Point, Positionable, Scalar, Widget};
 
 /// A widget for precision control over any digit within a value.
 ///
@@ -84,7 +73,6 @@ pub struct GlyphSlot {
     text_id: widget::Id,
 }
 
-
 /// Create the string to be drawn from the given values and precision.
 ///
 /// Combine this with the label string if one is given.
@@ -96,10 +84,10 @@ fn create_val_string<T: ToString>(val: T, len: usize, precision: u8) -> String {
         (None, _) => {
             val_string.push('.');
             val_string.extend(repeat('0').take(precision as usize));
-        },
+        }
         (Some(idx), 0) => {
             val_string.truncate(idx);
-        },
+        }
         (Some(idx), _) => {
             let (len, desired_len) = (val_string.len(), idx + precision as usize + 1);
             match len.cmp(&desired_len) {
@@ -107,12 +95,15 @@ fn create_val_string<T: ToString>(val: T, len: usize, precision: u8) -> String {
                 Ordering::Equal => (),
                 Ordering::Less => val_string.extend(repeat('0').take(desired_len - len)),
             }
-        },
+        }
     }
     // Now check that the total length matches. We already know that the decimal end of the string
     // is correct, so if the lengths don't match we know we must prepend the difference as '0's.
     if val_string.len() < len {
-        repeat('0').take(len - val_string.len()).chain(val_string.chars()).collect()
+        repeat('0')
+            .take(len - val_string.len())
+            .chain(val_string.chars())
+            .collect()
     } else {
         val_string
     }
@@ -130,9 +121,9 @@ fn val_string_width(font_size: FontSize, val_string: &String) -> f64 {
     val_string_w
 }
 
-
 impl<'a, T> NumberDialer<'a, T>
-    where T: Float,
+where
+    T: Float,
 {
     /// Construct a new NumberDialer widget.
     pub fn new(value: T, min: T, max: T, precision: u8) -> Self {
@@ -154,13 +145,14 @@ impl<'a, T> NumberDialer<'a, T>
         self
     }
 
-    builder_methods!{
+    builder_methods! {
         pub enabled { enabled = bool }
     }
 }
 
 impl<'a, T> Widget for NumberDialer<'a, T>
-    where T: Float + NumCast + ToString,
+where
+    T: Float + NumCast + ToString,
 {
     type State = State;
     type Style = Style;
@@ -180,8 +172,22 @@ impl<'a, T> Widget for NumberDialer<'a, T>
 
     /// Update the state of the NumberDialer.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { id, state, rect, style, mut ui, .. } = args;
-        let NumberDialer { value, min, max, precision, maybe_label, .. } = self;
+        let widget::UpdateArgs {
+            id,
+            state,
+            rect,
+            style,
+            mut ui,
+            ..
+        } = args;
+        let NumberDialer {
+            value,
+            min,
+            max,
+            precision,
+            maybe_label,
+            ..
+        } = self;
 
         let rel_rect = rect.relative_to(rect.xy());
         let border = style.border(ui.theme());
@@ -202,7 +208,11 @@ impl<'a, T> Widget for NumberDialer<'a, T>
             text::line::width(&label_string, font, font_size)
         };
         let label_dim = [label_w, font_size as f64];
-        let precision_len = if precision == 0 { 0 } else { precision as usize + 1 };
+        let precision_len = if precision == 0 {
+            0
+        } else {
+            precision as usize + 1
+        };
         let val_string_len = max.to_string().len() + precision_len;
         let val_string = create_val_string(value, val_string_len, precision);
         let val_string_dim = [val_string_width(font_size, &val_string), font_size as f64];
@@ -217,7 +227,10 @@ impl<'a, T> Widget for NumberDialer<'a, T>
             if rel_rect.is_over(rel_xy) {
                 use position::Rect;
                 let slot_rect_xy = [label_rel_x + label_dim[0] / 2.0 + slot_w / 2.0, 0.0];
-                let val_string_xy = [slot_rect_xy[0] - slot_w / 2.0 + val_string_dim[0] / 2.0, 0.0];
+                let val_string_xy = [
+                    slot_rect_xy[0] - slot_w / 2.0 + val_string_dim[0] / 2.0,
+                    0.0,
+                ];
                 let val_string_dim = [val_string_dim[0], slot_h];
                 let val_string_rect = Rect::from_xy_dim(val_string_xy, val_string_dim);
                 if val_string_rect.is_over(rel_xy) {
@@ -234,7 +247,9 @@ impl<'a, T> Widget for NumberDialer<'a, T>
             None
         };
 
-        let value_under_mouse = ui.widget_input(id).mouse()
+        let value_under_mouse = ui
+            .widget_input(id)
+            .mouse()
             .and_then(|m| value_under_rel_xy(m.rel_xy()));
         let mut pressed_value_idx = state.pressed_value_idx;
         let mut new_value = value;
@@ -248,20 +263,19 @@ impl<'a, T> Widget for NumberDialer<'a, T>
             use input::{self, MouseButton};
 
             match widget_event {
-
                 // Check to see if a value was pressed in case it is later dragged.
                 event::Widget::Press(press) => {
                     if let event::Button::Mouse(MouseButton::Left, _) = press.button {
                         pressed_value_idx = value_under_mouse;
                     }
-                },
+                }
 
                 // Check to see if a value was released in case it is later dragged.
                 event::Widget::Release(release) => {
                     if let event::Button::Mouse(MouseButton::Left, _) = release.button {
                         pressed_value_idx = None;
                     }
-                },
+                }
 
                 // A left `Drag` moves the `pressed_point` if there is one.
                 event::Widget::Drag(drag) if drag.button == input::MouseButton::Left => {
@@ -270,44 +284,60 @@ impl<'a, T> Widget for NumberDialer<'a, T>
                         let val_f: f64 = NumCast::from(value).unwrap();
                         let min_f: f64 = NumCast::from(min).unwrap();
                         let max_f: f64 = NumCast::from(max).unwrap();
-                        let ord = drag.delta_xy[1].partial_cmp(&0.0).unwrap_or(Ordering::Equal);
+                        let ord = drag.delta_xy[1]
+                            .partial_cmp(&0.0)
+                            .unwrap_or(Ordering::Equal);
                         let new_val_f = match decimal_pos {
                             None => {
                                 let power = val_string.len() - idx - 1;
                                 match ord {
-                                    Ordering::Greater => {
-                                        clamp(val_f + (10.0).powf(power as f32) as f64, min_f, max_f)
-                                    },
-                                    Ordering::Less => {
-                                        clamp(val_f - (10.0).powf(power as f32) as f64, min_f, max_f)
-                                    },
+                                    Ordering::Greater => clamp(
+                                        val_f + (10.0).powf(power as f32) as f64,
+                                        min_f,
+                                        max_f,
+                                    ),
+                                    Ordering::Less => clamp(
+                                        val_f - (10.0).powf(power as f32) as f64,
+                                        min_f,
+                                        max_f,
+                                    ),
                                     _ => val_f,
                                 }
-                            },
+                            }
                             Some(dec_idx) => {
                                 let mut power = dec_idx as isize - idx as isize - 1;
-                                if power < -1 { power += 1; }
+                                if power < -1 {
+                                    power += 1;
+                                }
                                 match ord {
-                                    Ordering::Greater => {
-                                        clamp(val_f + (10.0).powf(power as f32) as f64, min_f, max_f)
-                                    },
-                                    Ordering::Less => {
-                                        clamp(val_f - (10.0).powf(power as f32) as f64, min_f, max_f)
-                                    },
+                                    Ordering::Greater => clamp(
+                                        val_f + (10.0).powf(power as f32) as f64,
+                                        min_f,
+                                        max_f,
+                                    ),
+                                    Ordering::Less => clamp(
+                                        val_f - (10.0).powf(power as f32) as f64,
+                                        min_f,
+                                        max_f,
+                                    ),
                                     _ => val_f,
                                 }
-                            },
+                            }
                         };
                         new_value = NumCast::from(new_val_f).unwrap();
                     }
-                },
+                }
 
                 _ => (),
             }
         }
 
         // If the value has changed produce an event.
-        let event = if value != new_value { Some(new_value) } else { None };
+        let event = if value != new_value {
+            Some(new_value)
+        } else {
+            None
+        };
 
         if state.pressed_value_idx != pressed_value_idx {
             state.update(|state| state.pressed_value_idx = pressed_value_idx);
@@ -356,7 +386,7 @@ impl<'a, T> Widget for NumberDialer<'a, T>
         let val_string_pos = [label_rel_x + label_dim[0] / 2.0, 0.0];
         let mut rel_slot_x = slot_w / 2.0 + val_string_pos[0];
         for (i, _) in val_string.char_indices() {
-            let glyph_string = &val_string[i..i+1];
+            let glyph_string = &val_string[i..i + 1];
             let slot = state.glyph_slot_indices[i];
 
             // We only want to draw the slot **Rectangle** if it is highlighted or selected.
@@ -393,23 +423,21 @@ impl<'a, T> Widget for NumberDialer<'a, T>
 
         event
     }
-
 }
-
 
 impl<'a, T> Colorable for NumberDialer<'a, T> {
     builder_method!(color { style.color = Some(Color) });
 }
 
 impl<'a, T> Borderable for NumberDialer<'a, T> {
-    builder_methods!{
+    builder_methods! {
         border { style.border = Some(Scalar) }
         border_color { style.border_color = Some(Color) }
     }
 }
 
 impl<'a, T> Labelable<'a> for NumberDialer<'a, T> {
-    builder_methods!{
+    builder_methods! {
         label { maybe_label = Some(&'a str) }
         label_color { style.label_color = Some(Color) }
         label_font_size { style.label_font_size = Some(FontSize) }

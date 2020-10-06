@@ -1,8 +1,10 @@
 //! A simple demonstration of how to construct and use Canvasses by splitting up the window.
 
-#[macro_use] extern crate conrod_core;
+#[macro_use]
+extern crate conrod_core;
 extern crate conrod_glium;
-#[macro_use] extern crate conrod_winit;
+#[macro_use]
+extern crate conrod_winit;
 extern crate find_folder;
 extern crate glium;
 extern crate image;
@@ -29,7 +31,9 @@ fn main() {
     let mut ui = conrod_core::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
-    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let assets = find_folder::Search::KidsThenParents(3, 5)
+        .for_folder("assets")
+        .unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
@@ -100,31 +104,70 @@ fn set_widgets(ref mut ui: conrod_core::UiCell, ids: &mut Ids) {
     use conrod_core::{color, widget, Colorable, Labelable, Positionable, Sizeable, Widget};
 
     // Construct our main `Canvas` tree.
-    widget::Canvas::new().flow_down(&[
-        (ids.header, widget::Canvas::new().color(color::BLUE).pad_bottom(20.0)),
-        (ids.body, widget::Canvas::new().length(300.0).flow_right(&[
-            (ids.left_column, widget::Canvas::new().color(color::LIGHT_ORANGE).pad(20.0)),
-            (ids.middle_column, widget::Canvas::new().color(color::ORANGE)),
-            (ids.right_column, widget::Canvas::new().color(color::DARK_ORANGE).pad(20.0)),
-        ])),
-        (ids.footer, widget::Canvas::new().color(color::BLUE).scroll_kids_vertically()),
-    ]).set(ids.master, ui);
+    widget::Canvas::new()
+        .flow_down(&[
+            (
+                ids.header,
+                widget::Canvas::new().color(color::BLUE).pad_bottom(20.0),
+            ),
+            (
+                ids.body,
+                widget::Canvas::new().length(300.0).flow_right(&[
+                    (
+                        ids.left_column,
+                        widget::Canvas::new().color(color::LIGHT_ORANGE).pad(20.0),
+                    ),
+                    (
+                        ids.middle_column,
+                        widget::Canvas::new().color(color::ORANGE),
+                    ),
+                    (
+                        ids.right_column,
+                        widget::Canvas::new().color(color::DARK_ORANGE).pad(20.0),
+                    ),
+                ]),
+            ),
+            (
+                ids.footer,
+                widget::Canvas::new()
+                    .color(color::BLUE)
+                    .scroll_kids_vertically(),
+            ),
+        ])
+        .set(ids.master, ui);
 
     // A scrollbar for the `FOOTER` canvas.
-    widget::Scrollbar::y_axis(ids.footer).auto_hide(true).set(ids.footer_scrollbar, ui);
+    widget::Scrollbar::y_axis(ids.footer)
+        .auto_hide(true)
+        .set(ids.footer_scrollbar, ui);
 
     // Now we'll make a couple floating `Canvas`ses.
-    let floating = widget::Canvas::new().floating(true).w_h(110.0, 150.0).label_color(color::WHITE);
-    floating.middle_of(ids.left_column).title_bar("Blue").color(color::BLUE).set(ids.floating_a, ui);
-    floating.middle_of(ids.right_column).title_bar("Orange").color(color::LIGHT_ORANGE).set(ids.floating_b, ui);
+    let floating = widget::Canvas::new()
+        .floating(true)
+        .w_h(110.0, 150.0)
+        .label_color(color::WHITE);
+    floating
+        .middle_of(ids.left_column)
+        .title_bar("Blue")
+        .color(color::BLUE)
+        .set(ids.floating_a, ui);
+    floating
+        .middle_of(ids.right_column)
+        .title_bar("Orange")
+        .color(color::LIGHT_ORANGE)
+        .set(ids.floating_b, ui);
 
     // Here we make some canvas `Tabs` in the middle column.
-    widget::Tabs::new(&[(ids.tab_foo, "FOO"), (ids.tab_bar, "BAR"), (ids.tab_baz, "BAZ")])
-        .wh_of(ids.middle_column)
-        .color(color::BLUE)
-        .label_color(color::WHITE)
-        .middle_of(ids.middle_column)
-        .set(ids.tabs, ui);
+    widget::Tabs::new(&[
+        (ids.tab_foo, "FOO"),
+        (ids.tab_bar, "BAR"),
+        (ids.tab_baz, "BAZ"),
+    ])
+    .wh_of(ids.middle_column)
+    .color(color::BLUE)
+    .label_color(color::WHITE)
+    .middle_of(ids.middle_column)
+    .set(ids.tabs, ui);
 
     widget::Text::new("Fancy Title")
         .color(color::LIGHT_ORANGE)
@@ -146,10 +189,18 @@ fn set_widgets(ref mut ui: conrod_core::UiCell, ids: &mut Ids) {
         .bottom_right_of(ids.right_column)
         .set(ids.bottom_right, ui);
 
-    fn text(text: widget::Text) -> widget::Text { text.color(color::WHITE).font_size(36) }
-    text(widget::Text::new("Foo!")).middle_of(ids.tab_foo).set(ids.foo_label, ui);
-    text(widget::Text::new("Bar!")).middle_of(ids.tab_bar).set(ids.bar_label, ui);
-    text(widget::Text::new("BAZ!")).middle_of(ids.tab_baz).set(ids.baz_label, ui);
+    fn text(text: widget::Text) -> widget::Text {
+        text.color(color::WHITE).font_size(36)
+    }
+    text(widget::Text::new("Foo!"))
+        .middle_of(ids.tab_foo)
+        .set(ids.foo_label, ui);
+    text(widget::Text::new("Bar!"))
+        .middle_of(ids.tab_bar)
+        .set(ids.bar_label, ui);
+    text(widget::Text::new("BAZ!"))
+        .middle_of(ids.tab_baz)
+        .set(ids.baz_label, ui);
 
     let footer_wh = ui.wh_of(ids.footer).unwrap();
     let mut elements = widget::Matrix::new(COLS, ROWS)
@@ -174,7 +225,6 @@ fn set_widgets(ref mut ui: conrod_core::UiCell, ids: &mut Ids) {
         println!("Bong!");
     }
 }
-
 
 // Button matrix dimensions.
 const ROWS: usize = 10;

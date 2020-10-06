@@ -1,16 +1,18 @@
 //! A simple example that demonstrates the **Graph** widget functionality.
 
-#[macro_use] extern crate conrod_core;
+#[macro_use]
+extern crate conrod_core;
 extern crate conrod_glium;
-#[macro_use] extern crate conrod_winit;
+#[macro_use]
+extern crate conrod_winit;
 extern crate find_folder;
 extern crate glium;
 extern crate petgraph;
 
 mod support;
 
+use conrod_core::widget::graph::{node, EdgeEvent, Event, Node, NodeEvent, NodeSocket};
 use conrod_core::{widget, Borderable, Colorable, Labelable, Positionable, Sizeable, Widget};
-use conrod_core::widget::graph::{node, Event, EdgeEvent, Node, NodeEvent, NodeSocket};
 use glium::Surface;
 use std::collections::HashMap;
 
@@ -68,9 +70,13 @@ fn main() {
     let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
-    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let assets = find_folder::Search::KidsThenParents(3, 5)
+        .for_folder("assets")
+        .unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
-    ui.fonts.insert_from_file(font_path).expect("Couldn't load font");
+    ui.fonts
+        .insert_from_file(font_path)
+        .expect("Couldn't load font");
 
     // A type used for converting `conrod_core::render::Primitives` into `Command`s that can be used
     // for drawing to the glium `Surface`.
@@ -131,7 +137,6 @@ fn main() {
 }
 
 fn set_widgets(ui: &mut conrod_core::UiCell, ids: &Ids, graph: &mut MyGraph, layout: &mut Layout) {
-
     /////////////////
     ///// GRAPH /////
     /////////////////
@@ -150,13 +155,17 @@ fn set_widgets(ui: &mut conrod_core::UiCell, ids: &Ids, graph: &mut MyGraph, lay
         // An identifier for each node in the graph.
         let node_indices = graph.node_indices();
         // Describe each edge in the graph as NodeSocket -> NodeSocket.
-        let edges = graph.raw_edges()
-            .iter()
-            .map(|e| {
-                let start = NodeSocket { id: e.source(), socket_index: e.weight.0 };
-                let end = NodeSocket { id: e.target(), socket_index: e.weight.1 };
-                (start, end)
-            });
+        let edges = graph.raw_edges().iter().map(|e| {
+            let start = NodeSocket {
+                id: e.source(),
+                socket_index: e.weight.0,
+            };
+            let end = NodeSocket {
+                id: e.target(),
+                socket_index: e.weight.1,
+            };
+            (start, end)
+        });
         widget::Graph::new(node_indices, edges, layout)
             .background_color(conrod_core::color::rgb(0.31, 0.33, 0.35))
             .wh_of(ui.window)
@@ -175,21 +184,16 @@ fn set_widgets(ui: &mut conrod_core::UiCell, ids: &Ids, graph: &mut MyGraph, lay
             Event::Node(event) => match event {
                 // NodeEvent::Add(node_kind) => {
                 // },
-                NodeEvent::Remove(node_id) => {
-                },
+                NodeEvent::Remove(node_id) => {}
                 NodeEvent::Dragged { node_id, to, .. } => {
                     *layout.get_mut(&node_id).unwrap() = to;
-                },
+                }
             },
             Event::Edge(event) => match event {
-                EdgeEvent::AddStart(node_socket) => {
-                },
-                EdgeEvent::Add { start, end } => {
-                },
-                EdgeEvent::Cancelled(node_socket) => {
-                },
-                EdgeEvent::Remove { start, end } => {
-                },
+                EdgeEvent::AddStart(node_socket) => {}
+                EdgeEvent::Add { start, end } => {}
+                EdgeEvent::Cancelled(node_socket) => {}
+                EdgeEvent::Remove { start, end } => {}
             },
         }
     }
@@ -213,11 +217,13 @@ fn set_widgets(ui: &mut conrod_core::UiCell, ids: &Ids, graph: &mut MyGraph, lay
         //
         // `wiget_id` - The widget identifier for the widget that will represent this node.
         let node_id = node.node_id();
-        let inputs = graph.neighbors_directed(node_id, petgraph::Incoming).count();
-        let outputs = graph.neighbors_directed(node_id, petgraph::Outgoing).count();
-        let button = widget::Button::new()
-            .label(&graph[node_id])
-            .border(0.0);
+        let inputs = graph
+            .neighbors_directed(node_id, petgraph::Incoming)
+            .count();
+        let outputs = graph
+            .neighbors_directed(node_id, petgraph::Outgoing)
+            .count();
+        let button = widget::Button::new().label(&graph[node_id]).border(0.0);
         let widget = Node::new(button)
             .inputs(inputs)
             .outputs(outputs)

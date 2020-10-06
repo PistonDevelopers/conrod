@@ -14,7 +14,9 @@ use rendy::hal::{
 };
 use rendy::memory::Dynamic;
 use rendy::mesh::AsVertex;
-use rendy::resource::{Buffer, BufferInfo, DescriptorSet, DescriptorSetLayout, Escape, Extent, Handle};
+use rendy::resource::{
+    Buffer, BufferInfo, DescriptorSet, DescriptorSetLayout, Escape, Extent, Handle,
+};
 use rendy::shader::{ShaderSet, ShaderSetBuilder, SpirvShader};
 use rendy::texture::{Texture, TextureBuilder};
 use std::collections::HashMap;
@@ -132,7 +134,7 @@ impl Default for UiPipelineDesc {
     fn default() -> Self {
         let glyph_cache_dimensions = conrod_core::mesh::DEFAULT_GLYPH_CACHE_DIMS;
         UiPipelineDesc {
-            glyph_cache_dimensions
+            glyph_cache_dimensions,
         }
     }
 }
@@ -218,9 +220,7 @@ where
     }
 
     fn vertices(&self) -> Vec<(Vec<Element<Format>>, u32, VertexInputRate)> {
-        vec![
-            Vertex::vertex().gfx_vertex_input_desc(hal::pso::VertexInputRate::Vertex),
-        ]
+        vec![Vertex::vertex().gfx_vertex_input_desc(hal::pso::VertexInputRate::Vertex)]
     }
 
     fn layout(&self) -> Layout {
@@ -333,7 +333,9 @@ where
         };
 
         // Fill the mesh from the given primitives.
-        let fill = self.mesh.fill(viewport, dpi_factor, image_map, primitives)
+        let fill = self
+            .mesh
+            .fill(viewport, dpi_factor, image_map, primitives)
             .expect("failed to fill mesh");
 
         // If fill indicates the glyph cache needs updating, do so.
@@ -373,7 +375,8 @@ where
         let image_map = aux.image_map();
         let glyph_cache_texture = &self.glyph_cache_texture;
         let descriptor_sets = &mut self.descriptor_sets;
-        let new_textures: HashMap<_, _> = image_map.iter()
+        let new_textures: HashMap<_, _> = image_map
+            .iter()
             .filter(|&(img_id, _)| !descriptor_sets.contains_key(img_id))
             .collect();
         let new_descriptors: HashMap<_, _> = new_textures
@@ -387,14 +390,13 @@ where
                 (img_id, descriptors)
             })
             .collect();
-        let new_writes: Vec<_> = new_descriptors.into_iter()
-            .map(|(img_id, descriptors)| {
-                hal::pso::DescriptorSetWrite {
-                    set: descriptor_sets[img_id].raw(),
-                    binding: 0,
-                    array_offset: 0,
-                    descriptors,
-                }
+        let new_writes: Vec<_> = new_descriptors
+            .into_iter()
+            .map(|(img_id, descriptors)| hal::pso::DescriptorSetWrite {
+                set: descriptor_sets[img_id].raw(),
+                binding: 0,
+                array_offset: 0,
+                descriptors,
             })
             .collect();
         if !new_writes.is_empty() {
@@ -405,14 +407,17 @@ where
 
         // TODO: Remove this in favour of `unsafe`ly casting the `&[conrod_core::mesh::Vertex]`
         // to `&[Vertex]` after ensuring layouts are the same.
-        let vertices: Vec<Vertex> = self.mesh.vertices().iter().map(|v| {
-            Vertex {
+        let vertices: Vec<Vertex> = self
+            .mesh
+            .vertices()
+            .iter()
+            .map(|v| Vertex {
                 pos: v.position.into(),
                 uv: v.tex_coords.into(),
                 color: v.rgba.into(),
                 mode: v.mode.into(),
-            }
-        }).collect();
+            })
+            .collect();
         let buffer_size = Vertex::vertex().stride as u64 * vertices.len() as u64;
         let mut buffer = factory
             .create_buffer(
@@ -488,10 +493,13 @@ where
                             encoder.draw(vertices_range, instances_range);
                         }
                     }
-                }
+                },
 
                 mesh::Command::Scizzor(scizzor) => {
-                    let mesh::Scizzor { top_left, dimensions } = scizzor;
+                    let mesh::Scizzor {
+                        top_left,
+                        dimensions,
+                    } = scizzor;
                     let [x, y] = top_left;
                     let [w, h] = dimensions;
                     let rect = hal::pso::Rect {

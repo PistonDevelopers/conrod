@@ -1,6 +1,8 @@
-#[macro_use] extern crate conrod_core;
+#[macro_use]
+extern crate conrod_core;
 extern crate conrod_glium;
-#[macro_use] extern crate conrod_winit;
+#[macro_use]
+extern crate conrod_winit;
 extern crate find_folder;
 extern crate glium;
 
@@ -33,7 +35,9 @@ fn main() {
     let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
-    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let assets = find_folder::Search::KidsThenParents(3, 5)
+        .for_folder("assets")
+        .unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
@@ -61,7 +65,7 @@ fn main() {
         "Indian Tent Turtle".to_string(),
         "Mud Turtle".to_string(),
         "Painted Turtle".to_string(),
-        "Spotted Turtle".to_string()
+        "Spotted Turtle".to_string(),
     ];
 
     // List of selections, should be same length as list of entries. Will be updated by the widget.
@@ -101,11 +105,15 @@ fn main() {
             }
             support::Request::SetUi { needs_redraw } => {
                 // Instantiate the conrod widgets.
-                use conrod_core::{widget, Borderable, Colorable, Labelable, Positionable, Sizeable, Widget};
+                use conrod_core::{
+                    widget, Borderable, Colorable, Labelable, Positionable, Sizeable, Widget,
+                };
 
                 let ui = &mut ui.set_widgets();
 
-                widget::Canvas::new().color(conrod_core::color::BLUE).set(ids.canvas, ui);
+                widget::Canvas::new()
+                    .color(conrod_core::color::BLUE)
+                    .set(ids.canvas, ui);
 
                 // Instantiate the `ListSelect` widget.
                 let num_items = list_items.len();
@@ -123,13 +131,16 @@ fn main() {
                 while let Some(event) = events.next(ui, |i| list_selected.contains(&i)) {
                     use conrod_core::widget::list_select::Event;
                     match event {
-
                         // For the `Item` events we instantiate the `List`'s items.
                         Event::Item(item) => {
                             let label = &list_items[item.i];
                             let (color, label_color) = match list_selected.contains(&item.i) {
-                                true => (conrod_core::color::LIGHT_BLUE, conrod_core::color::YELLOW),
-                                false => (conrod_core::color::LIGHT_GREY, conrod_core::color::BLACK),
+                                true => {
+                                    (conrod_core::color::LIGHT_BLUE, conrod_core::color::YELLOW)
+                                }
+                                false => {
+                                    (conrod_core::color::LIGHT_GREY, conrod_core::color::BLACK)
+                                }
                             };
                             let button = widget::Button::new()
                                 .border(0.0)
@@ -152,7 +163,9 @@ fn main() {
                 }
 
                 // Instantiate the scrollbar for the list.
-                if let Some(s) = scrollbar { s.set(ui); }
+                if let Some(s) = scrollbar {
+                    s.set(ui);
+                }
 
                 *needs_redraw = ui.has_changed();
             }

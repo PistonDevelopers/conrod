@@ -1,12 +1,11 @@
 //! A simple, non-interactive widget for drawing a single **Oval**.
 
-use {Color, Colorable, Dimensions, Point, Rect, Scalar, Sizeable, Theme, Widget};
+use super::Style;
 use graph;
 use std;
-use super::Style as Style;
 use widget;
 use widget::triangles::Triangle;
-
+use {Color, Colorable, Dimensions, Point, Rect, Scalar, Sizeable, Theme, Widget};
 
 /// A simple, non-interactive widget for drawing a single **Oval**.
 #[derive(Copy, Clone, Debug, WidgetCommon_)]
@@ -75,7 +74,8 @@ impl Oval<Full> {
             style: style,
             resolution: DEFAULT_RESOLUTION,
             section: Full,
-        }.wh(dim)
+        }
+        .wh(dim)
     }
 
     /// Build a new **Fill**ed **Oval**.
@@ -112,9 +112,22 @@ impl<S> Oval<S> {
     ///
     /// The given `radians` describes the angle occuppied by the section's circumference.
     pub fn section(self, radians: Scalar) -> Oval<Section> {
-        let Oval { common, style, resolution, .. } = self;
-        let section = Section { radians, offset_radians: 0.0 };
-        Oval { common, style, resolution, section }
+        let Oval {
+            common,
+            style,
+            resolution,
+            ..
+        } = self;
+        let section = Section {
+            radians,
+            offset_radians: 0.0,
+        };
+        Oval {
+            common,
+            style,
+            resolution,
+            section,
+        }
     }
 }
 
@@ -293,7 +306,10 @@ impl Iterator for Circumference {
 impl Iterator for Triangles {
     type Item = Triangle<Point>;
     fn next(&mut self) -> Option<Self::Item> {
-        let Triangles { ref mut points, ref mut last } = *self;
+        let Triangles {
+            ref mut points,
+            ref mut last,
+        } = *self;
         points.next().map(|next| {
             let triangle = Triangle([points.point, *last, next]);
             *last = next;
@@ -329,8 +345,8 @@ pub fn is_over_section_widget(widget: &graph::Container, p: Point, _: &Theme) ->
             let res = unique.state.resolution;
             let offset_rad = unique.state.section.offset_radians;
             let rad = unique.state.section.radians;
-            let circumference = Circumference::new_section(widget.rect, res, rad)
-                .offset_radians(offset_rad);
+            let circumference =
+                Circumference::new_section(widget.rect, res, rad).offset_radians(offset_rad);
             is_over_section(circumference, p)
         })
         .unwrap_or_else(|| widget.rect.is_over(p))

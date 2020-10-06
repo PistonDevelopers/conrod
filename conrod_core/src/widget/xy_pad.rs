@@ -1,20 +1,10 @@
 //! Used for displaying and controlling a 2D point on a cartesian plane within a given range.
 
-use {
-    Color,
-    Colorable,
-    Borderable,
-    FontSize,
-    Labelable,
-    Positionable,
-    Scalar,
-    Widget,
-};
 use num::Float;
 use text;
 use utils::{map_range, val_to_string};
 use widget;
-
+use {Borderable, Color, Colorable, FontSize, Labelable, Positionable, Scalar, Widget};
 
 /// Used for displaying and controlling a 2D point on a cartesian plane within a given range.
 ///
@@ -24,8 +14,12 @@ use widget;
 pub struct XYPad<'a, X, Y> {
     #[conrod(common_builder)]
     common: widget::CommonBuilder,
-    x: X, min_x: X, max_x: X,
-    y: Y, min_y: Y, max_y: Y,
+    x: X,
+    min_x: X,
+    max_x: X,
+    y: Y,
+    min_y: Y,
+    max_y: Y,
     maybe_label: Option<&'a str>,
     style: Style,
     /// Indicates whether the XYPad will respond to user input.
@@ -76,16 +70,18 @@ pub struct State {
     ids: Ids,
 }
 
-
 impl<'a, X, Y> XYPad<'a, X, Y> {
-
     /// Build a new XYPad widget.
     pub fn new(x_val: X, min_x: X, max_x: X, y_val: Y, min_y: Y, max_y: Y) -> Self {
         XYPad {
             common: widget::CommonBuilder::default(),
             style: Style::default(),
-            x: x_val, min_x: min_x, max_x: max_x,
-            y: y_val, min_y: min_y, max_y: max_y,
+            x: x_val,
+            min_x: min_x,
+            max_x: max_x,
+            y: y_val,
+            min_y: min_y,
+            max_y: max_y,
             maybe_label: None,
             enabled: true,
         }
@@ -97,17 +93,17 @@ impl<'a, X, Y> XYPad<'a, X, Y> {
         self
     }
 
-    builder_methods!{
+    builder_methods! {
         pub line_thickness { style.line_thickness = Some(Scalar) }
         pub value_font_size { style.value_font_size = Some(FontSize) }
         pub enabled { enabled = bool }
     }
-
 }
 
 impl<'a, X, Y> Widget for XYPad<'a, X, Y>
-    where X: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
-          Y: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
+where
+    X: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
+    Y: Float + ToString + ::std::fmt::Debug + ::std::any::Any,
 {
     type State = State;
     type Style = Style;
@@ -127,10 +123,21 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         use position::{Direction, Edge};
 
-        let widget::UpdateArgs { id, state, rect, style, ui, .. } = args;
+        let widget::UpdateArgs {
+            id,
+            state,
+            rect,
+            style,
+            ui,
+            ..
+        } = args;
         let XYPad {
-            x, min_x, max_x,
-            y, min_y, max_y,
+            x,
+            min_x,
+            max_x,
+            y,
+            min_y,
+            max_y,
             maybe_label,
             ..
         } = self;
@@ -158,14 +165,18 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
             None
         };
 
-        let interaction_color = |ui: &::ui::UiCell, color: Color|
-            ui.widget_input(id).mouse()
-                .map(|mouse| if mouse.buttons.left().is_down() {
-                    color.clicked()
-                } else {
-                    color.highlighted()
+        let interaction_color = |ui: &::ui::UiCell, color: Color| {
+            ui.widget_input(id)
+                .mouse()
+                .map(|mouse| {
+                    if mouse.buttons.left().is_down() {
+                        color.clicked()
+                    } else {
+                        color.highlighted()
+                    }
                 })
-                .unwrap_or(color);
+                .unwrap_or(color)
+        };
 
         // The backdrop **BorderedRectangle** widget.
         let dim = rect.dim();
@@ -250,23 +261,21 @@ impl<'a, X, Y> Widget for XYPad<'a, X, Y>
 
         event
     }
-
 }
-
 
 impl<'a, X, Y> Colorable for XYPad<'a, X, Y> {
     builder_method!(color { style.color = Some(Color) });
 }
 
 impl<'a, X, Y> Borderable for XYPad<'a, X, Y> {
-    builder_methods!{
+    builder_methods! {
         border { style.border = Some(Scalar) }
         border_color { style.border_color = Some(Color) }
     }
 }
 
 impl<'a, X, Y> Labelable<'a> for XYPad<'a, X, Y> {
-    builder_methods!{
+    builder_methods! {
         label { maybe_label = Some(&'a str) }
         label_color { style.label_color = Some(Color) }
         label_font_size { style.label_font_size = Some(FontSize) }

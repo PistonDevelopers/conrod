@@ -1,9 +1,11 @@
 //! A simple example that demonstrates using conrod within a basic `winit` window loop, using
 //! `glium` to render the `conrod_core::render::Primitives` to screen.
 
-#[macro_use] extern crate conrod_core;
+#[macro_use]
+extern crate conrod_core;
 extern crate conrod_glium;
-#[macro_use] extern crate conrod_winit;
+#[macro_use]
+extern crate conrod_winit;
 extern crate find_folder;
 extern crate glium;
 
@@ -34,7 +36,9 @@ fn main() {
     let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
-    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let assets = find_folder::Search::KidsThenParents(3, 5)
+        .for_folder("assets")
+        .unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
@@ -55,8 +59,7 @@ fn main() {
                 | glium::glutin::event::WindowEvent::KeyboardInput {
                     input:
                         glium::glutin::event::KeyboardInput {
-                            virtual_keycode:
-                                Some(glium::glutin::event::VirtualKeyCode::Escape),
+                            virtual_keycode: Some(glium::glutin::event::VirtualKeyCode::Escape),
                             ..
                         },
                     ..
@@ -79,14 +82,14 @@ fn main() {
 
                     // Set the widgets.
                     let ui = &mut ui.set_widgets();
-            
+
                     // "Hello World!" in the middle of the screen.
                     widget::Text::new("Hello World!")
                         .middle_of(ui.window)
                         .color(conrod_core::color::WHITE)
                         .font_size(32)
                         .set(ids.text, ui);
-                    
+
                     // Request redraw if the `Ui` has changed.
                     display.gl_window().window().request_redraw();
                 }

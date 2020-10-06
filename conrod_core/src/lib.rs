@@ -8,25 +8,27 @@
 #![deny(missing_copy_implementations)]
 #![warn(missing_docs)]
 
-#[macro_use] extern crate conrod_derive;
+#[macro_use]
+extern crate conrod_derive;
+extern crate copypasta;
 extern crate daggy;
 extern crate fnv;
-extern crate num;
 extern crate input as piston_input;
+extern crate num;
 extern crate rusttype;
-extern crate copypasta;
 
+pub use border::{Borderable, Bordering};
 pub use color::{Color, Colorable};
 pub use conrod_derive::*;
-pub use border::{Bordering, Borderable};
 pub use label::{FontSize, Labelable};
 pub use position::{Dimensions, Point, Position, Positionable, Range, Rect, Scalar, Sizeable};
 pub use theme::Theme;
-pub use ui::{Ui, UiCell, UiBuilder};
+pub use ui::{Ui, UiBuilder, UiCell};
 pub use widget::{scroll, Widget};
 
 mod border;
 pub mod color;
+pub mod cursor;
 pub mod event;
 pub mod graph;
 pub mod guide;
@@ -41,6 +43,6 @@ pub mod theme;
 mod ui;
 pub mod utils;
 pub mod widget;
-pub mod cursor;
 
-#[cfg(test)] mod tests;
+#[cfg(test)]
+mod tests;

@@ -15,29 +15,22 @@
 //! middle of the widget's bounding `Rect`. `GlobalInput`, on the other hand, will never filter out
 //! any events, and will always provide them with coordinates relative to the window.
 
+pub mod global;
 pub mod state;
 pub mod widget;
-pub mod global;
 
-use Scalar;
-pub use self::state::State;
 pub use self::global::Global;
+pub use self::state::State;
 pub use self::touch::Touch;
 pub use self::widget::Widget;
+use Scalar;
 
 #[doc(inline)]
 pub use piston_input::keyboard::ModifierKey;
 #[doc(inline)]
 pub use piston_input::{
-    Button,
-    ControllerButton,
-    ControllerAxisArgs,
-    keyboard,
-    Key,
-    MouseButton,
-    RenderArgs,
+    keyboard, Button, ControllerAxisArgs, ControllerButton, Key, MouseButton, RenderArgs,
 };
-
 
 /// Sources from which user input may be received.
 ///
@@ -67,7 +60,6 @@ pub enum Motion {
     /// controller axis move event.
     ControllerAxis(ControllerAxisArgs),
 }
-
 
 /// Touch-related items.
 pub mod touch {
@@ -113,16 +105,13 @@ pub mod touch {
     }
 
     impl Id {
-
         /// Construct a new identifier.
         pub fn new(id: u64) -> Self {
             Id(id)
         }
-
     }
 
     impl Touch {
-
         /// Returns a copy of the `Touch` relative to the given `xy`.
         pub fn relative_to(&self, xy: Point) -> Self {
             Touch {
@@ -130,7 +119,5 @@ pub mod touch {
                 ..*self
             }
         }
-
     }
-
 }

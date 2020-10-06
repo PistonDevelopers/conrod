@@ -3,11 +3,10 @@
 //! Due to the frequency of its use in GUIs, the `Rectangle` gets its own widget to allow backends
 //! to specialise their rendering implementations.
 
-use {Color, Colorable, Dimensions, Point, Rect, Sizeable, Widget};
-use super::Style as Style;
+use super::Style;
 use widget;
 use widget::triangles::Triangle;
-
+use {Color, Colorable, Dimensions, Point, Rect, Sizeable, Widget};
 
 /// A basic, non-interactive rectangle shape widget.
 #[derive(Copy, Clone, Debug, WidgetCommon_)]
@@ -34,15 +33,14 @@ pub enum Kind {
     Fill,
 }
 
-
 impl Rectangle {
-
     /// Build a rectangle with the dimensions and style.
     pub fn styled(dim: Dimensions, style: Style) -> Self {
         Rectangle {
             common: widget::CommonBuilder::default(),
             style: style,
-        }.wh(dim)
+        }
+        .wh(dim)
     }
 
     /// Build a new filled rectangle.
@@ -64,9 +62,7 @@ impl Rectangle {
     pub fn outline_styled(dim: Dimensions, line_style: widget::line::Style) -> Self {
         Rectangle::styled(dim, Style::outline_styled(line_style))
     }
-
 }
-
 
 impl Widget for Rectangle {
     type State = State;
@@ -74,9 +70,7 @@ impl Widget for Rectangle {
     type Event = ();
 
     fn init_state(&self, _: widget::id::Generator) -> Self::State {
-        State {
-            kind: Kind::Fill,
-        }
+        State { kind: Kind::Fill }
     }
 
     fn style(&self) -> Self::Style {
@@ -96,9 +90,7 @@ impl Widget for Rectangle {
             state.update(|state| state.kind = kind);
         }
     }
-
 }
-
 
 impl Colorable for Rectangle {
     fn color(mut self, color: Color) -> Self {
@@ -106,7 +98,6 @@ impl Colorable for Rectangle {
         self
     }
 }
-
 
 /// The two triangles that describe the given `Rect`.
 pub fn triangles(rect: Rect) -> (Triangle<Point>, Triangle<Point>) {

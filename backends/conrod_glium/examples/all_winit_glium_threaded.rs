@@ -12,7 +12,7 @@ extern crate image;
 
 mod support;
 
-use conrod_example_shared::{WIN_W, WIN_H};
+use conrod_example_shared::{WIN_H, WIN_W};
 use conrod_glium::Renderer;
 use glium::Surface;
 
@@ -40,11 +40,16 @@ fn main() {
 
     // Load the Rust logo from our assets folder to use as an example image.
     fn load_rust_logo(display: &glium::Display) -> glium::texture::Texture2d {
-        let assets = find_folder::Search::ParentsThenKids(5, 3).for_folder("assets").unwrap();
+        let assets = find_folder::Search::ParentsThenKids(5, 3)
+            .for_folder("assets")
+            .unwrap();
         let path = assets.join("images/rust.png");
         let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba();
         let image_dimensions = rgba_image.dimensions();
-        let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(&rgba_image.into_raw(), image_dimensions);
+        let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(
+            &rgba_image.into_raw(),
+            image_dimensions,
+        );
         let texture = glium::texture::Texture2d::new(display, raw_image).unwrap();
         texture
     }
@@ -60,18 +65,21 @@ fn main() {
     let events_loop_proxy = event_loop.create_proxy();
 
     // A function that runs the conrod loop.
-    fn run_conrod(rust_logo: conrod_core::image::Id,
-                  event_rx: std::sync::mpsc::Receiver<conrod_core::event::Input>,
-                  render_tx: std::sync::mpsc::Sender<conrod_core::render::OwnedPrimitives>,
-                  events_loop_proxy: glium::glutin::event_loop::EventLoopProxy<()>)
-    {
+    fn run_conrod(
+        rust_logo: conrod_core::image::Id,
+        event_rx: std::sync::mpsc::Receiver<conrod_core::event::Input>,
+        render_tx: std::sync::mpsc::Sender<conrod_core::render::OwnedPrimitives>,
+        events_loop_proxy: glium::glutin::event_loop::EventLoopProxy<()>,
+    ) {
         // Construct our `Ui`.
         let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
             .theme(conrod_example_shared::theme())
             .build();
 
         // Add a `Font` to the `Ui`'s `font::Map` from file.
-        let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+        let assets = find_folder::Search::KidsThenParents(3, 5)
+            .for_folder("assets")
+            .unwrap();
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
         ui.fonts.insert_from_file(font_path).unwrap();
 
@@ -85,7 +93,6 @@ fn main() {
         // insert an update into the conrod loop using this `bool` after each event.
         let mut needs_update = true;
         'conrod: loop {
-
             // Collect any pending events.
             let mut events = Vec::new();
             while let Ok(event) = event_rx.try_recv() {
@@ -116,7 +123,8 @@ fn main() {
             if let Some(primitives) = ui.draw_if_changed() {
                 needs_update = true;
                 if render_tx.send(primitives.owned()).is_err()
-                || events_loop_proxy.send_event(()).is_err() {
+                    || events_loop_proxy.send_event(()).is_err()
+                {
                     break 'conrod;
                 }
             }
@@ -124,11 +132,12 @@ fn main() {
     }
 
     // Draws the given `primitives` to the given `Display`.
-    fn draw(display: &glium::Display,
-            renderer: &mut Renderer,
-            image_map: &conrod_core::image::Map<glium::Texture2d>,
-            primitives: &conrod_core::render::OwnedPrimitives)
-    {
+    fn draw(
+        display: &glium::Display,
+        renderer: &mut Renderer,
+        image_map: &conrod_core::image::Map<glium::Texture2d>,
+        primitives: &conrod_core::render::OwnedPrimitives,
+    ) {
         renderer.fill(display, primitives.walk(), &image_map);
         let mut target = display.draw();
         target.clear_color(0.0, 0.0, 0.0, 1.0);

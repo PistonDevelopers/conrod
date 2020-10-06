@@ -1,20 +1,18 @@
 //! An adaptation of the **Oval** type where the width and height are equal.
 
-use {Color, Dimensions, Scalar};
 use super::oval::{Full, Oval};
-use super::Style as Style;
+use super::Style;
 use widget;
+use {Color, Dimensions, Scalar};
 
 /// A tiny wrapper around the **Oval** widget type.
 #[derive(Copy, Clone, Debug)]
 pub struct Circle;
 
-
 fn rad_to_dim(radius: Scalar) -> Dimensions {
     let side = radius * 2.0;
     [side, side]
 }
-
 
 impl Circle {
     /// Build a circular **Oval** with the given dimensions and style.
@@ -42,4 +40,3 @@ impl Circle {
         Oval::outline_styled(rad_to_dim(radius), line_style)
     }
 }
-

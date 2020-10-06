@@ -2,16 +2,18 @@
 //! A simple demonstration of how to instantiate an `Image` widget.
 //!
 
-#[macro_use] extern crate conrod_core;
-extern crate glium;
+#[macro_use]
+extern crate conrod_core;
 extern crate conrod_glium;
-#[macro_use] extern crate conrod_winit;
+extern crate glium;
+#[macro_use]
+extern crate conrod_winit;
 extern crate find_folder;
 extern crate image;
 
 mod support;
 
-use conrod_core::{widget, Colorable, Positionable, Sizeable, Widget, color};
+use conrod_core::{color, widget, Colorable, Positionable, Sizeable, Widget};
 use glium::Surface;
 
 const WIDTH: u32 = 800;
@@ -81,9 +83,14 @@ fn main() {
                 // Instantiate the widgets.
                 let ui = &mut ui.set_widgets();
                 // Draw a light blue background.
-                widget::Canvas::new().color(color::LIGHT_BLUE).set(ids.background, ui);
+                widget::Canvas::new()
+                    .color(color::LIGHT_BLUE)
+                    .set(ids.background, ui);
                 // Instantiate the `Image` at its full size in the middle of the window.
-                widget::Image::new(rust_logo).w_h(w as f64, h as f64).middle().set(ids.rust_logo, ui);
+                widget::Image::new(rust_logo)
+                    .w_h(w as f64, h as f64)
+                    .middle()
+                    .set(ids.rust_logo, ui);
 
                 *needs_redraw = ui.has_changed();
             }
@@ -103,11 +110,16 @@ fn main() {
 
 // Load the Rust logo from our assets folder to use as an example image.
 fn load_rust_logo(display: &glium::Display) -> glium::texture::Texture2d {
-    let assets = find_folder::Search::ParentsThenKids(5, 3).for_folder("assets").unwrap();
+    let assets = find_folder::Search::ParentsThenKids(5, 3)
+        .for_folder("assets")
+        .unwrap();
     let path = assets.join("images/rust.png");
     let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba();
     let image_dimensions = rgba_image.dimensions();
-    let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(&rgba_image.into_raw(), image_dimensions);
+    let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(
+        &rgba_image.into_raw(),
+        image_dimensions,
+    );
     let texture = glium::texture::Texture2d::new(display, raw_image).unwrap();
     texture
 }

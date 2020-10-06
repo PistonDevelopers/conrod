@@ -1,17 +1,10 @@
 //! A piston backend for rendering conrod primitives.
 
-use conrod_core::{
-    Rect,
-    image,
-    render,
-    text,
-    utils,
-};
+use conrod_core::{image, render, text, utils, Rect};
 use piston_graphics;
 
 #[doc(inline)]
 pub use piston_graphics::{Context, DrawState, Graphics, ImageSize, Transformed};
-
 
 /// Render the given sequence of conrod primitive widgets.
 ///
@@ -35,30 +28,30 @@ pub fn primitives<'a, P, G, T, Img, C, F>(
     image_map: &'a image::Map<Img>,
     mut cache_queued_glyphs: C,
     mut texture_from_image: F,
-)
-    where P: render::PrimitiveWalker,
-          G: Graphics<Texture=T>,
-          T: ImageSize,
-          C: FnMut(&mut G, &mut T, text::rt::Rect<u32>, &[u8]),
-          F: FnMut(&Img) -> &T,
+) where
+    P: render::PrimitiveWalker,
+    G: Graphics<Texture = T>,
+    T: ImageSize,
+    C: FnMut(&mut G, &mut T, text::rt::Rect<u32>, &[u8]),
+    F: FnMut(&Img) -> &T,
 {
-
     // A re-usable buffer of rectangles describing the glyph's screen and texture positions.
     let mut glyph_rectangles = Vec::new();
 
     while let Some(prim) = render::PrimitiveWalker::next_primitive(&mut primitives) {
-        primitive(prim,
-                  context,
-                  graphics,
-                  text_texture_cache,
-                  glyph_cache,
-                  image_map,
-                  &mut glyph_rectangles,
-                  &mut cache_queued_glyphs,
-                  &mut texture_from_image);
+        primitive(
+            prim,
+            context,
+            graphics,
+            text_texture_cache,
+            glyph_cache,
+            image_map,
+            &mut glyph_rectangles,
+            &mut cache_queued_glyphs,
+            &mut texture_from_image,
+        );
     }
 }
-
 
 /// Render a single `Primitive`.
 ///
@@ -84,34 +77,45 @@ pub fn primitive<'a, Img, G, T, C, F>(
     glyph_rectangles: &mut Vec<([f64; 4], [f64; 4])>,
     mut cache_queued_glyphs: C,
     mut texture_from_image: F,
-)
-    where G: Graphics<Texture=T>,
-          T: ImageSize,
-          C: FnMut(&mut G, &mut T, text::rt::Rect<u32>, &[u8]),
-          F: FnMut(&Img) -> &T,
+) where
+    G: Graphics<Texture = T>,
+    T: ImageSize,
+    C: FnMut(&mut G, &mut T, text::rt::Rect<u32>, &[u8]),
+    F: FnMut(&Img) -> &T,
 {
-    let render::Primitive { kind, scizzor, rect, .. } = primitive;
+    let render::Primitive {
+        kind,
+        scizzor,
+        rect,
+        ..
+    } = primitive;
     let view_size = context.get_view_size();
     // Translate the `context` to suit conrod's orientation (middle (0, 0), y pointing upwards).
-    let context = context.trans(view_size[0] / 2.0, view_size[1] / 2.0).scale(1.0, -1.0);
+    let context = context
+        .trans(view_size[0] / 2.0, view_size[1] / 2.0)
+        .scale(1.0, -1.0);
     let context = crop_context(context, scizzor);
 
     match kind {
-
         render::PrimitiveKind::Rectangle { color } => {
             let (l, b, w, h) = rect.l_b_w_h();
             let lbwh = [l, b, w, h];
             let rectangle = piston_graphics::Rectangle::new(color.to_fsa());
             rectangle.draw(lbwh, &context.draw_state, context.transform, graphics);
-        },
+        }
 
         // FIXME: This could be greatly optimised using the `Graphics::tri_list` method.
         render::PrimitiveKind::TrianglesSingleColor { color, triangles } => {
             for triangle in triangles {
                 let polygon = piston_graphics::Polygon::new(color.into());
-                polygon.draw(&triangle[..], &context.draw_state, context.transform, graphics);
+                polygon.draw(
+                    &triangle[..],
+                    &context.draw_state,
+                    context.transform,
+                    graphics,
+                );
             }
-        },
+        }
 
         // FIXME: Piston does not currently allow for associating a unique colour per vertex.  For
         // now, we just use the first colour of each triangle. Also, this could be greatly
@@ -124,20 +128,26 @@ pub fn primitive<'a, Img, G, T, C, F>(
                 let points = [triangle[0].0, triangle[1].0, triangle[2].0];
                 polygon.draw(&points, &context.draw_state, context.transform, graphics);
             }
-        },
+        }
 
-        render::PrimitiveKind::Text { color, text, font_id } => {
-
+        render::PrimitiveKind::Text {
+            color,
+            text,
+            font_id,
+        } => {
             // Retrieve the "dots per inch" factor by dividing the draw width by the window width.
             //
             // TODO: Perhaps this should be a method on the `Context` type?
-            let dpi_factor = context.viewport
+            let dpi_factor = context
+                .viewport
                 .map(|v| v.draw_size[0] as f32 / v.window_size[0] as f32)
                 .unwrap_or(1.0);
             let positioned_glyphs = text.positioned_glyphs(dpi_factor);
             // Re-orient the context to top-left origin with *y* facing downwards, as the
             // `positioned_glyphs` yield pixel positioning.
-            let context = context.scale(1.0, -1.0).trans(-view_size[0] / 2.0, -view_size[1] / 2.0);
+            let context = context
+                .scale(1.0, -1.0)
+                .trans(-view_size[0] / 2.0, -view_size[1] / 2.0);
 
             // Queue the glyphs to be cached.
             for glyph in positioned_glyphs.iter() {
@@ -145,15 +155,18 @@ pub fn primitive<'a, Img, G, T, C, F>(
             }
 
             // Cache the glyphs within the GPU cache.
-            glyph_cache.cache_queued(|rect, data| {
-                cache_queued_glyphs(graphics, text_texture_cache, rect, data)
-            }).unwrap();
+            glyph_cache
+                .cache_queued(|rect, data| {
+                    cache_queued_glyphs(graphics, text_texture_cache, rect, data)
+                })
+                .unwrap();
 
             let cache_id = font_id.index();
             let (tex_w, tex_h) = text_texture_cache.get_size();
             let color = color.to_fsa();
 
-            let rectangles = positioned_glyphs.into_iter()
+            let rectangles = positioned_glyphs
+                .into_iter()
                 .filter_map(|g| glyph_cache.rect_for(cache_id, g).ok().unwrap_or(None))
                 .map(|(uv_rect, screen_rect)| {
                     let rectangle = {
@@ -177,15 +190,21 @@ pub fn primitive<'a, Img, G, T, C, F>(
                 });
             glyph_rectangles.clear();
             glyph_rectangles.extend(rectangles);
-            piston_graphics::image::draw_many(&glyph_rectangles,
-                                              color,
-                                              text_texture_cache,
-                                              &context.draw_state,
-                                              context.transform,
-                                              graphics);
-        },
+            piston_graphics::image::draw_many(
+                &glyph_rectangles,
+                color,
+                text_texture_cache,
+                &context.draw_state,
+                context.transform,
+                graphics,
+            );
+        }
 
-        render::PrimitiveKind::Image { image_id, color, source_rect } => {
+        render::PrimitiveKind::Image {
+            image_id,
+            color,
+            source_rect,
+        } => {
             if let Some(img) = image_map.get(&image_id) {
                 let mut image = piston_graphics::image::Image::new();
                 image.color = color.map(|c| c.to_fsa());
@@ -201,19 +220,14 @@ pub fn primitive<'a, Img, G, T, C, F>(
                 let tex = texture_from_image(img);
                 image.draw(tex, draw_state, transform, graphics);
             }
-        },
+        }
 
         render::PrimitiveKind::Other(_widget) => {
             // TODO: Perhaps add a function to the `primitives` params to allow a user to
             // handle these.
-        },
-
+        }
     }
- 
-
 }
-
-
 
 /// Crop the given **Context** to the given **Rect**.
 ///
@@ -276,8 +290,8 @@ fn crop_context(context: Context, rect: Rect) -> Context {
             h = 0;
         } else {
             // If there is some intersection, calculate the overlapping rect.
-            let (a_l, a_r, a_b, a_t) = (x, x+w, y, y+h);
-            let (b_l, b_r, b_b, b_t) = (r_x, r_x+r_w, r_y, r_y+r_h);
+            let (a_l, a_r, a_b, a_t) = (x, x + w, y, y + h);
+            let (b_l, b_r, b_b, b_t) = (r_x, r_x + r_w, r_y, r_y + r_h);
             let l = if a_l > b_l { a_l } else { b_l };
             let r = if a_r < b_r { a_r } else { b_r };
             let b = if a_b > b_b { a_b } else { b_b };
@@ -289,5 +303,8 @@ fn crop_context(context: Context, rect: Rect) -> Context {
         }
     }
 
-    Context { draw_state: draw_state.scissor([x, y, w, h]), ..context }
+    Context {
+        draw_state: draw_state.scissor([x, y, w, h]),
+        ..context
+    }
 }

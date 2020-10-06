@@ -263,7 +263,9 @@ macro_rules! v020_convert_window_event {
 macro_rules! v020_convert_event {
     ($event:expr, $window:expr) => {{
         match $event {
-            winit::event::Event::WindowEvent { event, .. } => $crate::v020_convert_window_event!(event, $window),
+            winit::event::Event::WindowEvent { event, .. } => {
+                $crate::v020_convert_window_event!(event, $window)
+            }
             _ => None,
         }
     }};
@@ -310,7 +312,9 @@ macro_rules! v020_conversion_fns {
         /// Expects a `winit::VirtualKeyCode` as input and returns a `conrod_core::input::keyboard::Key`.
         ///
         /// Requires that both the `winit` and `conrod_core` crates exist within the crate root.
-        pub fn convert_key(keycode: winit::event::VirtualKeyCode) -> conrod_core::input::keyboard::Key {
+        pub fn convert_key(
+            keycode: winit::event::VirtualKeyCode,
+        ) -> conrod_core::input::keyboard::Key {
             $crate::v020_convert_key!(keycode)
         }
 
@@ -322,7 +326,9 @@ macro_rules! v020_conversion_fns {
         }
 
         /// Convert a given conrod mouse cursor to the corresponding winit cursor type.
-        pub fn convert_mouse_cursor(cursor: conrod_core::cursor::MouseCursor) -> winit::window::CursorIcon {
+        pub fn convert_mouse_cursor(
+            cursor: conrod_core::cursor::MouseCursor,
+        ) -> winit::window::CursorIcon {
             $crate::v020_convert_mouse_cursor!(cursor)
         }
 
