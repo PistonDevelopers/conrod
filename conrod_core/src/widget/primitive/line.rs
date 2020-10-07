@@ -1,11 +1,10 @@
 //! A simple, non-interactive widget for drawing a single straight Line.
 
-use {Color, Colorable, Point, Positionable, Rect, Scalar, Sizeable, Theme};
 use graph;
 use utils::{vec2_add, vec2_sub};
-use widget::{self, Widget};
 use widget::triangles::Triangle;
-
+use widget::{self, Widget};
+use {Color, Colorable, Point, Positionable, Rect, Scalar, Sizeable, Theme};
 
 /// A simple, non-interactive widget for drawing a single straight Line.
 #[derive(Copy, Clone, Debug, WidgetCommon_)]
@@ -66,9 +65,7 @@ pub enum Cap {
     Round,
 }
 
-
 impl Line {
-
     /// Build a new **Line** widget with the given style.
     pub fn styled(start: Point, end: Point, style: Style) -> Self {
         Line {
@@ -147,12 +144,9 @@ impl Line {
         self.style.set_pattern(Pattern::Dotted);
         self
     }
-
 }
 
-
 impl Style {
-
     /// Constructor for a default Line Style.
     pub fn new() -> Self {
         Style {
@@ -225,36 +219,50 @@ impl Style {
     /// The Pattern for the Line.
     pub fn get_pattern(&self, theme: &Theme) -> Pattern {
         const DEFAULT_PATTERN: Pattern = Pattern::Solid;
-        self.maybe_pattern.or_else(|| theme.widget_style::<Style>().map(|default| {
-            default.style.maybe_pattern.unwrap_or(DEFAULT_PATTERN)
-        })).unwrap_or(DEFAULT_PATTERN)
+        self.maybe_pattern
+            .or_else(|| {
+                theme
+                    .widget_style::<Style>()
+                    .map(|default| default.style.maybe_pattern.unwrap_or(DEFAULT_PATTERN))
+            })
+            .unwrap_or(DEFAULT_PATTERN)
     }
 
     /// The Color for the Line.
     pub fn get_color(&self, theme: &Theme) -> Color {
-        self.maybe_color.or_else(|| theme.widget_style::<Style>().map(|default| {
-            default.style.maybe_color.unwrap_or(theme.shape_color)
-        })).unwrap_or(theme.shape_color)
+        self.maybe_color
+            .or_else(|| {
+                theme
+                    .widget_style::<Style>()
+                    .map(|default| default.style.maybe_color.unwrap_or(theme.shape_color))
+            })
+            .unwrap_or(theme.shape_color)
     }
 
     /// The width or thickness of the Line.
     pub fn get_thickness(&self, theme: &Theme) -> Scalar {
         const DEFAULT_THICKNESS: Scalar = 1.0;
-        self.maybe_thickness.or_else(|| theme.widget_style::<Style>().map(|default| {
-            default.style.maybe_thickness.unwrap_or(DEFAULT_THICKNESS)
-        })).unwrap_or(DEFAULT_THICKNESS)
+        self.maybe_thickness
+            .or_else(|| {
+                theme
+                    .widget_style::<Style>()
+                    .map(|default| default.style.maybe_thickness.unwrap_or(DEFAULT_THICKNESS))
+            })
+            .unwrap_or(DEFAULT_THICKNESS)
     }
 
     /// The styling for the ends of the Line.
     pub fn get_cap(&self, theme: &Theme) -> Cap {
         const DEFAULT_CAP: Cap = Cap::Flat;
-        self.maybe_cap.or_else(|| theme.widget_style::<Style>().map(|default| {
-            default.style.maybe_cap.unwrap_or(DEFAULT_CAP)
-        })).unwrap_or(DEFAULT_CAP)
+        self.maybe_cap
+            .or_else(|| {
+                theme
+                    .widget_style::<Style>()
+                    .map(|default| default.style.maybe_cap.unwrap_or(DEFAULT_CAP))
+            })
+            .unwrap_or(DEFAULT_CAP)
     }
-
 }
-
 
 impl Widget for Line {
     type State = State;
@@ -279,7 +287,12 @@ impl Widget for Line {
     /// Update the state of the Line.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { rect, state, .. } = args;
-        let Line { mut start, mut end, should_centre_points, .. } = self;
+        let Line {
+            mut start,
+            mut end,
+            should_centre_points,
+            ..
+        } = self;
 
         // Check whether or not we need to shift the line to the xy position.
         if should_centre_points {
@@ -299,7 +312,6 @@ impl Widget for Line {
         }
     }
 }
-
 
 impl Colorable for Line {
     fn color(mut self, color: Color) -> Self {

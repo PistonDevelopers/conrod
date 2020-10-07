@@ -1,10 +1,9 @@
 //! A simple, non-interactive widget for drawing an `Image`.
 
-use {Color, Widget, Ui};
 use image;
 use position::{Dimension, Rect};
 use widget;
-
+use {Color, Ui, Widget};
 
 /// A primitive and basic widget for drawing an `Image`.
 #[derive(Copy, Clone, WidgetCommon_)]
@@ -39,9 +38,7 @@ pub struct Style {
     pub maybe_color: Option<Option<Color>>,
 }
 
-
 impl Image {
-
     /// Construct a new `Image`.
     ///
     /// Note that the `Image` widget does not require borrowing or owning any image data directly.
@@ -83,12 +80,10 @@ impl Image {
         self
     }
 
-    builder_methods!{
+    builder_methods! {
         pub color { style.maybe_color = Some(Option<Color>) }
     }
-
 }
-
 
 impl Widget for Image {
     type State = State;
@@ -122,7 +117,9 @@ impl Widget for Image {
 
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         let widget::UpdateArgs { state, .. } = args;
-        let Image { image_id, src_rect, .. } = self;
+        let Image {
+            image_id, src_rect, ..
+        } = self;
 
         if state.image_id != image_id {
             state.update(|state| state.image_id = image_id);
@@ -131,5 +128,4 @@ impl Widget for Image {
             state.update(|state| state.src_rect = src_rect);
         }
     }
-
 }

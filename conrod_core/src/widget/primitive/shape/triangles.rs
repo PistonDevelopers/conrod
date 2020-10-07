@@ -1,11 +1,11 @@
 //! A primitive widget that allows for drawing using a list of triangles.
 
-use {Rect, Point, Positionable, Scalar, Sizeable, Theme, Widget};
 use color;
 use graph;
 use std;
 use utils::{vec2_add, vec2_sub};
 use widget;
+use {Point, Positionable, Rect, Scalar, Sizeable, Theme, Widget};
 
 /// A widget that allows for drawing a list of triangles.
 #[derive(Copy, Clone, Debug, WidgetCommon_)]
@@ -46,7 +46,8 @@ pub struct MultiColor;
 /// A single triangle described by three vertices.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Triangle<V>(pub [V; 3])
-    where V: Vertex;
+where
+    V: Vertex;
 
 /// A point with an associated color.
 pub type ColoredPoint = (Point, color::Rgba);
@@ -57,7 +58,6 @@ pub struct State<T> {
     /// The triangles that make up the triangles.
     pub triangles: T,
 }
-
 
 impl Vertex for Point {
     fn point(&self) -> Point {
@@ -86,7 +86,6 @@ impl Style for MultiColor {
     type Vertex = ColoredPoint;
 }
 
-
 /// When beginning to build `Triangles` they are initially unpositioned.
 ///
 /// This is an intemediary type which allows the user to choose how to position the bounding
@@ -96,9 +95,9 @@ pub struct TrianglesUnpositioned<S, I> {
     triangles: Triangles<S, I>,
 }
 
-
 impl<V> Triangle<V>
-    where V: Vertex,
+where
+    V: Vertex,
 {
     /// Shift the triangle by the given amount by adding it onto the position of each point.
     pub fn add(self, amount: Point) -> Self {
@@ -127,7 +126,8 @@ impl Triangle<Point> {
 }
 
 impl<V> std::ops::Deref for Triangle<V>
-    where V: Vertex,
+where
+    V: Vertex,
 {
     type Target = [V; 3];
     fn deref(&self) -> &Self::Target {
@@ -136,7 +136,8 @@ impl<V> std::ops::Deref for Triangle<V>
 }
 
 impl<V> From<[V; 3]> for Triangle<V>
-    where V: Vertex,
+where
+    V: Vertex,
 {
     fn from(points: [V; 3]) -> Self {
         Triangle(points)
@@ -144,7 +145,8 @@ impl<V> From<[V; 3]> for Triangle<V>
 }
 
 impl<V> From<(V, V, V)> for Triangle<V>
-    where V: Vertex,
+where
+    V: Vertex,
 {
     fn from((a, b, c): (V, V, V)) -> Self {
         Triangle([a, b, c])
@@ -152,7 +154,8 @@ impl<V> From<(V, V, V)> for Triangle<V>
 }
 
 impl<V> Into<[V; 3]> for Triangle<V>
-    where V: Vertex,
+where
+    V: Vertex,
 {
     fn into(self) -> [V; 3] {
         self.0
@@ -160,13 +163,13 @@ impl<V> Into<[V; 3]> for Triangle<V>
 }
 
 impl<V> Into<(V, V, V)> for Triangle<V>
-    where V: Vertex,
+where
+    V: Vertex,
 {
     fn into(self) -> (V, V, V) {
         (self[0], self[1], self[2])
     }
 }
-
 
 impl<S, I> Triangles<S, I> {
     fn new(style: S, triangles: I) -> Self {
@@ -180,13 +183,15 @@ impl<S, I> Triangles<S, I> {
 }
 
 impl<I> Triangles<SingleColor, I>
-    where I: IntoIterator<Item=Triangle<<SingleColor as Style>::Vertex>>,
+where
+    I: IntoIterator<Item = Triangle<<SingleColor as Style>::Vertex>>,
 {
     /// A list of triangles described by the given points.
     ///
     /// All triangles are colored with the given `Color`.
     pub fn single_color<C>(color: C, points: I) -> TrianglesUnpositioned<SingleColor, I>
-        where C: Into<color::Rgba>,
+    where
+        C: Into<color::Rgba>,
     {
         let style = SingleColor(color.into());
         TrianglesUnpositioned::new(Triangles::new(style, points))
@@ -194,7 +199,8 @@ impl<I> Triangles<SingleColor, I>
 }
 
 impl<I> Triangles<MultiColor, I>
-    where I: IntoIterator<Item=Triangle<<MultiColor as Style>::Vertex>>,
+where
+    I: IntoIterator<Item = Triangle<<MultiColor as Style>::Vertex>>,
 {
     /// A list of triangles described by the given points.
     ///
@@ -205,15 +211,22 @@ impl<I> Triangles<MultiColor, I>
 }
 
 fn bounding_rect_for_triangles<I, V>(triangles: I) -> Rect
-    where I: IntoIterator<Item=Triangle<V>>,
-          V: Vertex,
+where
+    I: IntoIterator<Item = Triangle<V>>,
+    V: Vertex,
 {
-    struct TriangleVertices<V> where V: Vertex {
+    struct TriangleVertices<V>
+    where
+        V: Vertex,
+    {
         index: usize,
         triangle: Triangle<V>,
     }
 
-    impl<V> Iterator for TriangleVertices<V> where V: Vertex {
+    impl<V> Iterator for TriangleVertices<V>
+    where
+        V: Vertex,
+    {
         type Item = V;
         fn next(&mut self) -> Option<Self::Item> {
             let v = self.triangle.get(self.index).map(|&v| v);
@@ -222,19 +235,21 @@ fn bounding_rect_for_triangles<I, V>(triangles: I) -> Rect
         }
     }
 
-    let points = triangles
-        .into_iter()
-        .flat_map(|t| {
-            let vs = TriangleVertices { index: 0, triangle: t };
-            vs.map(|v| v.point())
-        });
+    let points = triangles.into_iter().flat_map(|t| {
+        let vs = TriangleVertices {
+            index: 0,
+            triangle: t,
+        };
+        vs.map(|v| v.point())
+    });
     super::super::bounding_box_for_points(points)
 }
 
 impl<S, I> TrianglesUnpositioned<S, I>
-    where S: Style,
-          I: IntoIterator<Item=Triangle<S::Vertex>>,
-          Triangles<S, I>: Widget,
+where
+    S: Style,
+    I: IntoIterator<Item = Triangle<S::Vertex>>,
+    Triangles<S, I>: Widget,
 {
     fn new(triangles: Triangles<S, I>) -> Self {
         TrianglesUnpositioned {
@@ -271,7 +286,8 @@ impl<S, I> TrianglesUnpositioned<S, I>
     /// [**TrianglesUnpositioned::centre_points_to_bounding_rect**](./struct.TrianglesUnpositioned#method.centre_points_to_bounding_rect)
     /// instead.
     pub fn calc_bounding_rect(self) -> Triangles<S, I>
-        where I: Clone,
+    where
+        I: Clone,
     {
         let TrianglesUnpositioned { triangles } = self;
         let (xy, dim) = bounding_rect_for_triangles(triangles.triangles.clone()).xy_dim();
@@ -293,7 +309,8 @@ impl<S, I> TrianglesUnpositioned<S, I>
     /// [**TrianglesUnpositioned::calc_bounding_rect**](./struct.TrianglesUnpositioned#method.calc_bounding_rect)
     /// instead.
     pub fn centre_points_to_bounding_rect(self) -> Triangles<S, I>
-        where I: Clone,
+    where
+        I: Clone,
     {
         let TrianglesUnpositioned { mut triangles } = self;
         let (xy, dim) = bounding_rect_for_triangles(triangles.triangles.clone()).xy_dim();
@@ -303,8 +320,9 @@ impl<S, I> TrianglesUnpositioned<S, I>
 }
 
 impl<S, I> Widget for Triangles<S, I>
-    where S: Style,
-          I: IntoIterator<Item=Triangle<S::Vertex>>,
+where
+    S: Style,
+    I: IntoIterator<Item = Triangle<S::Vertex>>,
 {
     type State = State<Vec<Triangle<S::Vertex>>>;
     type Style = S;
@@ -327,23 +345,30 @@ impl<S, I> Widget for Triangles<S, I>
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         use utils::{iter_diff, IterDiff};
         let widget::UpdateArgs { rect, state, .. } = args;
-        let Triangles { triangles, maybe_shift_to_centre_from, .. } = self;
+        let Triangles {
+            triangles,
+            maybe_shift_to_centre_from,
+            ..
+        } = self;
 
         // A function that compares the given triangles iterator to the triangles currently owned by
         // `State` and updates only if necessary.
         fn update_triangles<I>(state: &mut widget::State<State<Vec<I::Item>>>, triangles: I)
-            where I: IntoIterator,
-                  I::Item: PartialEq,
+        where
+            I: IntoIterator,
+            I::Item: PartialEq,
         {
             match iter_diff(&state.triangles, triangles) {
                 Some(IterDiff::FirstMismatch(i, mismatch)) => state.update(|state| {
                     state.triangles.truncate(i);
                     state.triangles.extend(mismatch);
                 }),
-                Some(IterDiff::Longer(remaining)) =>
-                    state.update(|state| state.triangles.extend(remaining)),
-                Some(IterDiff::Shorter(total)) =>
-                    state.update(|state| state.triangles.truncate(total)),
+                Some(IterDiff::Longer(remaining)) => {
+                    state.update(|state| state.triangles.extend(remaining))
+                }
+                Some(IterDiff::Shorter(total)) => {
+                    state.update(|state| state.triangles.truncate(total))
+                }
                 None => (),
             }
         }
@@ -354,12 +379,11 @@ impl<S, I> Widget for Triangles<S, I>
                 let difference = vec2_sub(xy, original);
                 let triangles = triangles.into_iter().map(|tri| tri.add(difference));
                 update_triangles(state, triangles)
-            },
+            }
             None => update_triangles(state, triangles),
         }
     }
 }
-
 
 /// Triangulates the given quad, represented by four points that describe its edges in either
 /// clockwise or anti-clockwise order.
@@ -448,7 +472,7 @@ pub fn is_over<V, I, T>(ts: I, p: Point) -> bool
 where
     V: Vertex,
     T: AsRef<Triangle<V>>,
-    I: IntoIterator<Item=T>,
+    I: IntoIterator<Item = T>,
 {
     ts.into_iter().any(|t| is_over_triangle(t.as_ref(), p))
 }

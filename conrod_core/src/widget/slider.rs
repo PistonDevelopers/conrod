@@ -1,12 +1,11 @@
 //! A widget for selecting a single value along some linear range.
 
-use {Color, Colorable, FontSize, Borderable, Labelable, Positionable, Widget};
 use num::{Float, NumCast, ToPrimitive};
 use position::{Padding, Range, Rect, Scalar};
 use text;
 use widget;
 use widget::triangles::Triangle;
-
+use {Borderable, Color, Colorable, FontSize, Labelable, Positionable, Widget};
 
 /// Linear value selection.
 ///
@@ -72,7 +71,6 @@ pub struct State {
 }
 
 impl<'a, T> Slider<'a, T> {
-
     /// Construct a new Slider widget.
     pub fn new(value: T, min: T, max: T) -> Self {
         Slider {
@@ -93,15 +91,15 @@ impl<'a, T> Slider<'a, T> {
         self
     }
 
-    builder_methods!{
+    builder_methods! {
         pub skew { skew = f32 }
         pub enabled { enabled = bool }
     }
-
 }
 
 impl<'a, T> Widget for Slider<'a, T>
-    where T: Float + NumCast + ToPrimitive,
+where
+    T: Float + NumCast + ToPrimitive,
 {
     type State = State;
     type Style = Style;
@@ -132,8 +130,22 @@ impl<'a, T> Widget for Slider<'a, T>
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         use utils::{clamp, map_range, value_from_perc};
 
-        let widget::UpdateArgs { id, state, rect, style, ui, .. } = args;
-        let Slider { value, min, max, skew, maybe_label, .. } = self;
+        let widget::UpdateArgs {
+            id,
+            state,
+            rect,
+            style,
+            ui,
+            ..
+        } = args;
+        let Slider {
+            value,
+            min,
+            max,
+            skew,
+            maybe_label,
+            ..
+        } = self;
 
         let is_horizontal = rect.w() > rect.h();
         let border = style.border(ui.theme());
@@ -167,14 +179,18 @@ impl<'a, T> Widget for Slider<'a, T>
         };
 
         // The **Rectangle** for the border.
-        let interaction_color = |ui: &::ui::UiCell, color: Color|
-            ui.widget_input(id).mouse()
-                .map(|mouse| if mouse.buttons.left().is_down() {
-                    color.clicked()
-                } else {
-                    color.highlighted()
+        let interaction_color = |ui: &::ui::UiCell, color: Color| {
+            ui.widget_input(id)
+                .mouse()
+                .map(|mouse| {
+                    if mouse.buttons.left().is_down() {
+                        color.clicked()
+                    } else {
+                        color.highlighted()
+                    }
                 })
-                .unwrap_or(color);
+                .unwrap_or(color)
+        };
 
         // The **Rectangle** for the adjustable slider.
         let value_perc = map_range(new_value, min, max, 0.0, 1.0);
@@ -184,16 +200,28 @@ impl<'a, T> Widget for Slider<'a, T>
             let slider = map_range(unskewed_perc, 0.0, 1.0, left, inner_rect.x.end);
             let right = inner_rect.x.end;
             let y = inner_rect.y;
-            let slider_rect = Rect { x: Range::new(left, slider), y: y };
-            let blank_rect = Rect { x: Range::new(slider, right), y: y };
+            let slider_rect = Rect {
+                x: Range::new(left, slider),
+                y: y,
+            };
+            let blank_rect = Rect {
+                x: Range::new(slider, right),
+                y: y,
+            };
             (slider_rect, blank_rect)
         } else {
             let bottom = inner_rect.y.start;
             let slider = map_range(unskewed_perc, 0.0, 1.0, bottom, inner_rect.y.end);
             let top = inner_rect.y.end;
             let x = inner_rect.x;
-            let slider_rect = Rect { x: x, y: Range::new(bottom, slider) };
-            let blank_rect = Rect { x: x, y: Range::new(slider, top) };
+            let slider_rect = Rect {
+                x: x,
+                y: Range::new(bottom, slider),
+            };
+            let blank_rect = Rect {
+                x: x,
+                y: Range::new(slider, top),
+            };
             (slider_rect, blank_rect)
         };
 
@@ -212,11 +240,13 @@ impl<'a, T> Widget for Slider<'a, T>
             .into_iter()
             .flat_map(|tris| tris.iter().cloned())
             .chain(blank_triangles.iter().cloned())
-            .map(|Triangle(ps)| Triangle([
-                 (ps[0], border_color),
-                 (ps[1], border_color),
-                 (ps[2], border_color)
-            ]));
+            .map(|Triangle(ps)| {
+                Triangle([
+                    (ps[0], border_color),
+                    (ps[1], border_color),
+                    (ps[2], border_color),
+                ])
+            });
 
         // Color the slider triangles.
         let slider_colored_triangles = slider_triangles
@@ -241,8 +271,13 @@ impl<'a, T> Widget for Slider<'a, T>
             //const TEXT_PADDING: f64 = 10.0;
             widget::Text::new(label)
                 .and_then(font_id, widget::Text::font_id)
-                .and(|text| if is_horizontal { text.mid_left_of(id) }
-                            else { text.mid_bottom_of(id) })
+                .and(|text| {
+                    if is_horizontal {
+                        text.mid_left_of(id)
+                    } else {
+                        text.mid_bottom_of(id)
+                    }
+                })
                 .graphics_for(id)
                 .color(label_color)
                 .font_size(font_size)
@@ -250,25 +285,27 @@ impl<'a, T> Widget for Slider<'a, T>
         }
 
         // If the value has just changed, return the new value.
-        if value != new_value { Some(new_value) } else { None }
+        if value != new_value {
+            Some(new_value)
+        } else {
+            None
+        }
     }
-
 }
-
 
 impl<'a, T> Colorable for Slider<'a, T> {
     builder_method!(color { style.color = Some(Color) });
 }
 
 impl<'a, T> Borderable for Slider<'a, T> {
-    builder_methods!{
+    builder_methods! {
         border { style.border = Some(Scalar) }
         border_color { style.border_color = Some(Color) }
     }
 }
 
 impl<'a, T> Labelable<'a> for Slider<'a, T> {
-    builder_methods!{
+    builder_methods! {
         label { maybe_label = Some(&'a str) }
         label_color { style.label_color = Some(Color) }
         label_font_size { style.label_font_size = Some(FontSize) }

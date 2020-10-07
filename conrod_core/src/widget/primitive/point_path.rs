@@ -1,14 +1,13 @@
 //! A simple, non-interactive widget for drawing a series of conjoined lines.
 
-use {Color, Colorable, Point, Positionable, Scalar, Sizeable, Theme, Widget};
 use graph;
 use utils::{vec2_add, vec2_sub};
 use widget;
 use widget::triangles::Triangle;
+use {Color, Colorable, Point, Positionable, Scalar, Sizeable, Theme, Widget};
 
 pub use super::line::Pattern;
 pub use super::line::Style;
-
 
 /// A simple, non-interactive widget for drawing a series of lines and/or points.
 #[derive(Clone, Debug, WidgetCommon_)]
@@ -41,7 +40,6 @@ pub struct Triangles<I> {
     cap: widget::line::Cap,
 }
 
-
 impl<I> PointPath<I> {
     /// The same as [**PointPath::new**](./struct.PointPath#method.new) but with th given style.
     pub fn styled(points: I, style: Style) -> Self {
@@ -72,7 +70,8 @@ impl<I> PointPath<I> {
     /// If you would rather centre the points to the middle of the bounding box, use
     /// [**PointPath::centred**](./struct.PointPath#method.centred) instead.
     pub fn abs(points: I) -> Self
-        where I: IntoIterator<Item=Point> + Clone,
+    where
+        I: IntoIterator<Item = Point> + Clone,
     {
         PointPath::abs_styled(points, Style::new())
     }
@@ -80,7 +79,8 @@ impl<I> PointPath<I> {
     /// The same as [**PointPath::abs**](./struct.PointPath#method.abs) but constructs the
     /// **PointPath** with the given style.
     pub fn abs_styled(points: I, style: Style) -> Self
-        where I: IntoIterator<Item=Point> + Clone,
+    where
+        I: IntoIterator<Item = Point> + Clone,
     {
         let points_clone = points.clone().into_iter();
         let (xy, dim) = super::bounding_box_for_points(points_clone).xy_dim();
@@ -96,7 +96,8 @@ impl<I> PointPath<I> {
     /// If you would rather centre the bounding box to the points, use
     /// [**PointPath::abs**](./struct.PointPath#method.abs) instead.
     pub fn centred(points: I) -> Self
-        where I: IntoIterator<Item=Point> + Clone,
+    where
+        I: IntoIterator<Item = Point> + Clone,
     {
         PointPath::centred_styled(points, Style::new())
     }
@@ -104,7 +105,8 @@ impl<I> PointPath<I> {
     /// The same as [**PointPath::centred**](./struct.PointPath#method.centred) but constructs the
     /// **PointPath** with the given style.
     pub fn centred_styled(points: I, style: Style) -> Self
-        where I: IntoIterator<Item=Point> + Clone,
+    where
+        I: IntoIterator<Item = Point> + Clone,
     {
         let points_clone = points.clone().into_iter();
         let (xy, dim) = super::bounding_box_for_points(points_clone).xy_dim();
@@ -141,18 +143,16 @@ impl<I> PointPath<I> {
     }
 }
 
-
 impl<I> Widget for PointPath<I>
-    where I: IntoIterator<Item=Point>,
+where
+    I: IntoIterator<Item = Point>,
 {
     type State = State;
     type Style = Style;
     type Event = ();
 
     fn init_state(&self, _: widget::id::Generator) -> Self::State {
-        State {
-            points: Vec::new(),
-        }
+        State { points: Vec::new() }
     }
 
     fn style(&self) -> Self::Style {
@@ -167,22 +167,29 @@ impl<I> Widget for PointPath<I>
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         use utils::{iter_diff, IterDiff};
         let widget::UpdateArgs { rect, state, .. } = args;
-        let PointPath { points, maybe_shift_to_centre_from, .. } = self;
+        let PointPath {
+            points,
+            maybe_shift_to_centre_from,
+            ..
+        } = self;
 
         // A function that compares the given points iterator to the points currently owned by
         // `State` and updates only if necessary.
         fn update_points<I>(state: &mut widget::State<State>, points: I)
-            where I: IntoIterator<Item=Point>,
+        where
+            I: IntoIterator<Item = Point>,
         {
             match iter_diff(&state.points, points) {
                 Some(IterDiff::FirstMismatch(i, mismatch)) => state.update(|state| {
                     state.points.truncate(i);
                     state.points.extend(mismatch);
                 }),
-                Some(IterDiff::Longer(remaining)) =>
-                    state.update(|state| state.points.extend(remaining)),
-                Some(IterDiff::Shorter(total)) =>
-                    state.update(|state| state.points.truncate(total)),
+                Some(IterDiff::Longer(remaining)) => {
+                    state.update(|state| state.points.extend(remaining))
+                }
+                Some(IterDiff::Shorter(total)) => {
+                    state.update(|state| state.points.truncate(total))
+                }
                 None => (),
             }
         }
@@ -191,12 +198,14 @@ impl<I> Widget for PointPath<I>
             Some(original) => {
                 let xy = rect.xy();
                 let difference = vec2_sub(xy, original);
-                update_points(state, points.into_iter().map(|point| vec2_add(point, difference)))
-            },
+                update_points(
+                    state,
+                    points.into_iter().map(|point| vec2_add(point, difference)),
+                )
+            }
             None => update_points(state, points),
         }
     }
-
 }
 
 impl<I> Colorable for PointPath<I> {
@@ -206,13 +215,16 @@ impl<I> Colorable for PointPath<I> {
     }
 }
 
-
 /// Triangulate a point path.
 ///
 /// Returns `None` if the given iterator yields less than one point.
-pub fn triangles<I>(points: I, cap: widget::line::Cap, thickness: Scalar)
-    -> Option<Triangles<I::IntoIter>>
-    where I: IntoIterator<Item=Point>,
+pub fn triangles<I>(
+    points: I,
+    cap: widget::line::Cap,
+    thickness: Scalar,
+) -> Option<Triangles<I::IntoIter>>
+where
+    I: IntoIterator<Item = Point>,
 {
     let mut points = points.into_iter();
     let first = match points.next() {
@@ -229,7 +241,8 @@ pub fn triangles<I>(points: I, cap: widget::line::Cap, thickness: Scalar)
 }
 
 impl<I> Iterator for Triangles<I>
-    where I: Iterator<Item=Point>,
+where
+    I: Iterator<Item = Point>,
 {
     type Item = Triangle<Point>;
     fn next(&mut self) -> Option<Self::Item> {
@@ -250,9 +263,11 @@ impl<I> Iterator for Triangles<I>
 /// points, line cap and thickness.
 pub fn is_over<I>(points: I, cap: widget::line::Cap, thickness: Scalar, p: Point) -> bool
 where
-    I: IntoIterator<Item=Point>,
+    I: IntoIterator<Item = Point>,
 {
-    triangles(points, cap, thickness).map(|ts| widget::triangles::is_over(ts, p)).unwrap_or(false)
+    triangles(points, cap, thickness)
+        .map(|ts| widget::triangles::is_over(ts, p))
+        .unwrap_or(false)
 }
 
 /// The function to use for picking whether a given point is over the point path.

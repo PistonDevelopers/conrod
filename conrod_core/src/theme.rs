@@ -2,19 +2,18 @@
 //! Types a functionality for handling Canvas and Widget theming.
 //!
 
-use Scalar;
 use color::{Color, BLACK, WHITE};
-use position::{Align, Direction, Padding, Position, Relative};
 use fnv;
+use position::{Align, Direction, Padding, Position, Relative};
 use std;
 use std::any::Any;
 use text;
 use widget;
+use Scalar;
 
 /// `std::collections::HashMap` with `fnv::FnvHasher` for unique styling
 /// of each widget, index-able by the **Widget::kind**.
 pub type StyleMap = fnv::FnvHashMap<std::any::TypeId, WidgetDefault>;
-
 
 /// A serializable collection of canvas and widget styling defaults.
 #[derive(Debug)]
@@ -85,7 +84,6 @@ impl WidgetDefault {
 }
 
 impl Theme {
-
     /// The default theme if not loading from file.
     pub fn default() -> Theme {
         Theme {
@@ -112,18 +110,20 @@ impl Theme {
     ///
     /// Attempts to cast the `Box<WidgetStyle>` to the **Widget**'s unique associated style **T**.
     pub fn widget_style<T>(&self) -> Option<UniqueDefault<T>>
-        where T: widget::Style,
+    where
+        T: widget::Style,
     {
         let style_id = std::any::TypeId::of::<T>();
-        self.widget_styling.get(&style_id).and_then(|boxed_default| {
-            boxed_default.style.downcast_ref().map(|style| {
-                let common = &boxed_default.common;
-                UniqueDefault {
-                    style: style,
-                    common: common,
-                }
+        self.widget_styling
+            .get(&style_id)
+            .and_then(|boxed_default| {
+                boxed_default.style.downcast_ref().map(|style| {
+                    let common = &boxed_default.common;
+                    UniqueDefault {
+                        style: style,
+                        common: common,
+                    }
+                })
             })
-        })
     }
-
 }

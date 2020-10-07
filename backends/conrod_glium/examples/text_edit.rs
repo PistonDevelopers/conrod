@@ -19,15 +19,14 @@ fn main() {
     const HEIGHT: u32 = 720;
 
     // Build the window.
-    let mut events_loop = glium::glutin::EventsLoop::new();
-    let window = glium::glutin::WindowBuilder::new()
+    let event_loop = glium::glutin::event_loop::EventLoop::new();
+    let window = glium::glutin::window::WindowBuilder::new()
         .with_title("TextEdit Demo")
-        .with_dimensions((WIDTH, HEIGHT).into());
+        .with_inner_size(glium::glutin::dpi::LogicalSize::new(WIDTH, HEIGHT));
     let context = glium::glutin::ContextBuilder::new()
         .with_vsync(true)
         .with_multisampling(4);
-    let display = glium::Display::new(window, context, &events_loop).unwrap();
-    let display = support::GliumDisplayWinitWrapper(display);
+    let display = glium::Display::new(window, context, &event_loop).unwrap();
 
     // Construct our `Ui`.
     let mut ui = conrod_core::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
@@ -36,13 +35,15 @@ fn main() {
     let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
-    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let assets = find_folder::Search::KidsThenParents(3, 5)
+        .for_folder("assets")
+        .unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
     // A type used for converting `conrod_core::render::Primitives` into `Command`s that can be used
     // for drawing to the glium `Surface`.
-    let mut renderer = conrod_glium::Renderer::new(&display.0).unwrap();
+    let mut renderer = conrod_glium::Renderer::new(&display).unwrap();
 
     // The image map describing each of our widget->image mappings (in our case, none).
     let image_map = conrod_core::image::Map::<glium::texture::Texture2d>::new();
@@ -54,54 +55,65 @@ fn main() {
         fames ac ante ipsum primis in faucibus. Cras rhoncus nisi nec dolor bibendum pellentesque. \
         Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. \
         Quisque commodo nibh hendrerit nunc sollicitudin sodales. Cras vitae tempus ipsum. Nam \
-        magna est, efficitur suscipit dolor eu, consectetur consectetur urna.".to_owned();
+        magna est, efficitur suscipit dolor eu, consectetur consectetur urna."
+        .to_owned();
 
     // Poll events from the window.
-    let mut event_loop = support::EventLoop::new();
-    'main: loop {
+    support::run_loop(display, event_loop, move |request, display| {
+        match request {
+            support::Request::Event {
+                event,
+                should_update_ui,
+                should_exit,
+            } => {
+                // Use the `winit` backend feature to convert the winit event to a conrod one.
+                if let Some(event) = support::convert_event(&event, &display.gl_window().window()) {
+                    ui.handle_event(event);
+                    *should_update_ui = true;
+                }
 
-        // Handle all events.
-        for event in event_loop.next(&mut events_loop) {
-
-            // Use the `winit` backend feature to convert the winit event to a conrod one.
-            if let Some(event) = support::convert_event(event.clone(), &display) {
-                ui.handle_event(event);
-                event_loop.needs_update();
-            }
-
-            match event {
-                glium::glutin::Event::WindowEvent { event, .. } => match event {
-                    // Break from the loop upon `Escape`.
-                    glium::glutin::WindowEvent::CloseRequested |
-                    glium::glutin::WindowEvent::KeyboardInput {
-                        input: glium::glutin::KeyboardInput {
-                            virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
+                match event {
+                    glium::glutin::event::Event::WindowEvent { event, .. } => match event {
+                        // Break from the loop upon `Escape`.
+                        glium::glutin::event::WindowEvent::CloseRequested
+                        | glium::glutin::event::WindowEvent::KeyboardInput {
+                            input:
+                                glium::glutin::event::KeyboardInput {
+                                    virtual_keycode:
+                                        Some(glium::glutin::event::VirtualKeyCode::Escape),
+                                    ..
+                                },
                             ..
-                        },
-                        ..
-                    } => break 'main,
-                    _ => (),
-                },
-                _ => (),
+                        } => *should_exit = true,
+                        _ => {}
+                    },
+                    _ => {}
+                }
+            }
+            support::Request::SetUi { needs_redraw } => {
+                // Instantiate all widgets in the GUI.
+                set_ui(ui.set_widgets(), &ids, &mut demo_text);
+
+                // Get the underlying winit window and update the mouse cursor as set by conrod.
+                display
+                    .gl_window()
+                    .window()
+                    .set_cursor_icon(support::convert_mouse_cursor(ui.mouse_cursor()));
+
+                *needs_redraw = ui.has_changed();
+            }
+            support::Request::Redraw => {
+                // Render the `Ui` and then display it on the screen.
+                let primitives = ui.draw();
+
+                renderer.fill(display, primitives, &image_map);
+                let mut target = display.draw();
+                target.clear_color(0.0, 0.0, 0.0, 1.0);
+                renderer.draw(display, &mut target, &image_map).unwrap();
+                target.finish().unwrap();
             }
         }
-
-        // Instantiate all widgets in the GUI.
-        set_ui(ui.set_widgets(), &ids, &mut demo_text);
-
-        // Get the underlying winit window and update the mouse cursor as set by conrod.
-        display.0.gl_window().window()
-            .set_cursor(support::convert_mouse_cursor(ui.mouse_cursor()));
-
-        // Render the `Ui` and then display it on the screen.
-        if let Some(primitives) = ui.draw_if_changed() {
-            renderer.fill(&display.0, primitives, &image_map);
-            let mut target = display.0.draw();
-            target.clear_color(0.0, 0.0, 0.0, 1.0);
-            renderer.draw(&display.0, &mut target, &image_map).unwrap();
-            target.finish().unwrap();
-        }
-    }
+    })
 }
 
 // Declare the `WidgetId`s and instantiate the widgets.
@@ -121,9 +133,11 @@ fn set_ui(ref mut ui: conrod_core::UiCell, ids: &Ids, demo_text: &mut String) {
         .line_spacing(2.5)
         //.restrict_to_height(false) // Let the height grow infinitely and scroll.
         .set(ids.text_edit, ui)
-        {
-            *demo_text = edit;
-        }
+    {
+        *demo_text = edit;
+    }
 
-    widget::Scrollbar::y_axis(ids.canvas).auto_hide(true).set(ids.scrollbar, ui);
+    widget::Scrollbar::y_axis(ids.canvas)
+        .auto_hide(true)
+        .set(ids.scrollbar, ui);
 }

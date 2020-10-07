@@ -1,8 +1,8 @@
 //! A widget for displaying a grid of lines across two axes.
 
-use {Color, Colorable, Point, Scalar, Widget};
-use widget::{self, CommonBuilder, UpdateArgs};
 use utils::map_range;
+use widget::{self, CommonBuilder, UpdateArgs};
+use {Color, Colorable, Point, Scalar, Widget};
 
 /// A widget for displaying a grid of lines across two axes.
 #[derive(Copy, Clone, Debug, WidgetCommon_)]
@@ -170,7 +170,9 @@ where
     type Event = ();
 
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
-        State { ids: Ids::new(id_gen) }
+        State {
+            ids: Ids::new(id_gen),
+        }
     }
 
     fn style(&self) -> Self::Style {
@@ -250,7 +252,10 @@ where
                     // The unique identifier for this line.
                     if line_num >= state.ids.lines.len() {
                         state.update(|state| {
-                            state.ids.lines.resize(line_num+1, &mut ui.widget_id_generator());
+                            state
+                                .ids
+                                .lines
+                                .resize(line_num + 1, &mut ui.widget_id_generator());
                         });
                     }
                     let line_id = state.ids.lines[line_num];

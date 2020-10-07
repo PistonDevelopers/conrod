@@ -1,11 +1,11 @@
 //! The `CollapsibleArea` widget and related items.
 
-use {Borderable, Colorable, Labelable, Positionable, Sizeable, Widget};
-use {Color, FontSize, Scalar, UiCell};
 use position;
 use std;
 use text;
 use widget;
+use {Borderable, Colorable, Labelable, Positionable, Sizeable, Widget};
+use {Color, FontSize, Scalar, UiCell};
 
 /// A vertically collapsible area.
 ///
@@ -74,12 +74,10 @@ pub struct Area {
     /// The widget::Id for the collapsible area that produced this `Area`.
     pub collapsible_area_id: widget::Id,
     /// The width of the `CollapsibleArea` that produced this `Area`.
-    pub width: Scalar
+    pub width: Scalar,
 }
 
-
 impl<'a> CollapsibleArea<'a> {
-
     /// Begin building the `CollapsibleArea` widget.
     pub fn new(is_open: bool, text: &'a str) -> Self {
         CollapsibleArea {
@@ -107,7 +105,6 @@ impl<'a> CollapsibleArea<'a> {
         self.style.label_font_id = Some(Some(font_id));
         self
     }
-
 }
 
 impl<'a> Widget for CollapsibleArea<'a> {
@@ -126,8 +123,17 @@ impl<'a> Widget for CollapsibleArea<'a> {
     }
 
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { id, state, style, rect, ui, .. } = args;
-        let CollapsibleArea { text, mut is_open, .. } = self;
+        let widget::UpdateArgs {
+            id,
+            state,
+            style,
+            rect,
+            ui,
+            ..
+        } = args;
+        let CollapsibleArea {
+            text, mut is_open, ..
+        } = self;
 
         let (_, _, w, h) = rect.x_y_w_h();
         let color = style.color(&ui.theme);
@@ -159,13 +165,19 @@ impl<'a> Widget for CollapsibleArea<'a> {
             .label(text)
             .label_color(label_color)
             .label_font_size(label_font_size)
-            .label_x(position::Relative::Place(position::Place::Start(Some(triangle_rect.w()))))
+            .label_x(position::Relative::Place(position::Place::Start(Some(
+                triangle_rect.w(),
+            ))))
             .and_then(label_font_id, |b, font_id| b.label_font_id(font_id))
             .set(state.ids.button, ui)
             .next()
             .map(|_| {
                 is_open = !is_open;
-                if is_open { Event::Open } else { Event::Close }
+                if is_open {
+                    Event::Open
+                } else {
+                    Event::Close
+                }
             });
 
         // The points for the triangle.
@@ -243,9 +255,14 @@ impl Area {
     ///
     /// Returns any events produced by the given widget.
     pub fn set<W>(self, widget: W, ui: &mut UiCell) -> W::Event
-        where W: Widget,
+    where
+        W: Widget,
     {
-        let Area { id, collapsible_area_id, width } = self;
+        let Area {
+            id,
+            collapsible_area_id,
+            width,
+        } = self;
         widget
             .w(width)
             .parent(collapsible_area_id)

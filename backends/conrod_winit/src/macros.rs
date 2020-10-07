@@ -263,7 +263,9 @@ macro_rules! convert_window_event {
 macro_rules! convert_event {
     ($event:expr, $window:expr) => {{
         match $event {
-            winit::Event::WindowEvent { event, .. } => $crate::convert_window_event!(event, $window),
+            winit::Event::WindowEvent { event, .. } => {
+                $crate::convert_window_event!(event, $window)
+            }
             _ => None,
         }
     }};
@@ -285,8 +287,12 @@ macro_rules! convert_mouse_cursor {
             conrod_core::cursor::MouseCursor::Grabbing => winit::MouseCursor::Grabbing,
             conrod_core::cursor::MouseCursor::ResizeVertical => winit::MouseCursor::NsResize,
             conrod_core::cursor::MouseCursor::ResizeHorizontal => winit::MouseCursor::EwResize,
-            conrod_core::cursor::MouseCursor::ResizeTopLeftBottomRight => winit::MouseCursor::NwseResize,
-            conrod_core::cursor::MouseCursor::ResizeTopRightBottomLeft => winit::MouseCursor::NeswResize,
+            conrod_core::cursor::MouseCursor::ResizeTopLeftBottomRight => {
+                winit::MouseCursor::NwseResize
+            }
+            conrod_core::cursor::MouseCursor::ResizeTopRightBottomLeft => {
+                winit::MouseCursor::NeswResize
+            }
             _ => winit::MouseCursor::Arrow,
         }
     }};

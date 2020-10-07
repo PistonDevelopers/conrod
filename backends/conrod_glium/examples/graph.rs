@@ -1,16 +1,18 @@
 //! A simple example that demonstrates the **Graph** widget functionality.
 
-#[macro_use] extern crate conrod_core;
+#[macro_use]
+extern crate conrod_core;
 extern crate conrod_glium;
-#[macro_use] extern crate conrod_winit;
+#[macro_use]
+extern crate conrod_winit;
 extern crate find_folder;
 extern crate glium;
 extern crate petgraph;
 
 mod support;
 
+use conrod_core::widget::graph::{node, EdgeEvent, Event, Node, NodeEvent, NodeSocket};
 use conrod_core::{widget, Borderable, Colorable, Labelable, Positionable, Sizeable, Widget};
-use conrod_core::widget::graph::{node, Event, EdgeEvent, Node, NodeEvent, NodeSocket};
 use glium::Surface;
 use std::collections::HashMap;
 
@@ -52,15 +54,14 @@ fn main() {
     let mut layout = Layout::from(layout_map);
 
     // Build the window.
-    let mut events_loop = glium::glutin::EventsLoop::new();
-    let window = glium::glutin::WindowBuilder::new()
+    let event_loop = glium::glutin::event_loop::EventLoop::new();
+    let window = glium::glutin::window::WindowBuilder::new()
         .with_title("Conrod Graph Widget")
-        .with_dimensions((WIDTH, HEIGHT).into());
+        .with_inner_size(glium::glutin::dpi::LogicalSize::new(WIDTH, HEIGHT));
     let context = glium::glutin::ContextBuilder::new()
         .with_multisampling(4)
         .with_vsync(true);
-    let display = glium::Display::new(window, context, &events_loop).unwrap();
-    let display = support::GliumDisplayWinitWrapper(display);
+    let display = glium::Display::new(window, context, &event_loop).unwrap();
 
     // construct our `Ui`.
     let mut ui = conrod_core::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
@@ -69,64 +70,73 @@ fn main() {
     let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
-    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let assets = find_folder::Search::KidsThenParents(3, 5)
+        .for_folder("assets")
+        .unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
-    ui.fonts.insert_from_file(font_path).expect("Couldn't load font");
+    ui.fonts
+        .insert_from_file(font_path)
+        .expect("Couldn't load font");
 
     // A type used for converting `conrod_core::render::Primitives` into `Command`s that can be used
     // for drawing to the glium `Surface`.
-    let mut renderer = conrod_glium::Renderer::new(&display.0).unwrap();
+    let mut renderer = conrod_glium::Renderer::new(&display).unwrap();
 
     // The image map describing each of our widget->image mappings (in our case, none).
     let image_map = conrod_core::image::Map::<glium::texture::Texture2d>::new();
 
     // Begin the event loop.
-    let mut event_loop = support::EventLoop::new();
-    'main: loop {
-        // Handle all events.
-        for event in event_loop.next(&mut events_loop) {
-
-            // Use the `winit` backend feature to convert the winit event to a conrod one.
-            if let Some(event) = support::convert_event(event.clone(), &display) {
-                ui.handle_event(event);
-                event_loop.needs_update();
-            }
-
-            // Break from the loop upon `Escape` or closed window.
-            match event.clone() {
-                glium::glutin::Event::WindowEvent { event, .. } => {
-                    match event {
-                        glium::glutin::WindowEvent::CloseRequested |
-                        glium::glutin::WindowEvent::KeyboardInput {
-                            input: glium::glutin::KeyboardInput {
-                                virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
-                                ..
-                            },
-                            ..
-                        } => break 'main,
-                        _ => (),
-                    }
+    support::run_loop(display, event_loop, move |request, display| {
+        match request {
+            support::Request::Event {
+                event,
+                should_update_ui,
+                should_exit,
+            } => {
+                // Use the `winit` backend feature to convert the winit event to a conrod one.
+                if let Some(event) = support::convert_event(&event, &display.gl_window().window()) {
+                    ui.handle_event(event);
+                    *should_update_ui = true;
                 }
-                _ => (),
+
+                match event {
+                    glium::glutin::event::Event::WindowEvent { event, .. } => match event {
+                        // Break from the loop upon `Escape`.
+                        glium::glutin::event::WindowEvent::CloseRequested
+                        | glium::glutin::event::WindowEvent::KeyboardInput {
+                            input:
+                                glium::glutin::event::KeyboardInput {
+                                    virtual_keycode:
+                                        Some(glium::glutin::event::VirtualKeyCode::Escape),
+                                    ..
+                                },
+                            ..
+                        } => *should_exit = true,
+                        _ => {}
+                    },
+                    _ => {}
+                }
+            }
+            support::Request::SetUi { needs_redraw } => {
+                // Set the widgets.
+                set_widgets(&mut ui.set_widgets(), &ids, &mut graph, &mut layout);
+                *needs_redraw = ui.has_changed();
+            }
+            support::Request::Redraw => {
+                // Draw the `Ui` if it has changed.
+                let primitives = ui.draw();
+
+                renderer.fill(display, primitives, &image_map);
+                let mut target = display.draw();
+                target.clear_color(0.0, 0.0, 0.0, 1.0);
+                renderer.draw(display, &mut target, &image_map).unwrap();
+                target.finish().unwrap();
             }
         }
-
-        // Set the widgets.
-        set_widgets(&mut ui.set_widgets(), &ids, &mut graph, &mut layout);
-
-        // Draw the `Ui` if it has changed.
-        if let Some(primitives) = ui.draw_if_changed() {
-            renderer.fill(&display.0, primitives, &image_map);
-            let mut target = display.0.draw();
-            target.clear_color(0.0, 0.0, 0.0, 1.0);
-            renderer.draw(&display.0, &mut target, &image_map).unwrap();
-            target.finish().unwrap();
-        }
-    }
+    })
 }
 
 fn set_widgets(ui: &mut conrod_core::UiCell, ids: &Ids, graph: &mut MyGraph, layout: &mut Layout) {
-
     /////////////////
     ///// GRAPH /////
     /////////////////
@@ -145,13 +155,17 @@ fn set_widgets(ui: &mut conrod_core::UiCell, ids: &Ids, graph: &mut MyGraph, lay
         // An identifier for each node in the graph.
         let node_indices = graph.node_indices();
         // Describe each edge in the graph as NodeSocket -> NodeSocket.
-        let edges = graph.raw_edges()
-            .iter()
-            .map(|e| {
-                let start = NodeSocket { id: e.source(), socket_index: e.weight.0 };
-                let end = NodeSocket { id: e.target(), socket_index: e.weight.1 };
-                (start, end)
-            });
+        let edges = graph.raw_edges().iter().map(|e| {
+            let start = NodeSocket {
+                id: e.source(),
+                socket_index: e.weight.0,
+            };
+            let end = NodeSocket {
+                id: e.target(),
+                socket_index: e.weight.1,
+            };
+            (start, end)
+        });
         widget::Graph::new(node_indices, edges, layout)
             .background_color(conrod_core::color::rgb(0.31, 0.33, 0.35))
             .wh_of(ui.window)
@@ -170,21 +184,16 @@ fn set_widgets(ui: &mut conrod_core::UiCell, ids: &Ids, graph: &mut MyGraph, lay
             Event::Node(event) => match event {
                 // NodeEvent::Add(node_kind) => {
                 // },
-                NodeEvent::Remove(node_id) => {
-                },
+                NodeEvent::Remove(node_id) => {}
                 NodeEvent::Dragged { node_id, to, .. } => {
                     *layout.get_mut(&node_id).unwrap() = to;
-                },
+                }
             },
             Event::Edge(event) => match event {
-                EdgeEvent::AddStart(node_socket) => {
-                },
-                EdgeEvent::Add { start, end } => {
-                },
-                EdgeEvent::Cancelled(node_socket) => {
-                },
-                EdgeEvent::Remove { start, end } => {
-                },
+                EdgeEvent::AddStart(node_socket) => {}
+                EdgeEvent::Add { start, end } => {}
+                EdgeEvent::Cancelled(node_socket) => {}
+                EdgeEvent::Remove { start, end } => {}
             },
         }
     }
@@ -208,11 +217,13 @@ fn set_widgets(ui: &mut conrod_core::UiCell, ids: &Ids, graph: &mut MyGraph, lay
         //
         // `wiget_id` - The widget identifier for the widget that will represent this node.
         let node_id = node.node_id();
-        let inputs = graph.neighbors_directed(node_id, petgraph::Incoming).count();
-        let outputs = graph.neighbors_directed(node_id, petgraph::Outgoing).count();
-        let button = widget::Button::new()
-            .label(&graph[node_id])
-            .border(0.0);
+        let inputs = graph
+            .neighbors_directed(node_id, petgraph::Incoming)
+            .count();
+        let outputs = graph
+            .neighbors_directed(node_id, petgraph::Outgoing)
+            .count();
+        let button = widget::Button::new().label(&graph[node_id]).border(0.0);
         let widget = Node::new(button)
             .inputs(inputs)
             .outputs(outputs)

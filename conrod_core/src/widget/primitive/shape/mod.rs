@@ -10,7 +10,6 @@ pub mod polygon;
 pub mod rectangle;
 pub mod triangles;
 
-
 /// The style for some 2D shape.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Style {
@@ -20,9 +19,7 @@ pub enum Style {
     Fill(Option<Color>),
 }
 
-
 impl Style {
-
     /// A default `Fill` style.
     pub fn fill() -> Self {
         Style::Fill(None)
@@ -64,5 +61,4 @@ impl Style {
             Style::Outline(style) => style.get_color(theme),
         }
     }
-
 }

@@ -12,21 +12,20 @@ extern crate image;
 
 mod support;
 
-use conrod_example_shared::{WIN_W, WIN_H};
+use conrod_example_shared::{WIN_H, WIN_W};
 use conrod_glium::Renderer;
 use glium::Surface;
 
 fn main() {
     // Build the window.
-    let mut events_loop = glium::glutin::EventsLoop::new();
-    let window = glium::glutin::WindowBuilder::new()
+    let event_loop = glium::glutin::event_loop::EventLoop::new();
+    let window = glium::glutin::window::WindowBuilder::new()
         .with_title("Conrod with glium!")
-        .with_dimensions((WIN_W, WIN_H).into());
+        .with_inner_size(glium::glutin::dpi::LogicalSize::new(WIN_W, WIN_H));
     let context = glium::glutin::ContextBuilder::new()
         .with_vsync(true)
         .with_multisampling(4);
-    let display = glium::Display::new(window, context, &events_loop).unwrap();
-    let display = support::GliumDisplayWinitWrapper(display);
+    let display = glium::Display::new(window, context, &event_loop).unwrap();
 
     // A type used for converting `conrod_core::render::Primitives` into `Command`s that can be used
     // for drawing to the glium `Surface`.
@@ -37,42 +36,50 @@ fn main() {
     // - a `Vec` for collecting `backend::glium::Vertex`s generated when translating the
     // `conrod_core::render::Primitive`s.
     // - a `Vec` of commands that describe how to draw the vertices.
-    let mut renderer = Renderer::new(&display.0).unwrap();
+    let mut renderer = Renderer::new(&display).unwrap();
 
     // Load the Rust logo from our assets folder to use as an example image.
     fn load_rust_logo(display: &glium::Display) -> glium::texture::Texture2d {
-        let assets = find_folder::Search::ParentsThenKids(5, 3).for_folder("assets").unwrap();
+        let assets = find_folder::Search::ParentsThenKids(5, 3)
+            .for_folder("assets")
+            .unwrap();
         let path = assets.join("images/rust.png");
         let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba();
         let image_dimensions = rgba_image.dimensions();
-        let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(&rgba_image.into_raw(), image_dimensions);
+        let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(
+            &rgba_image.into_raw(),
+            image_dimensions,
+        );
         let texture = glium::texture::Texture2d::new(display, raw_image).unwrap();
         texture
     }
 
     let mut image_map = conrod_core::image::Map::new();
-    let rust_logo = image_map.insert(load_rust_logo(&display.0));
+    let rust_logo = image_map.insert(load_rust_logo(&display));
 
     // A channel to send events from the main `winit` thread to the conrod thread.
     let (event_tx, event_rx) = std::sync::mpsc::channel();
     // A channel to send `render::Primitive`s from the conrod thread to the `winit thread.
     let (render_tx, render_rx) = std::sync::mpsc::channel();
     // Clone the handle to the events loop so that we can interrupt it when ready to draw.
-    let events_loop_proxy = events_loop.create_proxy();
+    let events_loop_proxy = event_loop.create_proxy();
 
     // A function that runs the conrod loop.
-    fn run_conrod(rust_logo: conrod_core::image::Id,
-                  event_rx: std::sync::mpsc::Receiver<conrod_core::event::Input>,
-                  render_tx: std::sync::mpsc::Sender<conrod_core::render::OwnedPrimitives>,
-                  events_loop_proxy: glium::glutin::EventsLoopProxy)
-    {
+    fn run_conrod(
+        rust_logo: conrod_core::image::Id,
+        event_rx: std::sync::mpsc::Receiver<conrod_core::event::Input>,
+        render_tx: std::sync::mpsc::Sender<conrod_core::render::OwnedPrimitives>,
+        events_loop_proxy: glium::glutin::event_loop::EventLoopProxy<()>,
+    ) {
         // Construct our `Ui`.
         let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
             .theme(conrod_example_shared::theme())
             .build();
 
         // Add a `Font` to the `Ui`'s `font::Map` from file.
-        let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+        let assets = find_folder::Search::KidsThenParents(3, 5)
+            .for_folder("assets")
+            .unwrap();
         let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
         ui.fonts.insert_from_file(font_path).unwrap();
 
@@ -86,7 +93,6 @@ fn main() {
         // insert an update into the conrod loop using this `bool` after each event.
         let mut needs_update = true;
         'conrod: loop {
-
             // Collect any pending events.
             let mut events = Vec::new();
             while let Ok(event) = event_rx.try_recv() {
@@ -94,7 +100,7 @@ fn main() {
             }
 
             // If there are no events pending, wait for them.
-            if events.is_empty() || !needs_update {
+            if events.is_empty() && !needs_update {
                 match event_rx.recv() {
                     Ok(event) => events.push(event),
                     Err(_) => break 'conrod,
@@ -115,8 +121,10 @@ fn main() {
             // Render the `Ui` to a list of primitives that we can send to the main thread for
             // display. Wakeup `winit` for rendering.
             if let Some(primitives) = ui.draw_if_changed() {
+                needs_update = true;
                 if render_tx.send(primitives.owned()).is_err()
-                || events_loop_proxy.wakeup().is_err() {
+                    || events_loop_proxy.send_event(()).is_err()
+                {
                     break 'conrod;
                 }
             }
@@ -124,11 +132,12 @@ fn main() {
     }
 
     // Draws the given `primitives` to the given `Display`.
-    fn draw(display: &glium::Display,
-            renderer: &mut Renderer,
-            image_map: &conrod_core::image::Map<glium::Texture2d>,
-            primitives: &conrod_core::render::OwnedPrimitives)
-    {
+    fn draw(
+        display: &glium::Display,
+        renderer: &mut Renderer,
+        image_map: &conrod_core::image::Map<glium::Texture2d>,
+        primitives: &conrod_core::render::OwnedPrimitives,
+    ) {
         renderer.fill(display, primitives.walk(), &image_map);
         let mut target = display.draw();
         target.clear_color(0.0, 0.0, 0.0, 1.0);
@@ -140,60 +149,66 @@ fn main() {
     std::thread::spawn(move || run_conrod(rust_logo, event_rx, render_tx, events_loop_proxy));
 
     // Run the `winit` loop.
-    let mut last_update = std::time::Instant::now();
-    let mut closed = false;
-    while !closed {
+    let mut is_waken = false;
+    let mut latest_primitives = None;
+    support::run_loop(display, event_loop, move |request, display| {
+        match request {
+            support::Request::Event {
+                event,
+                should_update_ui,
+                should_exit,
+            } => {
+                // Use the `winit` backend feature to convert the winit event to a conrod one.
+                if let Some(event) = support::convert_event(&event, &display.gl_window().window()) {
+                    event_tx.send(event).unwrap();
+                }
 
-        // We don't want to loop any faster than 60 FPS, so wait until it has been at least
-        // 16ms since the last yield.
-        let sixteen_ms = std::time::Duration::from_millis(16);
-        let now = std::time::Instant::now();
-        let duration_since_last_update = now.duration_since(last_update);
-        if duration_since_last_update < sixteen_ms {
-            std::thread::sleep(sixteen_ms - duration_since_last_update);
-        }
-
-        events_loop.run_forever(|event| {
-            // Use the `winit` backend feature to convert the winit event to a conrod one.
-            if let Some(event) = support::convert_event(event.clone(), &display) {
-                event_tx.send(event).unwrap();
-            }
-
-            match event {
-                glium::glutin::Event::WindowEvent { event, .. } => match event {
-                    // Break from the loop upon `Escape`.
-                    glium::glutin::WindowEvent::CloseRequested |
-                    glium::glutin::WindowEvent::KeyboardInput {
-                        input: glium::glutin::KeyboardInput {
-                            virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
+                match event {
+                    glium::glutin::event::Event::WindowEvent { event, .. } => match event {
+                        // Break from the loop upon `Escape`.
+                        glium::glutin::event::WindowEvent::CloseRequested
+                        | glium::glutin::event::WindowEvent::KeyboardInput {
+                            input:
+                                glium::glutin::event::KeyboardInput {
+                                    virtual_keycode:
+                                        Some(glium::glutin::event::VirtualKeyCode::Escape),
+                                    ..
+                                },
                             ..
-                        },
-                        ..
-                    } => {
-                        closed = true;
-                        return glium::glutin::ControlFlow::Break;
-                    },
-                    // We must re-draw on `Resized`, as the event loops become blocked during
-                    // resize on macOS.
-                    glium::glutin::WindowEvent::Resized(..) => {
-                        if let Some(primitives) = render_rx.iter().next() {
-                            draw(&display.0, &mut renderer, &image_map, &primitives);
+                        } => *should_exit = true,
+                        // We must re-draw on `Resized`, as the event loops become blocked during
+                        // resize on macOS.
+                        glium::glutin::event::WindowEvent::Resized(..) => {
+                            if let Some(primitives) = render_rx.try_iter().last() {
+                                latest_primitives = Some(primitives);
+                            }
+                            if let Some(primitives) = &latest_primitives {
+                                draw(&display, &mut renderer, &image_map, primitives);
+                            }
                         }
+                        _ => {}
                     },
-                    _ => {},
-                },
-                glium::glutin::Event::Awakened => return glium::glutin::ControlFlow::Break,
-                _ => (),
+                    glium::glutin::event::Event::UserEvent(()) => {
+                        is_waken = true;
+                        // HACK: This triggers the `SetUi` request so that we can request a redraw.
+                        *should_update_ui = true;
+                    }
+                    _ => {}
+                }
             }
-
-            glium::glutin::ControlFlow::Continue
-        });
-
-        // Draw the most recently received `conrod_core::render::Primitives` sent from the `Ui`.
-        if let Some(primitives) = render_rx.try_iter().last() {
-            draw(&display.0, &mut renderer, &image_map, &primitives);
+            support::Request::SetUi { needs_redraw } => {
+                *needs_redraw = is_waken;
+                is_waken = false;
+            }
+            support::Request::Redraw => {
+                // Draw the most recently received `conrod_core::render::Primitives` sent from the `Ui`.
+                if let Some(primitives) = render_rx.try_iter().last() {
+                    latest_primitives = Some(primitives);
+                }
+                if let Some(primitives) = &latest_primitives {
+                    draw(&display, &mut renderer, &image_map, primitives);
+                }
+            }
         }
-
-        last_update = std::time::Instant::now();
-    }
+    })
 }

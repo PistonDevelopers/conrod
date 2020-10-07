@@ -1,11 +1,10 @@
 //! The `DropDownList` and related items.
 
-use {Color, Colorable, FontSize, Borderable, Labelable, Positionable, Sizeable};
 use position::{self, Align, Scalar};
 use text;
 use utils;
 use widget::{self, Widget};
-
+use {Borderable, Color, Colorable, FontSize, Labelable, Positionable, Sizeable};
 
 /// The index of a selected item.
 pub type Idx = usize;
@@ -97,7 +96,6 @@ enum MenuState {
 }
 
 impl<'a, T> DropDownList<'a, T> {
-
     /// Construct a new DropDownList.
     pub fn new(items: &'a [T], selected: Option<Idx>) -> Self {
         DropDownList {
@@ -110,7 +108,7 @@ impl<'a, T> DropDownList<'a, T> {
         }
     }
 
-    builder_methods!{
+    builder_methods! {
         pub enabled { enabled = bool }
     }
 
@@ -189,12 +187,11 @@ impl<'a, T> DropDownList<'a, T> {
         self.style.label_y = Some(y);
         self
     }
-
 }
 
-
 impl<'a, T> Widget for DropDownList<'a, T>
-    where T: AsRef<str>,
+where
+    T: AsRef<str>,
 {
     type State = State;
     type Style = Style;
@@ -213,13 +210,21 @@ impl<'a, T> Widget for DropDownList<'a, T>
 
     /// Update the state of the DropDownList.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
-        let widget::UpdateArgs { id, state, rect, style, ui, .. } = args;
+        let widget::UpdateArgs {
+            id,
+            state,
+            rect,
+            style,
+            ui,
+            ..
+        } = args;
 
         let num_items = self.items.len();
 
         // Check that the selected index, if given, is not greater than the number of items.
-        let selected = self.selected.and_then(|idx| if idx < num_items { Some(idx) }
-                                                    else { None });
+        let selected = self
+            .selected
+            .and_then(|idx| if idx < num_items { Some(idx) } else { None });
 
         // Track whether or not a list item was clicked.
         let mut clicked_item = None;
@@ -227,7 +232,6 @@ impl<'a, T> Widget for DropDownList<'a, T>
         // Act on the current menu state and determine what the next one will be.
         // new_menu_state is what we will be getting passed next frame
         let new_menu_state = match state.menu_state {
-
             // If closed, we only want the button at the selected index to be drawn.
             MenuState::Closed => {
                 // Get the button index and the label for the closed menu's button.
@@ -247,24 +251,30 @@ impl<'a, T> Widget for DropDownList<'a, T>
                 };
 
                 // If the button was clicked, then open, otherwise stay closed
-                if was_clicked { MenuState::Open } else { MenuState::Closed }
-            },
+                if was_clicked {
+                    MenuState::Open
+                } else {
+                    MenuState::Closed
+                }
+            }
 
             MenuState::Open => {
-
                 // Otherwise if open, we want to set all the buttons that would be currently visible.
                 let (_, y, w, h) = rect.x_y_w_h();
                 let max_visible_height = {
                     let bottom_win_y = (-ui.window_dim()[1]) / 2.0;
                     const WINDOW_PADDING: Scalar = 20.0;
                     let max = y + h / 2.0 - bottom_win_y - WINDOW_PADDING;
-                    style.maybe_max_visible_height(ui.theme()).map(|max_height| {
-                        let height = match max_height {
-                            MaxHeight::Items(num) => h * num as Scalar,
-                            MaxHeight::Scalar(height) => height,
-                        };
-                        utils::partial_min(height, max)
-                    }).unwrap_or(max)
+                    style
+                        .maybe_max_visible_height(ui.theme())
+                        .map(|max_height| {
+                            let height = match max_height {
+                                MaxHeight::Items(num) => h * num as Scalar,
+                                MaxHeight::Scalar(height) => height,
+                            };
+                            utils::partial_min(height, max)
+                        })
+                        .unwrap_or(max)
                 };
 
                 // The list of buttons.
@@ -273,12 +283,12 @@ impl<'a, T> Widget for DropDownList<'a, T>
                 let list_h = max_visible_height.min(num_items as Scalar * item_h);
                 let scrollbar_color = style.border_color(&ui.theme);
                 let scrollbar_position = style.scrollbar_position(&ui.theme);
-                let scrollbar_width = style.scrollbar_width(&ui.theme)
-                    .unwrap_or_else(|| {
-                        ui.theme.widget_style::<widget::scrollbar::Style>()
-                            .and_then(|style| style.style.thickness)
-                            .unwrap_or(10.0)
-                    });
+                let scrollbar_width = style.scrollbar_width(&ui.theme).unwrap_or_else(|| {
+                    ui.theme
+                        .widget_style::<widget::scrollbar::Style>()
+                        .and_then(|style| style.style.thickness)
+                        .unwrap_or(10.0)
+                });
 
                 let (mut events, scrollbar) = widget::ListSelect::single(num_items)
                     .flow_down()
@@ -298,7 +308,6 @@ impl<'a, T> Widget for DropDownList<'a, T>
                 while let Some(event) = events.next(ui, |i| Some(i) == selected) {
                     use widget::list_select::Event;
                     match event {
-
                         // Instantiate a `Button` for each item.
                         Event::Item(item) => {
                             let i = item.i;
@@ -306,7 +315,7 @@ impl<'a, T> Widget for DropDownList<'a, T>
                             let mut button = widget::Button::new().label(label);
                             button.style = style.button_style(Some(i) == selected);
                             item.set(button, ui);
-                        },
+                        }
 
                         // The selection changed.
                         Event::Selection(ix) => clicked_item = Some(ix),
@@ -322,19 +331,31 @@ impl<'a, T> Widget for DropDownList<'a, T>
 
                 // Close the menu if the mouse is pressed and the currently pressed widget is
                 // not any of the drop down list's children.
-                let should_close = clicked_item.is_some() ||
-                    clicked_item.is_none()
-                    && ui.global_input().current.mouse.buttons.pressed().next().is_some()
-                    && match ui.global_input().current.widget_capturing_mouse {
-                        None => true,
-                        Some(capturing) => !ui.widget_graph()
-                            .does_recursive_depth_edge_exist(id, capturing),
-                    };
+                let should_close = clicked_item.is_some()
+                    || clicked_item.is_none()
+                        && ui
+                            .global_input()
+                            .current
+                            .mouse
+                            .buttons
+                            .pressed()
+                            .next()
+                            .is_some()
+                        && match ui.global_input().current.widget_capturing_mouse {
+                            None => true,
+                            Some(capturing) => !ui
+                                .widget_graph()
+                                .does_recursive_depth_edge_exist(id, capturing),
+                        };
 
                 // If a mouse button was pressed somewhere else, close the menu.
                 //
                 // Otherwise, leave the menu open.
-                if should_close { MenuState::Closed } else { MenuState::Open }
+                if should_close {
+                    MenuState::Closed
+                } else {
+                    MenuState::Open
+                }
             }
         };
 
@@ -344,16 +365,15 @@ impl<'a, T> Widget for DropDownList<'a, T>
 
         clicked_item
     }
-
 }
 
-
 impl Style {
-
     /// Style for a `Button` given this `Style`'s current state.
     pub fn button_style(&self, is_selected: bool) -> widget::button::Style {
         widget::button::Style {
-            color: self.color.map(|c| if is_selected { c.highlighted() } else { c }),
+            color: self
+                .color
+                .map(|c| if is_selected { c.highlighted() } else { c }),
             border: self.border,
             border_color: self.border_color,
             label_color: self.label_color,
@@ -364,23 +384,21 @@ impl Style {
             label_font_id: self.label_font_id,
         }
     }
-
 }
-
 
 impl<'a, T> Colorable for DropDownList<'a, T> {
     builder_method!(color { style.color = Some(Color) });
 }
 
 impl<'a, T> Borderable for DropDownList<'a, T> {
-    builder_methods!{
+    builder_methods! {
         border { style.border = Some(Scalar) }
         border_color { style.border_color = Some(Color) }
     }
 }
 
 impl<'a, T> Labelable<'a> for DropDownList<'a, T> {
-    builder_methods!{
+    builder_methods! {
         label { maybe_label = Some(&'a str) }
         label_color { style.label_color = Some(Color) }
         label_font_size { style.label_font_size = Some(FontSize) }

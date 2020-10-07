@@ -1,17 +1,15 @@
 //! Items related to 2D positioning, used throughout conrod.
 
-use Ui;
 use widget;
+use Ui;
 
 pub use self::range::{Edge, Range};
 pub use self::rect::{Corner, Rect};
 //pub use self::matrix::Matrix;
 
-
 //pub mod matrix;
 pub mod range;
 pub mod rect;
-
 
 /// An alias over the Scalar type used throughout Conrod.
 ///
@@ -146,7 +144,6 @@ pub enum Dimension {
 ///
 /// Thus, **Positionable** can be implemented for *all* types that implement **Widget**.
 pub trait Positionable: Sized {
-
     /// Build with the given **Position** along the *x* axis.
     fn x_position(self, Position) -> Self;
 
@@ -210,7 +207,8 @@ pub trait Positionable: Sized {
 
     /// Set the *x* and *y* **Position**s **Relative** to the given widget.
     fn x_y_position_relative_to(self, other: widget::Id, x: Relative, y: Relative) -> Self {
-        self.x_position_relative_to(other, x).y_position_relative_to(other, y)
+        self.x_position_relative_to(other, x)
+            .y_position_relative_to(other, y)
     }
 
     // Relative `Scalar` positioning.
@@ -416,119 +414,145 @@ pub trait Positionable: Sized {
 
     /// Place the widget in the middle of the given Widget.
     fn middle_of(self, other: widget::Id) -> Self {
-        self.x_place_on(other, Place::Middle).y_place_on(other, Place::Middle)
+        self.x_place_on(other, Place::Middle)
+            .y_place_on(other, Place::Middle)
     }
 
     /// Place the widget in the top left corner of the given Widget.
     fn top_left_of(self, other: widget::Id) -> Self {
-        self.x_place_on(other, Place::Start(None)).y_place_on(other, Place::End(None))
+        self.x_place_on(other, Place::Start(None))
+            .y_place_on(other, Place::End(None))
     }
 
     /// Place the widget in the top left corner of the given Widget with the given margin between
     /// both edges.
     fn top_left_with_margin_on(self, other: widget::Id, mgn: Scalar) -> Self {
-        self.x_place_on(other, Place::Start(Some(mgn))).y_place_on(other, Place::End(Some(mgn)))
+        self.x_place_on(other, Place::Start(Some(mgn)))
+            .y_place_on(other, Place::End(Some(mgn)))
     }
 
     /// Place the widget in the top left corner of the given Widget with the given margins between
     /// each respective edge.
     fn top_left_with_margins_on(self, other: widget::Id, top: Scalar, left: Scalar) -> Self {
-        self.x_place_on(other, Place::Start(Some(left))).y_place_on(other, Place::End(Some(top)))
+        self.x_place_on(other, Place::Start(Some(left)))
+            .y_place_on(other, Place::End(Some(top)))
     }
 
     /// Place the widget in the top right corner of the given Widget.
     fn top_right_of(self, other: widget::Id) -> Self {
-        self.x_place_on(other, Place::End(None)).y_place_on(other, Place::End(None))
+        self.x_place_on(other, Place::End(None))
+            .y_place_on(other, Place::End(None))
     }
 
     /// Place the widget in the top right corner of the given Widget with the given margin
     /// between both edges.
     fn top_right_with_margin_on(self, other: widget::Id, mgn: Scalar) -> Self {
-        self.x_place_on(other, Place::End(Some(mgn))).y_place_on(other, Place::End(Some(mgn)))
+        self.x_place_on(other, Place::End(Some(mgn)))
+            .y_place_on(other, Place::End(Some(mgn)))
     }
 
     /// Place the widget in the top right corner of the given Widget with the given margins between
     /// each respective edge.
     fn top_right_with_margins_on(self, other: widget::Id, top: Scalar, right: Scalar) -> Self {
-        self.x_place_on(other, Place::End(Some(right))).y_place_on(other, Place::End(Some(top)))
+        self.x_place_on(other, Place::End(Some(right)))
+            .y_place_on(other, Place::End(Some(top)))
     }
 
     /// Place the widget in the bottom left corner of the given Widget.
     fn bottom_left_of(self, other: widget::Id) -> Self {
-        self.x_place_on(other, Place::Start(None)).y_place_on(other, Place::Start(None))
+        self.x_place_on(other, Place::Start(None))
+            .y_place_on(other, Place::Start(None))
     }
 
     /// Place the widget in the bottom left corner of the given Widget with the given margin
     /// between both edges.
     fn bottom_left_with_margin_on(self, other: widget::Id, mgn: Scalar) -> Self {
-        self.x_place_on(other, Place::Start(Some(mgn))).y_place_on(other, Place::Start(Some(mgn)))
+        self.x_place_on(other, Place::Start(Some(mgn)))
+            .y_place_on(other, Place::Start(Some(mgn)))
     }
 
     /// Place the widget in the bottom left corner of the given Widget with the given margins
     /// between each respective edge.
     fn bottom_left_with_margins_on(self, other: widget::Id, bottom: Scalar, left: Scalar) -> Self {
-        self.x_place_on(other, Place::Start(Some(left))).y_place_on(other, Place::Start(Some(bottom)))
+        self.x_place_on(other, Place::Start(Some(left)))
+            .y_place_on(other, Place::Start(Some(bottom)))
     }
 
     /// Place the widget in the bottom right corner of the given Widget.
     fn bottom_right_of(self, other: widget::Id) -> Self {
-        self.x_place_on(other, Place::End(None)).y_place_on(other, Place::Start(None))
+        self.x_place_on(other, Place::End(None))
+            .y_place_on(other, Place::Start(None))
     }
 
     /// Place the widget in the bottom right corner of the given Widget with the given margin
     /// between both edges.
     fn bottom_right_with_margin_on(self, other: widget::Id, mgn: Scalar) -> Self {
-        self.x_place_on(other, Place::End(Some(mgn))).y_place_on(other, Place::Start(Some(mgn)))
+        self.x_place_on(other, Place::End(Some(mgn)))
+            .y_place_on(other, Place::Start(Some(mgn)))
     }
 
     /// Place the widget in the bottom right corner of the given Widget with the given margins
     /// between each respective edge.
-    fn bottom_right_with_margins_on(self, other: widget::Id, bottom: Scalar, right: Scalar) -> Self {
-        self.x_place_on(other, Place::End(Some(right))).y_place_on(other, Place::Start(Some(bottom)))
+    fn bottom_right_with_margins_on(
+        self,
+        other: widget::Id,
+        bottom: Scalar,
+        right: Scalar,
+    ) -> Self {
+        self.x_place_on(other, Place::End(Some(right)))
+            .y_place_on(other, Place::Start(Some(bottom)))
     }
 
     /// Place the widget in the middle of the top edge of the given Widget.
     fn mid_top_of(self, other: widget::Id) -> Self {
-        self.x_place_on(other, Place::Middle).y_place_on(other, Place::End(None))
+        self.x_place_on(other, Place::Middle)
+            .y_place_on(other, Place::End(None))
     }
 
     /// Place the widget in the middle of the top edge of the given Widget with the given margin
     /// between the edges.
     fn mid_top_with_margin_on(self, other: widget::Id, mgn: Scalar) -> Self {
-        self.x_place_on(other, Place::Middle).y_place_on(other, Place::End(Some(mgn)))
+        self.x_place_on(other, Place::Middle)
+            .y_place_on(other, Place::End(Some(mgn)))
     }
 
     /// Place the widget in the middle of the bottom edge of the given Widget.
     fn mid_bottom_of(self, other: widget::Id) -> Self {
-        self.x_place_on(other, Place::Middle).y_place_on(other, Place::Start(None))
+        self.x_place_on(other, Place::Middle)
+            .y_place_on(other, Place::Start(None))
     }
 
     /// Place the widget in the middle of the bottom edge of the given Widget with the given margin
     /// between the edges.
     fn mid_bottom_with_margin_on(self, other: widget::Id, mgn: Scalar) -> Self {
-        self.x_place_on(other, Place::Middle).y_place_on(other, Place::Start(Some(mgn)))
+        self.x_place_on(other, Place::Middle)
+            .y_place_on(other, Place::Start(Some(mgn)))
     }
 
     /// Place the widget in the middle of the left edge of the given Widget.
     fn mid_left_of(self, other: widget::Id) -> Self {
-        self.x_place_on(other, Place::Start(None)).y_place_on(other, Place::Middle)
+        self.x_place_on(other, Place::Start(None))
+            .y_place_on(other, Place::Middle)
     }
 
     /// Place the widget in the middle of the left edge of the given Widget with the given margin
     /// between the edges.
     fn mid_left_with_margin_on(self, other: widget::Id, mgn: Scalar) -> Self {
-        self.x_place_on(other, Place::Start(Some(mgn))).y_place_on(other, Place::Middle)
+        self.x_place_on(other, Place::Start(Some(mgn)))
+            .y_place_on(other, Place::Middle)
     }
 
     /// Place the widget in the middle of the right edge of the given Widget.
     fn mid_right_of(self, other: widget::Id) -> Self {
-        self.x_place_on(other, Place::End(None)).y_place_on(other, Place::Middle)
+        self.x_place_on(other, Place::End(None))
+            .y_place_on(other, Place::Middle)
     }
 
     /// Place the widget in the middle of the right edge of the given Widget with the given margin
     /// between the edges.
     fn mid_right_with_margin_on(self, other: widget::Id, mgn: Scalar) -> Self {
-        self.x_place_on(other, Place::End(Some(mgn))).y_place_on(other, Place::Middle)
+        self.x_place_on(other, Place::End(Some(mgn)))
+            .y_place_on(other, Place::Middle)
     }
 
     /// Place the widget at some position on the Widget along the *x* axis.
@@ -554,13 +578,15 @@ pub trait Positionable: Sized {
     /// Place the widget in the top left corner of the current parent Widget with the given margin
     /// between both edges.
     fn top_left_with_margin(self, mgn: Scalar) -> Self {
-        self.x_place(Place::Start(Some(mgn))).y_place(Place::End(Some(mgn)))
+        self.x_place(Place::Start(Some(mgn)))
+            .y_place(Place::End(Some(mgn)))
     }
 
     /// Place the widget in the top left corner of the current parent Widget with the given margins
     /// between each respective edge.
     fn top_left_with_margins(self, top: Scalar, left: Scalar) -> Self {
-        self.x_place(Place::Start(Some(left))).y_place(Place::End(Some(top)))
+        self.x_place(Place::Start(Some(left)))
+            .y_place(Place::End(Some(top)))
     }
 
     /// Place the widget in the top right corner of the current parent Widget.
@@ -571,13 +597,15 @@ pub trait Positionable: Sized {
     /// Place the widget in the top right corner of the current parent Widget with the given margin
     /// between both edges.
     fn top_right_with_margin(self, mgn: Scalar) -> Self {
-        self.x_place(Place::End(Some(mgn))).y_place(Place::End(Some(mgn)))
+        self.x_place(Place::End(Some(mgn)))
+            .y_place(Place::End(Some(mgn)))
     }
 
     /// Place the widget in the top right corner of the current parent Widget with the given margins
     /// between each respective edge.
     fn top_right_with_margins(self, top: Scalar, right: Scalar) -> Self {
-        self.x_place(Place::End(Some(right))).y_place(Place::End(Some(top)))
+        self.x_place(Place::End(Some(right)))
+            .y_place(Place::End(Some(top)))
     }
 
     /// Place the widget in the bottom left corner of the current parent Widget.
@@ -588,13 +616,15 @@ pub trait Positionable: Sized {
     /// Place the widget in the bottom left corner of the current parent Widget with the given
     /// margin between both edges.
     fn bottom_left_with_margin(self, mgn: Scalar) -> Self {
-        self.x_place(Place::Start(Some(mgn))).y_place(Place::Start(Some(mgn)))
+        self.x_place(Place::Start(Some(mgn)))
+            .y_place(Place::Start(Some(mgn)))
     }
 
     /// Place the widget in the bottom left corner of the current parent Widget with the given
     /// margins between each respective edge.
     fn bottom_left_with_margins(self, bottom: Scalar, left: Scalar) -> Self {
-        self.x_place(Place::Start(Some(left))).y_place(Place::Start(Some(bottom)))
+        self.x_place(Place::Start(Some(left)))
+            .y_place(Place::Start(Some(bottom)))
     }
 
     /// Place the widget in the bottom right corner of the current parent Widget.
@@ -605,13 +635,15 @@ pub trait Positionable: Sized {
     /// Place the widget in the bottom right corner of the current parent Widget with the given
     /// margin between both edges.
     fn bottom_right_with_margin(self, mgn: Scalar) -> Self {
-        self.x_place(Place::End(Some(mgn))).y_place(Place::Start(Some(mgn)))
+        self.x_place(Place::End(Some(mgn)))
+            .y_place(Place::Start(Some(mgn)))
     }
 
     /// Place the widget in the bottom right corner of the current parent Widget with the given
     /// margins between each respective edge.
     fn bottom_right_with_margins(self, bottom: Scalar, right: Scalar) -> Self {
-        self.x_place(Place::End(Some(right))).y_place(Place::Start(Some(bottom)))
+        self.x_place(Place::End(Some(right)))
+            .y_place(Place::Start(Some(bottom)))
     }
 
     /// Place the widget in the middle of the top edge of the current parent Widget.
@@ -665,12 +697,10 @@ pub trait Positionable: Sized {
 
     /// Return the depth.
     fn get_depth(&self) -> Depth;
-
 }
 
 /// Widgets that support different dimensions.
 pub trait Sizeable: Sized {
-
     // Required implementations.
 
     /// Set the length along the x axis.
@@ -770,7 +800,8 @@ pub trait Sizeable: Sized {
     /// Set the dimensions as the `KidArea` dimensions of the widget at the given index, padded at
     /// all four edges by the given scalar.
     fn padded_kid_area_wh_of(self, idx: widget::Id, pad: Scalar) -> Self {
-        self.padded_kid_area_w_of(idx, pad).padded_kid_area_h_of(idx, pad)
+        self.padded_kid_area_w_of(idx, pad)
+            .padded_kid_area_h_of(idx, pad)
     }
 
     /// Get the absolute width of the widget as a Scalar value.
@@ -799,7 +830,6 @@ pub trait Sizeable: Sized {
     fn get_wh(&self, ui: &Ui) -> Option<Dimensions> {
         self.get_w(ui).and_then(|w| self.get_h(ui).map(|h| [w, h]))
     }
-
 }
 
 /// The distance between the inner edge of a border and the outer edge of the inner content.

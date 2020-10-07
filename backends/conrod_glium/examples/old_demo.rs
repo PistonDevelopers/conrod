@@ -7,9 +7,11 @@
 //! check the current `Theme` within the `Ui` and retrieve defaults from there.
 //!
 
-#[macro_use] extern crate conrod_core;
+#[macro_use]
+extern crate conrod_core;
 extern crate conrod_glium;
-#[macro_use] extern crate conrod_winit;
+#[macro_use]
+extern crate conrod_winit;
 extern crate find_folder;
 extern crate glium;
 extern crate rand; // for making a random color.
@@ -55,7 +57,6 @@ struct DemoApp {
 }
 
 impl DemoApp {
-
     /// Constructor for the Demonstration Application model.
     fn new() -> DemoApp {
         DemoApp {
@@ -65,34 +66,44 @@ impl DemoApp {
             title_pad: 350.0,
             v_slider_height: 230.0,
             border_width: 1.0,
-            bool_matrix: [ [true, true, true, true, true, true, true, true],
-                           [true, false, false, false, false, false, false, true],
-                           [true, false, true, false, true, true, true, true],
-                           [true, false, true, false, true, true, true, true],
-                           [true, false, false, false, true, true, true, true],
-                           [true, true, true, true, true, true, true, true],
-                           [true, true, false, true, false, false, false, true],
-                           [true, true, true, true, true, true, true, true] ],
-            ddl_colors: vec!["Black".to_string(),
-                              "White".to_string(),
-                              "Red".to_string(),
-                              "Green".to_string(),
-                              "Blue".to_string()],
+            bool_matrix: [
+                [true, true, true, true, true, true, true, true],
+                [true, false, false, false, false, false, false, true],
+                [true, false, true, false, true, true, true, true],
+                [true, false, true, false, true, true, true, true],
+                [true, false, false, false, true, true, true, true],
+                [true, true, true, true, true, true, true, true],
+                [true, true, false, true, false, false, false, true],
+                [true, true, true, true, true, true, true, true],
+            ],
+            ddl_colors: vec![
+                "Black".to_string(),
+                "White".to_string(),
+                "Red".to_string(),
+                "Green".to_string(),
+                "Blue".to_string(),
+            ],
             ddl_color: conrod_core::color::PURPLE,
             selected_idx: None,
             circle_pos: [-50.0, 110.0],
-            envelopes: vec![(vec![ [0.0, 0.0],
-                                   [0.1, 17000.0],
-                                   [0.25, 8000.0],
-                                   [0.5, 2000.0],
-                                   [1.0, 0.0], ], "Envelope A".to_string()),
-                            (vec![ [0.0, 0.85],
-                                   [0.3, 0.2],
-                                   [0.6, 0.6],
-                                   [1.0, 0.0], ], "Envelope B".to_string())],
+            envelopes: vec![
+                (
+                    vec![
+                        [0.0, 0.0],
+                        [0.1, 17000.0],
+                        [0.25, 8000.0],
+                        [0.5, 2000.0],
+                        [1.0, 0.0],
+                    ],
+                    "Envelope A".to_string(),
+                ),
+                (
+                    vec![[0.0, 0.85], [0.3, 0.2], [0.6, 0.6], [1.0, 0.0]],
+                    "Envelope B".to_string(),
+                ),
+            ],
         }
     }
-
 }
 
 fn main() {
@@ -100,15 +111,14 @@ fn main() {
     const HEIGHT: u32 = 560;
 
     // Build the window.
-    let mut events_loop = glium::glutin::EventsLoop::new();
-    let window = glium::glutin::WindowBuilder::new()
+    let event_loop = glium::glutin::event_loop::EventLoop::new();
+    let window = glium::glutin::window::WindowBuilder::new()
         .with_title("Widget Demonstration")
-        .with_dimensions((WIDTH, HEIGHT).into());
+        .with_inner_size(glium::glutin::dpi::LogicalSize::new(WIDTH, HEIGHT));
     let context = glium::glutin::ContextBuilder::new()
         .with_vsync(true)
         .with_multisampling(4);
-    let display = glium::Display::new(window, context, &events_loop).unwrap();
-    let display = support::GliumDisplayWinitWrapper(display);
+    let display = glium::Display::new(window, context, &event_loop).unwrap();
 
     // construct our `Ui`.
     let mut ui = conrod_core::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
@@ -117,13 +127,15 @@ fn main() {
     let mut ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
-    let assets = find_folder::Search::KidsThenParents(3, 5).for_folder("assets").unwrap();
+    let assets = find_folder::Search::KidsThenParents(3, 5)
+        .for_folder("assets")
+        .unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
     // A type used for converting `conrod_core::render::Primitives` into `Command`s that can be used
     // for drawing to the glium `Surface`.
-    let mut renderer = conrod_glium::Renderer::new(&display.0).unwrap();
+    let mut renderer = conrod_glium::Renderer::new(&display).unwrap();
 
     // The image map describing each of our widget->image mappings (in our case, none).
     let image_map = conrod_core::image::Map::<glium::texture::Texture2d>::new();
@@ -132,52 +144,57 @@ fn main() {
     let mut app = DemoApp::new();
 
     // Poll events from the window.
-    let mut event_loop = support::EventLoop::new();
-    'main: loop {
+    support::run_loop(display, event_loop, move |request, display| {
+        match request {
+            support::Request::Event {
+                event,
+                should_update_ui,
+                should_exit,
+            } => {
+                // Use the `winit` backend feature to convert the winit event to a conrod one.
+                if let Some(event) = support::convert_event(&event, &display.gl_window().window()) {
+                    ui.handle_event(event);
+                    *should_update_ui = true;
+                }
 
-        // Handle all events.
-        for event in event_loop.next(&mut events_loop) {
-
-            // Use the `winit` backend feature to convert the winit event to a conrod one.
-            if let Some(event) = support::convert_event(event.clone(), &display) {
-                ui.handle_event(event);
-                event_loop.needs_update();
-            }
-
-            match event {
-                glium::glutin::Event::WindowEvent { event, .. } => match event {
-                    // Break from the loop upon `Escape`.
-                    glium::glutin::WindowEvent::CloseRequested |
-                    glium::glutin::WindowEvent::KeyboardInput {
-                        input: glium::glutin::KeyboardInput {
-                            virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
+                match event {
+                    glium::glutin::event::Event::WindowEvent { event, .. } => match event {
+                        // Break from the loop upon `Escape`.
+                        glium::glutin::event::WindowEvent::CloseRequested
+                        | glium::glutin::event::WindowEvent::KeyboardInput {
+                            input:
+                                glium::glutin::event::KeyboardInput {
+                                    virtual_keycode:
+                                        Some(glium::glutin::event::VirtualKeyCode::Escape),
+                                    ..
+                                },
                             ..
-                        },
-                        ..
-                    } => break 'main,
-                    _ => (),
-                },
-                _ => (),
+                        } => *should_exit = true,
+                        _ => {}
+                    },
+                    _ => {}
+                }
+            }
+            support::Request::SetUi { needs_redraw } => {
+                // We'll set all our widgets in a single function called `set_widgets`.
+                let mut ui = ui.set_widgets();
+                set_widgets(&mut ui, &mut app, &mut ids);
+
+                *needs_redraw = ui.has_changed();
+            }
+            support::Request::Redraw => {
+                // Render the `Ui` and then display it on the screen.
+                let primitives = ui.draw();
+
+                renderer.fill(display, primitives, &image_map);
+                let mut target = display.draw();
+                target.clear_color(0.0, 0.0, 0.0, 1.0);
+                renderer.draw(display, &mut target, &image_map).unwrap();
+                target.finish().unwrap();
             }
         }
-
-        // We'll set all our widgets in a single function called `set_widgets`.
-        {
-            let mut ui = ui.set_widgets();
-            set_widgets(&mut ui, &mut app, &mut ids);
-        }
-
-        // Render the `Ui` and then display it on the screen.
-        if let Some(primitives) = ui.draw_if_changed() {
-            renderer.fill(&display.0, primitives, &image_map);
-            let mut target = display.0.draw();
-            target.clear_color(0.0, 0.0, 0.0, 1.0);
-            renderer.draw(&display.0, &mut target, &image_map).unwrap();
-            target.finish().unwrap();
-        }
-    }
+    })
 }
-
 
 // In conrod, each widget must have its own unique identifier so that the `Ui` can keep track of
 // its state between updates.
@@ -210,7 +227,6 @@ widget_ids! {
     }
 }
 
-
 /// Set all `Widget`s within the User Interface.
 ///
 /// The first time this gets called, each `Widget`'s `State` will be initialised and cached within
@@ -218,7 +234,9 @@ widget_ids! {
 /// allocations by updating the pre-existing cached state. A new graphical `Element` is only
 /// retrieved from a `Widget` in the case that it's `State` has changed in some way.
 fn set_widgets(ui: &mut conrod_core::UiCell, app: &mut DemoApp, ids: &mut Ids) {
-    use conrod_core::{color, widget, Colorable, Borderable, Labelable, Positionable, Sizeable, Widget};
+    use conrod_core::{
+        color, widget, Borderable, Colorable, Labelable, Positionable, Sizeable, Widget,
+    };
 
     // We can use this `Canvas` as a parent Widget upon which we can place other widgets.
     widget::Canvas::new()
@@ -227,8 +245,12 @@ fn set_widgets(ui: &mut conrod_core::UiCell, app: &mut DemoApp, ids: &mut Ids) {
         .color(app.bg_color)
         .scroll_kids()
         .set(ids.canvas, ui);
-    widget::Scrollbar::x_axis(ids.canvas).auto_hide(true).set(ids.canvas_y_scrollbar, ui);
-    widget::Scrollbar::y_axis(ids.canvas).auto_hide(true).set(ids.canvas_x_scrollbar, ui);
+    widget::Scrollbar::x_axis(ids.canvas)
+        .auto_hide(true)
+        .set(ids.canvas_y_scrollbar, ui);
+    widget::Scrollbar::y_axis(ids.canvas)
+        .auto_hide(true)
+        .set(ids.canvas_x_scrollbar, ui);
 
     // Text example.
     widget::Text::new("Widget Demonstration")
@@ -238,7 +260,6 @@ fn set_widgets(ui: &mut conrod_core::UiCell, app: &mut DemoApp, ids: &mut Ids) {
         .set(ids.title, ui);
 
     if app.show_button {
-
         // Button widget example button.
         if widget::Button::new()
             .w_h(200.0, 50.0)
@@ -252,12 +273,9 @@ fn set_widgets(ui: &mut conrod_core::UiCell, app: &mut DemoApp, ids: &mut Ids) {
         {
             app.bg_color = color::rgb(rand::random(), rand::random(), rand::random())
         }
-
     }
-
     // Horizontal slider example.
     else {
-
         // Create the label for the slider.
         let label = format!("Padding: {}", app.title_pad as i16);
 
@@ -274,11 +292,14 @@ fn set_widgets(ui: &mut conrod_core::UiCell, app: &mut DemoApp, ids: &mut Ids) {
         {
             app.title_pad = new_pad;
         }
-
     }
 
     // Keep track of the currently shown widget.
-    let shown_widget = if app.show_button { ids.button } else { ids.title_pad_slider };
+    let shown_widget = if app.show_button {
+        ids.button
+    } else {
+        ids.title_pad_slider
+    };
 
     // Toggle widget example.
     if let Some(value) = widget::Toggle::new(app.show_button)
@@ -294,7 +315,7 @@ fn set_widgets(ui: &mut conrod_core::UiCell, app: &mut DemoApp, ids: &mut Ids) {
         app.show_button = value;
         app.toggle_label = match value {
             true => "ON".to_string(),
-            false => "OFF".to_string()
+            false => "OFF".to_string(),
         }
     }
 
@@ -317,8 +338,20 @@ fn set_widgets(ui: &mut conrod_core::UiCell, app: &mut DemoApp, ids: &mut Ids) {
     }
 
     color_slider!(red_slider, red, color::rgb(0.75, 0.3, 0.3), set_red, down);
-    color_slider!(green_slider, green, color::rgb(0.3, 0.75, 0.3), set_green, right);
-    color_slider!(blue_slider, blue, color::rgb(0.3, 0.3, 0.75), set_blue, right);
+    color_slider!(
+        green_slider,
+        green,
+        color::rgb(0.3, 0.75, 0.3),
+        set_green,
+        right
+    );
+    color_slider!(
+        blue_slider,
+        blue,
+        color::rgb(0.3, 0.3, 0.75),
+        set_blue,
+        right
+    );
 
     // Number Dialer widget example. (value, min, max, precision)
     for new_height in widget::NumberDialer::new(app.v_slider_height, 25.0, 250.0, 1)
@@ -363,7 +396,7 @@ fn set_widgets(ui: &mut conrod_core::UiCell, app: &mut DemoApp, ids: &mut Ids) {
             0.5 + (elem.col as f32 / cols as f32) / 2.0,
             0.75,
             1.0 - (elem.row as f32 / rows as f32) / 2.0,
-            1.0
+            1.0,
         );
 
         // We can use `Element`s to instantiate any kind of widget we like.
@@ -394,26 +427,32 @@ fn set_widgets(ui: &mut conrod_core::UiCell, app: &mut DemoApp, ids: &mut Ids) {
         app.ddl_color = match &app.ddl_colors[selected_idx][..] {
             "Black" => color::BLACK,
             "White" => color::WHITE,
-            "Red"   => color::RED,
+            "Red" => color::RED,
             "Green" => color::GREEN,
-            "Blue"  => color::BLUE,
-            _       => color::PURPLE,
+            "Blue" => color::BLUE,
+            _ => color::PURPLE,
         }
     }
 
     // Draw an xy_pad.
-    for (x, y) in widget::XYPad::new(app.circle_pos[0], -75.0, 75.0, // x range.
-                                     app.circle_pos[1], 95.0, 245.0) // y range.
-        .w_h(150.0, 150.0)
-        .right_from(ids.toggle_matrix, 30.0)
-        .align_bottom_of(ids.toggle_matrix) // Align to the bottom of the last toggle_matrix element.
-        .color(app.ddl_color)
-        .border(app.border_width)
-        .border_color(color::WHITE)
-        .label("Circle Position")
-        .label_color(app.ddl_color.plain_contrast().alpha(0.5))
-        .line_thickness(2.0)
-        .set(ids.circle_position, ui)
+    for (x, y) in widget::XYPad::new(
+        app.circle_pos[0],
+        -75.0,
+        75.0, // x range.
+        app.circle_pos[1],
+        95.0,
+        245.0,
+    ) // y range.
+    .w_h(150.0, 150.0)
+    .right_from(ids.toggle_matrix, 30.0)
+    .align_bottom_of(ids.toggle_matrix) // Align to the bottom of the last toggle_matrix element.
+    .color(app.ddl_color)
+    .border(app.border_width)
+    .border_color(color::WHITE)
+    .label("Circle Position")
+    .label_color(app.ddl_color.plain_contrast().alpha(0.5))
+    .line_thickness(2.0)
+    .set(ids.circle_position, ui)
     {
         app.circle_pos[0] = x;
         app.circle_pos[1] = y;

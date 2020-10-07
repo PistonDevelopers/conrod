@@ -4,8 +4,8 @@
 //! define their own methods for rendering. Instead, conrod graphics backends only need to define
 //! rendering methods for a small set of primitives.
 
-pub mod line;
 pub mod image;
+pub mod line;
 pub mod point_path;
 pub mod shape;
 pub mod text;
@@ -14,13 +14,23 @@ use {Point, Range, Rect};
 
 /// Find the bounding rect for the given series of points.
 pub fn bounding_box_for_points<I>(mut points: I) -> Rect
-    where I: Iterator<Item=Point>,
+where
+    I: Iterator<Item = Point>,
 {
-    points.next().map(|first| {
-        let start_rect = Rect {
-            x: Range { start: first[0], end: first[0] },
-            y: Range { start: first[1], end: first[1] },
-        };
-        points.fold(start_rect, Rect::stretch_to_point)
-    }).unwrap_or_else(|| Rect::from_xy_dim([0.0, 0.0], [0.0, 0.0]))
+    points
+        .next()
+        .map(|first| {
+            let start_rect = Rect {
+                x: Range {
+                    start: first[0],
+                    end: first[0],
+                },
+                y: Range {
+                    start: first[1],
+                    end: first[1],
+                },
+            };
+            points.fold(start_rect, Rect::stretch_to_point)
+        })
+        .unwrap_or_else(|| Rect::from_xy_dim([0.0, 0.0], [0.0, 0.0]))
 }

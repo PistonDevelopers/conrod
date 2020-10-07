@@ -1,5 +1,5 @@
 #[macro_export]
-macro_rules! v021_convert_key {
+macro_rules! v023_convert_key {
     ($keycode:expr) => {{
         match $keycode {
             winit::event::VirtualKeyCode::Key0 => conrod_core::input::keyboard::Key::D0,
@@ -74,17 +74,22 @@ macro_rules! v021_convert_key {
             winit::event::VirtualKeyCode::Numpad7 => conrod_core::input::keyboard::Key::NumPad7,
             winit::event::VirtualKeyCode::Numpad8 => conrod_core::input::keyboard::Key::NumPad8,
             winit::event::VirtualKeyCode::Numpad9 => conrod_core::input::keyboard::Key::NumPad9,
-            winit::event::VirtualKeyCode::NumpadComma => {
+            winit::event::VirtualKeyCode::NumpadComma
+            | winit::event::VirtualKeyCode::NumpadDecimal => {
                 conrod_core::input::keyboard::Key::NumPadDecimal
             }
-            winit::event::VirtualKeyCode::Divide => conrod_core::input::keyboard::Key::NumPadDivide,
-            winit::event::VirtualKeyCode::Multiply => {
+            winit::event::VirtualKeyCode::NumpadDivide => {
+                conrod_core::input::keyboard::Key::NumPadDivide
+            }
+            winit::event::VirtualKeyCode::NumpadMultiply => {
                 conrod_core::input::keyboard::Key::NumPadMultiply
             }
-            winit::event::VirtualKeyCode::Subtract => {
+            winit::event::VirtualKeyCode::NumpadSubtract => {
                 conrod_core::input::keyboard::Key::NumPadMinus
             }
-            winit::event::VirtualKeyCode::Add => conrod_core::input::keyboard::Key::NumPadPlus,
+            winit::event::VirtualKeyCode::NumpadAdd => {
+                conrod_core::input::keyboard::Key::NumPadPlus
+            }
             winit::event::VirtualKeyCode::NumpadEnter => {
                 conrod_core::input::keyboard::Key::NumPadEnter
             }
@@ -132,19 +137,9 @@ macro_rules! v021_convert_key {
 ///
 /// Requires that both the `conrod_core` and `winit` crates are in the crate root.
 #[macro_export]
-macro_rules! v021_convert_mouse_button {
+macro_rules! v023_convert_mouse_button {
     ($mouse_button:expr) => {{
-        match $mouse_button {
-            winit::event::MouseButton::Left => conrod_core::input::MouseButton::Left,
-            winit::event::MouseButton::Right => conrod_core::input::MouseButton::Right,
-            winit::event::MouseButton::Middle => conrod_core::input::MouseButton::Middle,
-            winit::event::MouseButton::Other(0) => conrod_core::input::MouseButton::X1,
-            winit::event::MouseButton::Other(1) => conrod_core::input::MouseButton::X2,
-            winit::event::MouseButton::Other(2) => conrod_core::input::MouseButton::Button6,
-            winit::event::MouseButton::Other(3) => conrod_core::input::MouseButton::Button7,
-            winit::event::MouseButton::Other(4) => conrod_core::input::MouseButton::Button8,
-            _ => conrod_core::input::MouseButton::Unknown,
-        }
+        $crate::v021_convert_mouse_button!($mouse_button)
     }};
 }
 
@@ -153,7 +148,7 @@ macro_rules! v021_convert_mouse_button {
 /// Expects a `winit::WindowEvent` and a reference to a window implementing `WinitWindow`.
 /// Returns an `Option<conrod_core::event::Input>`.
 #[macro_export]
-macro_rules! v021_convert_window_event {
+macro_rules! v023_convert_window_event {
     ($event:expr, $window:expr) => {{
         // The window size in points.
         let scale_factor: f64 = $window.scale_factor();
@@ -164,8 +159,8 @@ macro_rules! v021_convert_window_event {
         let ty = |y: conrod_core::Scalar| -(y - win_h / 2.0);
 
         // Functions for converting keys and mouse buttons.
-        let map_key = |key: winit::event::VirtualKeyCode| $crate::v021_convert_key!(key);
-        let map_mouse = |button: winit::event::MouseButton| $crate::v021_convert_mouse_button!(button);
+        let map_key = |key: winit::event::VirtualKeyCode| $crate::v023_convert_key!(key);
+        let map_mouse = |button: winit::event::MouseButton| $crate::v023_convert_mouse_button!(button);
 
         match $event {
             winit::event::WindowEvent::Resized(physical_size) => {
@@ -223,7 +218,7 @@ macro_rules! v021_convert_window_event {
 
             winit::event::WindowEvent::MouseWheel { delta, .. } => match delta {
                 winit::event::MouseScrollDelta::PixelDelta(delta) => {
-                    let winit::dpi::LogicalPosition { x, y } = delta.clone();
+                    let winit::dpi::LogicalPosition { x, y } = delta.to_logical::<f64>(scale_factor);
                     let x = x as conrod_core::Scalar;
                     let y = -y as conrod_core::Scalar;
                     let motion = conrod_core::input::Motion::Scroll { x: x, y: y };
@@ -259,11 +254,11 @@ macro_rules! v021_convert_window_event {
 /// Invocations of this macro require that a version of the `winit` and `conrod_core` crates are
 /// available in the crate root.
 #[macro_export]
-macro_rules! v021_convert_event {
+macro_rules! v023_convert_event {
     ($event:expr, $window:expr) => {{
         match $event {
             winit::event::Event::WindowEvent { event, .. } => {
-                $crate::v021_convert_window_event!(event, $window)
+                $crate::v023_convert_window_event!(event, $window)
             }
             _ => None,
         }
@@ -276,33 +271,14 @@ macro_rules! v021_convert_event {
 ///
 /// Requires that both the `conrod_core` and `winit` crates are in the crate root.
 #[macro_export]
-macro_rules! v021_convert_mouse_cursor {
+macro_rules! v023_convert_mouse_cursor {
     ($cursor:expr) => {{
-        match $cursor {
-            conrod_core::cursor::MouseCursor::Text => winit::window::CursorIcon::Text,
-            conrod_core::cursor::MouseCursor::VerticalText => {
-                winit::window::CursorIcon::VerticalText
-            }
-            conrod_core::cursor::MouseCursor::Hand => winit::window::CursorIcon::Hand,
-            conrod_core::cursor::MouseCursor::Grab => winit::window::CursorIcon::Grab,
-            conrod_core::cursor::MouseCursor::Grabbing => winit::window::CursorIcon::Grabbing,
-            conrod_core::cursor::MouseCursor::ResizeVertical => winit::window::CursorIcon::NsResize,
-            conrod_core::cursor::MouseCursor::ResizeHorizontal => {
-                winit::window::CursorIcon::EwResize
-            }
-            conrod_core::cursor::MouseCursor::ResizeTopLeftBottomRight => {
-                winit::window::CursorIcon::NwseResize
-            }
-            conrod_core::cursor::MouseCursor::ResizeTopRightBottomLeft => {
-                winit::window::CursorIcon::NeswResize
-            }
-            _ => winit::window::CursorIcon::Arrow,
-        }
+        $crate::v021_convert_mouse_cursor!($cursor)
     }};
 }
 
 #[macro_export]
-macro_rules! v021_conversion_fns {
+macro_rules! v023_conversion_fns {
     () => {
         /// Generate a set of conversion functions for converting between types of the crate's versions of
         /// `winit` and `conrod_core`.
@@ -314,21 +290,21 @@ macro_rules! v021_conversion_fns {
         pub fn convert_key(
             keycode: winit::event::VirtualKeyCode,
         ) -> conrod_core::input::keyboard::Key {
-            $crate::v021_convert_key!(keycode)
+            $crate::v023_convert_key!(keycode)
         }
 
         /// Convert a `winit::MouseButton` to a `conrod_core::input::MouseButton`.
         pub fn convert_mouse_button(
             mouse_button: winit::event::MouseButton,
         ) -> conrod_core::input::MouseButton {
-            $crate::v021_convert_mouse_button!(mouse_button)
+            $crate::v023_convert_mouse_button!(mouse_button)
         }
 
         /// Convert a given conrod mouse cursor to the corresponding winit cursor type.
         pub fn convert_mouse_cursor(
             cursor: conrod_core::cursor::MouseCursor,
         ) -> winit::window::CursorIcon {
-            $crate::v021_convert_mouse_cursor!(cursor)
+            $crate::v023_convert_mouse_cursor!(cursor)
         }
 
         /// A function for converting a `winit::WindowEvent` to a `conrod_core::event::Input`.
@@ -336,7 +312,7 @@ macro_rules! v021_conversion_fns {
             event: &winit::event::WindowEvent,
             window: &winit::window::Window,
         ) -> Option<conrod_core::event::Input> {
-            $crate::v021_convert_window_event!(event, window)
+            $crate::v023_convert_window_event!(event, window)
         }
 
         /// A function for converting a `winit::Event` to a `conrod_core::event::Input`.
@@ -344,7 +320,7 @@ macro_rules! v021_conversion_fns {
             event: &winit::event::Event<T>,
             window: &winit::window::Window,
         ) -> Option<conrod_core::event::Input> {
-            $crate::v021_convert_event!(event, window)
+            $crate::v023_convert_event!(event, window)
         }
     };
 }

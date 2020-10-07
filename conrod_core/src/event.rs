@@ -40,7 +40,6 @@ use position::{Dimensions, Point};
 use utils::vec2_sub;
 use widget;
 
-
 /// The event type that is used by conrod to track inputs from the world. Events yielded by polling
 /// window backends should be converted to this type. This can be thought of as the event type
 /// which is supplied by the window backend to drive the state of the `Ui` forward.
@@ -76,7 +75,6 @@ pub enum Input {
     Redraw,
 }
 
-
 /// Enum containing all the events that the `Ui` may provide.
 #[derive(Clone, PartialEq, Debug)]
 pub enum Event {
@@ -85,7 +83,7 @@ pub enum Event {
     /// Events that have been interpreted from `backend::RawEvent`s by the `Ui`.
     ///
     /// Most events usually
-    Ui(Ui)
+    Ui(Ui),
 }
 
 /// Represents all events interpreted by the `Ui`.
@@ -130,7 +128,6 @@ pub enum Ui {
     /// Indicates that the given widget has released the given user input source.
     WidgetUncapturesInputSource(widget::Id, input::Source),
 }
-
 
 /// Events that apply to a specific widget.
 ///
@@ -327,8 +324,10 @@ impl Motion {
     /// Returns a copy of the `Motion` relative to the given `xy`
     pub fn relative_to(&self, xy: Point) -> Motion {
         let motion = match self.motion {
-            input::Motion::MouseCursor { x, y } =>
-                input::Motion::MouseCursor { x: x - xy[0], y: y - xy[1] },
+            input::Motion::MouseCursor { x, y } => input::Motion::MouseCursor {
+                x: x - xy[0],
+                y: y - xy[1],
+            },
             motion => motion,
         };
         Motion {
@@ -349,7 +348,6 @@ impl Button {
 }
 
 impl Press {
-
     /// Returns a copy of the Press relative to the given `xy`
     pub fn relative_to(&self, xy: Point) -> Press {
         Press {
@@ -361,12 +359,11 @@ impl Press {
     /// If the `Press` event represents the pressing of a mouse button, return `Some`.
     pub fn mouse(self) -> Option<MousePress> {
         match self.button {
-            Button::Mouse(button, xy) =>
-                Some(MousePress {
-                    button: button,
-                    xy: xy,
-                    modifiers: self.modifiers,
-                }),
+            Button::Mouse(button, xy) => Some(MousePress {
+                button: button,
+                xy: xy,
+                modifiers: self.modifiers,
+            }),
             _ => None,
         }
     }
@@ -374,19 +371,16 @@ impl Press {
     /// If the `Press` event represents the pressing of keyboard button, return `Some`.
     pub fn key(self) -> Option<KeyPress> {
         match self.button {
-            Button::Keyboard(key) =>
-                Some(KeyPress {
-                    key: key,
-                    modifiers: self.modifiers,
-                }),
+            Button::Keyboard(key) => Some(KeyPress {
+                key: key,
+                modifiers: self.modifiers,
+            }),
             _ => None,
         }
     }
-
 }
 
 impl Release {
-
     /// Returns a copy of the Release relative to the given `xy`
     pub fn relative_to(&self, xy: Point) -> Release {
         Release {
@@ -398,12 +392,11 @@ impl Release {
     /// If the `Release` event represents the releasing of a mouse button, return `Some`.
     pub fn mouse(self) -> Option<MouseRelease> {
         match self.button {
-            Button::Mouse(button, xy) =>
-                Some(MouseRelease {
-                    button: button,
-                    xy: xy,
-                    modifiers: self.modifiers,
-                }),
+            Button::Mouse(button, xy) => Some(MouseRelease {
+                button: button,
+                xy: xy,
+                modifiers: self.modifiers,
+            }),
             _ => None,
         }
     }
@@ -411,15 +404,13 @@ impl Release {
     /// If the `Release` event represents the release of keyboard button, return `Some`.
     pub fn key(self) -> Option<KeyRelease> {
         match self.button {
-            Button::Keyboard(key) =>
-                Some(KeyRelease {
-                    key: key,
-                    modifiers: self.modifiers,
-                }),
+            Button::Keyboard(key) => Some(KeyRelease {
+                key: key,
+                modifiers: self.modifiers,
+            }),
             _ => None,
         }
     }
-
 }
 
 impl Tap {
@@ -455,7 +446,7 @@ impl DoubleClick {
 impl Drag {
     /// Returns a copy of the Drag relative to the given `xy`
     pub fn relative_to(&self, xy: Point) -> Drag {
-        Drag{
+        Drag {
             origin: vec2_sub(self.origin, xy),
             from: vec2_sub(self.from, xy),
             to: vec2_sub(self.to, xy),
@@ -463,7 +454,6 @@ impl Drag {
         }
     }
 }
-
 
 impl From<input::Motion> for Input {
     fn from(motion: input::Motion) -> Self {

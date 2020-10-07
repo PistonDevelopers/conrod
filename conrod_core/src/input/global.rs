@@ -38,10 +38,9 @@ pub struct UiEvents<'a> {
 }
 
 impl Global {
-
     /// Returns a fresh new `Global`
     pub fn new() -> Global {
-        Global{
+        Global {
             events: Vec::new(),
             start: input::State::new(),
             current: input::State::new(),
@@ -52,7 +51,9 @@ impl Global {
     /// Returns an iterator yielding all events that have occurred since the last time
     /// `Ui::set_widgets` was called.
     pub fn events(&self) -> Events {
-        Events { iter: self.events.iter() }
+        Events {
+            iter: self.events.iter(),
+        }
     }
 
     /// Add the new event to the stack.
@@ -66,7 +67,6 @@ impl Global {
         self.events.clear();
         self.start = self.current.clone();
     }
-
 }
 
 impl<'a> Events<'a> {
