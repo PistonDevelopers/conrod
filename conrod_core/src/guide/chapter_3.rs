@@ -89,7 +89,7 @@ authors = ["bobgates"]
 [dependencies]
 ```
 
-Add `conrod = { version = "0.55.0", features = ["glium", "winit"] }` to the
+Add `conrod = { version = "0.61.1", features = ["glium", "winit"] }` to the
 `[dependencies]` section.
 
 This incantation needs a little explanation, because it specifies the
@@ -144,13 +144,13 @@ event loop, window and context together into a display. The display is the
 home for the UI, and is an OpenGL context provided by glium.
 
 ```ignore
-const WIDTH: u32 = 400;
-const HEIGHT: u32 = 200;
+const WIDTH: f64 = 400;
+const HEIGHT: f64 = 200;
 
 let mut events_loop = glium::glutin::EventsLoop::new();
 let window = glium::glutin::WindowBuilder::new()
                 .with_title("Hello Conrod")
-                .with_dimensions(WIDTH, HEIGHT);
+                .with_dimensions(conrod::glium::glutin::dpi::LogicalSize::new(WIDTH, HEIGHT));
 let context = glium::glutin::ContextBuilder::new()
                 .with_vsync(true)
                 .with_multisampling(4);
@@ -161,7 +161,7 @@ Now create the UI itself. Conrod has a builder that contains and looks after
 the UI for the user.
 
 ```ignore
-let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
+let mut ui = conrod::UiBuilder::new([WIDTH, HEIGHT]).build();
 ```
 
 
@@ -219,9 +219,7 @@ at least something to see.
 
 After
 ```ignore
-const WIDTH: i32 = 400;
-const HEIGHT: i32 = 640;
-let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
+let mut ui = conrod::UiBuilder::new([WIDTH, HEIGHT]).build();
 ```
 
 add the code that will initiate and build the UI:
@@ -307,7 +305,7 @@ of writing is 0.3.0:
 ```toml
 [dependencies]
 conrod = {
-    version = "0.55.0",
+    version = "0.61.1",
     features = ["glium", "winit"]
 }
 find_folder="0.3.0"
@@ -322,10 +320,10 @@ extern crate find_folder;
 is in the folder `assets/fonts/NotoSans` and is called `NotoSans-Regular.ttf`.
 NotoSans is as font designed by
 [Google](https://fonts.google.com/specimen/Noto+Sans), and has an Apache
-License. It is available [here](https://noto-
-website.storage.googleapis.com/pkgs/NotoSans-unhinted.zip), so download and
-put it in the appropriate folder. Make sure that folder and file names agree
-on your computer and in your code.
+License. It is available
+[here](https://noto-website.storage.googleapis.com/pkgs/NotoSans-unhinted.zip),
+so download and put it in the appropriate folder. Make sure that folder and
+file names agree on your computer and in your code.
 
 On my mac, I now see this (it has an empty white header bar that is not
 visible on this white web page):
@@ -348,7 +346,7 @@ events_loop.poll_events(|event| events.push(event));
 for event in events{
     match event {
         glium::glutin::Event::WindowEvent { event, ..} => match event {
-            glium::glutin::WindowEvent::Closed |
+            glium::glutin::WindowEvent::CloseRequested |
             glium::glutin::WindowEvent::KeyboardInput {
                 input: glium::glutin::KeyboardInput {
                     virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
@@ -453,6 +451,7 @@ impl EventLoop {
     pub fn needs_update(&mut self) {
         self.ui_needs_update = true;
     }
+}
 ```
 
 'EventLoop' is a simple structure that stores the time of the last update, and
