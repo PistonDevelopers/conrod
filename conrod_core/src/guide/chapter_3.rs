@@ -453,6 +453,7 @@ impl EventLoop {
     pub fn needs_update(&mut self) {
         self.ui_needs_update = true;
     }
+}
 ```
 
 'EventLoop' is a simple structure that stores the time of the last update, and
