@@ -26,6 +26,7 @@ daggy = "0.5"
 fnv = "1.0"
 num = "0.3"
 pistoncore-input = "1.0.0"
-rusttype = { version = "0.8", features = ["gpu_cache"] }
+#rusttype = { version = "0.9.2", features = ["gpu_cache"] }
+rusttype = { path = "../../rusttype", features = ["gpu_cache"] }
 instant = "0.1"
 copypasta = "0.6"
