@@ -690,27 +690,14 @@ fn render_pipeline(
     dst_format: wgpu::TextureFormat,
     dst_sample_count: u32,
 ) -> wgpu::RenderPipeline {
-    let vs_desc = wgpu::ProgrammableStageDescriptor {
-        module: &vs_mod,
-        entry_point: "main",
-    };
-    let fs_desc = wgpu::ProgrammableStageDescriptor {
-        module: &fs_mod,
-        entry_point: "main",
-    };
-    let raster_desc = wgpu::RasterizationStateDescriptor {
-        front_face: wgpu::FrontFace::Ccw,
-        cull_mode: wgpu::CullMode::None,
-        ..Default::default()
-    };
-    let color_state_desc = wgpu::ColorStateDescriptor {
+    let color_state = wgpu::ColorTargetState {
         format: dst_format,
-        color_blend: wgpu::BlendDescriptor {
+        color_blend: wgpu::BlendState {
             src_factor: wgpu::BlendFactor::SrcAlpha,
             dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
             operation: wgpu::BlendOperation::Add,
         },
-        alpha_blend: wgpu::BlendDescriptor {
+        alpha_blend: wgpu::BlendState {
             src_factor: wgpu::BlendFactor::One,
             dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
             operation: wgpu::BlendOperation::Add,
@@ -718,28 +705,41 @@ fn render_pipeline(
         write_mask: wgpu::ColorWrite::ALL,
     };
     let vertex_attrs = vertex_attrs();
-    let vertex_buffer_desc = wgpu::VertexBufferDescriptor {
-        stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+    let vertex_buffer_desc = wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
         step_mode: wgpu::InputStepMode::Vertex,
         attributes: &vertex_attrs[..],
     };
-    let vertex_state_desc = wgpu::VertexStateDescriptor {
-        index_format: wgpu::IndexFormat::Uint16,
-        vertex_buffers: &[vertex_buffer_desc],
+    let vertex_state = wgpu::VertexState {
+        module: &vs_mod,
+        entry_point: "main",
+        buffers: &[vertex_buffer_desc],
+    };
+    let primitive_state = wgpu::PrimitiveState {
+        topology: wgpu::PrimitiveTopology::TriangleList,
+        front_face: wgpu::FrontFace::Ccw,
+        cull_mode: wgpu::CullMode::None,
+        strip_index_format: Some(wgpu::IndexFormat::Uint16),
+        ..Default::default()
+    };
+    let multisample_state = wgpu::MultisampleState {
+        count: dst_sample_count,
+        mask: !0,
+        alpha_to_coverage_enabled: false,
+    };
+    let fragment_state = wgpu::FragmentState {
+        module: &fs_mod,
+        entry_point: "main",
+        targets: &[color_state],
     };
     let desc = wgpu::RenderPipelineDescriptor {
         label: Some("conrod_render_pipeline_descriptor"),
         layout: Some(layout),
-        vertex_stage: vs_desc,
-        fragment_stage: Some(fs_desc),
-        rasterization_state: Some(raster_desc),
-        primitive_topology: wgpu::PrimitiveTopology::TriangleList,
-        color_states: &[color_state_desc],
-        depth_stencil_state: None,
-        vertex_state: vertex_state_desc,
-        sample_count: dst_sample_count,
-        sample_mask: !0,
-        alpha_to_coverage_enabled: false,
+        vertex: vertex_state,
+        primitive: primitive_state,
+        depth_stencil: None,
+        multisample: multisample_state,
+        fragment: Some(fragment_state),
     };
     device.create_render_pipeline(&desc)
 }
