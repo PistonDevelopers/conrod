@@ -122,7 +122,7 @@ impl mesh::ImageDimensions for Image {
 
 impl Image {
     pub fn texture_component_type(&self) -> wgpu::TextureSampleType {
-        self.texture_format.into()
+        self.texture_format.describe().sample_type
     }
 }
 
@@ -181,7 +181,7 @@ impl Renderer {
         // Create at least one render pipeline for the default texture.
         let mut render_pipelines = HashMap::new();
 
-        let default_tex_component_ty = DEFAULT_IMAGE_TEX_FORMAT.into();
+        let default_tex_component_ty = DEFAULT_IMAGE_TEX_FORMAT.describe().sample_type;
         let bind_group_layout = bind_group_layout(device, default_tex_component_ty);
         let pipeline_layout = pipeline_layout(device, &bind_group_layout);
         let render_pipeline = render_pipeline(
@@ -291,7 +291,7 @@ impl Renderer {
         // Ensure we have:
         // - a bind group layout and render pipeline for each unique texture component type.
         // - a bind group ready for each image in the map.
-        let default_tct = DEFAULT_IMAGE_TEX_FORMAT.into();
+        let default_tct = DEFAULT_IMAGE_TEX_FORMAT.describe().sample_type;
         let unique_tex_component_types: HashSet<_> = image_map
             .values()
             .map(|img| img.texture_component_type())
@@ -552,6 +552,7 @@ fn sampler_desc() -> wgpu::SamplerDescriptor<'static> {
         lod_max_clamp: 100.0,
         compare: Some(wgpu::CompareFunction::Always),
         anisotropy_clamp: None,
+        ..Default::default()
     }
 }
 
@@ -562,26 +563,29 @@ fn bind_group_layout(
     let glyph_cache_texture_binding = wgpu::BindGroupLayoutEntry {
         binding: 0,
         visibility: wgpu::ShaderStage::FRAGMENT,
-        ty: wgpu::BindingType::SampledTexture {
+        ty: wgpu::BindingType::Texture {
             multisampled: false,
-            component_type: GLYPH_TEX_COMPONENT_TY,
-            dimension: wgpu::TextureViewDimension::D2,
+            sample_type: GLYPH_TEX_COMPONENT_TY,
+            view_dimension: wgpu::TextureViewDimension::D2,
         },
         count: None,
     };
     let sampler_binding = wgpu::BindGroupLayoutEntry {
         binding: 1,
         visibility: wgpu::ShaderStage::FRAGMENT,
-        ty: wgpu::BindingType::Sampler { comparison: true },
+        ty: wgpu::BindingType::Sampler {
+            filtering: false,
+            comparison: true,
+        },
         count: None,
     };
     let image_texture_binding = wgpu::BindGroupLayoutEntry {
         binding: 2,
         visibility: wgpu::ShaderStage::FRAGMENT,
-        ty: wgpu::BindingType::SampledTexture {
+        ty: wgpu::BindingType::Texture {
             multisampled: false,
-            component_type: img_tex_component_ty,
-            dimension: wgpu::TextureViewDimension::D2,
+            sample_type: img_tex_component_ty,
+            view_dimension: wgpu::TextureViewDimension::D2,
         },
         count: None,
     };
