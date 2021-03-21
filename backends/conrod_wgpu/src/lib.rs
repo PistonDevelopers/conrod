@@ -64,10 +64,10 @@ pub struct Renderer {
     // In order to support a dynamic number of images we maintain a unique bind group for each.
     bind_groups: HashMap<image::Id, wgpu::BindGroup>,
     // We also need a unique
-    render_pipelines: HashMap<wgpu::TextureComponentType, Pipeline>,
+    render_pipelines: HashMap<wgpu::TextureSampleType, Pipeline>,
 }
 
-/// Data that must be unique per `wgpu::TextureComponentType`, i.e. bind group layout and render
+/// Data that must be unique per `wgpu::TextureSampleType`, i.e. bind group layout and render
 /// pipeline.
 struct Pipeline {
     bind_group_layout: wgpu::BindGroupLayout,
@@ -111,7 +111,7 @@ pub enum RenderPassCommand<'a> {
 }
 
 const GLYPH_TEX_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
-const GLYPH_TEX_COMPONENT_TY: wgpu::TextureComponentType = wgpu::TextureComponentType::Uint;
+const GLYPH_TEX_COMPONENT_TY: wgpu::TextureSampleType = wgpu::TextureSampleType::Uint;
 const DEFAULT_IMAGE_TEX_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 
 impl mesh::ImageDimensions for Image {
@@ -121,7 +121,7 @@ impl mesh::ImageDimensions for Image {
 }
 
 impl Image {
-    pub fn texture_component_type(&self) -> wgpu::TextureComponentType {
+    pub fn texture_component_type(&self) -> wgpu::TextureSampleType {
         self.texture_format.into()
     }
 }
@@ -557,7 +557,7 @@ fn sampler_desc() -> wgpu::SamplerDescriptor<'static> {
 
 fn bind_group_layout(
     device: &wgpu::Device,
-    img_tex_component_ty: wgpu::TextureComponentType,
+    img_tex_component_ty: wgpu::TextureSampleType,
 ) -> wgpu::BindGroupLayout {
     let glyph_cache_texture_binding = wgpu::BindGroupLayoutEntry {
         binding: 0,
