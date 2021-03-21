@@ -111,7 +111,8 @@ pub enum RenderPassCommand<'a> {
 }
 
 const GLYPH_TEX_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
-const GLYPH_TEX_COMPONENT_TY: wgpu::TextureSampleType = wgpu::TextureSampleType::Uint;
+const GLYPH_TEX_COMPONENT_TY: wgpu::TextureSampleType =
+    wgpu::TextureSampleType::Float { filterable: true };
 const DEFAULT_IMAGE_TEX_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 
 impl mesh::ImageDimensions for Image {
