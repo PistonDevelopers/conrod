@@ -646,7 +646,7 @@ fn pipeline_layout(
     device.create_pipeline_layout(&desc)
 }
 
-fn vertex_attrs() -> [wgpu::VertexAttributeDescriptor; 4] {
+fn vertex_attrs() -> [wgpu::VertexAttribute; 4] {
     let position_offset = 0;
     let position_size = std::mem::size_of::<[f32; 2]>() as wgpu::BufferAddress;
     let tex_coords_offset = position_offset + position_size;
@@ -656,25 +656,25 @@ fn vertex_attrs() -> [wgpu::VertexAttributeDescriptor; 4] {
     let mode_offset = rgba_offset + rgba_size;
     [
         // position
-        wgpu::VertexAttributeDescriptor {
+        wgpu::VertexAttribute {
             format: wgpu::VertexFormat::Float2,
             offset: position_offset,
             shader_location: 0,
         },
         // tex_coords
-        wgpu::VertexAttributeDescriptor {
+        wgpu::VertexAttribute {
             format: wgpu::VertexFormat::Float2,
             offset: tex_coords_offset,
             shader_location: 1,
         },
         // rgba
-        wgpu::VertexAttributeDescriptor {
+        wgpu::VertexAttribute {
             format: wgpu::VertexFormat::Float4,
             offset: rgba_offset,
             shader_location: 2,
         },
         // mode
-        wgpu::VertexAttributeDescriptor {
+        wgpu::VertexAttribute {
             format: wgpu::VertexFormat::Uint,
             offset: mode_offset,
             shader_location: 3,
