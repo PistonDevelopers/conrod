@@ -36,7 +36,7 @@ fn main() {
 
     // Select an adapter and gpu device.
     let adapter_opts = wgpu::RequestAdapterOptions {
-        power_preference: wgpu::PowerPreference::Default,
+        power_preference: wgpu::PowerPreference::default(),
         compatible_surface: Some(&surface),
     };
     let adapter = futures::executor::block_on(instance.request_adapter(&adapter_opts)).unwrap();
