@@ -42,9 +42,9 @@ fn main() {
     let adapter = futures::executor::block_on(instance.request_adapter(&adapter_opts)).unwrap();
     let limits = wgpu::Limits::default();
     let device_desc = wgpu::DeviceDescriptor {
+        label: Some("conrod_device_descriptor"),
         features: wgpu::Features::empty(),
         limits,
-        shader_validation: true,
     };
     let device_request = adapter.request_device(&device_desc, None);
     let (device, mut queue) = futures::executor::block_on(device_request).unwrap();
@@ -52,7 +52,7 @@ fn main() {
     // Create the swapchain.
     let format = wgpu::TextureFormat::Bgra8UnormSrgb;
     let mut swap_chain_desc = wgpu::SwapChainDescriptor {
-        usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+        usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
         format,
         width: size.width,
         height: size.height,
@@ -84,7 +84,7 @@ fn main() {
     let logo_path = assets.join("images/rust.png");
     let rgba_logo_image = image::open(logo_path)
         .expect("Couldn't load logo")
-        .to_rgba();
+        .to_rgba8();
 
     // Create the GPU texture and upload the image data.
     let (logo_w, logo_h) = rgba_logo_image.dimensions();
@@ -212,6 +212,7 @@ fn main() {
                     };
 
                     let render_pass_desc = wgpu::RenderPassDescriptor {
+                        label: Some("conrod_render_pass_descriptor"),
                         color_attachments: &[color_attachment_desc],
                         depth_stencil_attachment: None,
                     };
@@ -270,7 +271,7 @@ fn create_multisampled_framebuffer(
         sample_count: sample_count,
         dimension: wgpu::TextureDimension::D2,
         format: sc_desc.format,
-        usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+        usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
     };
     device
         .create_texture(multisampled_frame_descriptor)
