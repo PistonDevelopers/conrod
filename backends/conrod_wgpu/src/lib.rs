@@ -162,8 +162,8 @@ impl Renderer {
         let mesh = Mesh::with_glyph_cache_dimensions(glyph_cache_dims);
 
         // Load shader modules.
-        let vs_mod = device.create_shader_module(wgpu::include_spirv!("shaders/vert.spv"));
-        let fs_mod = device.create_shader_module(wgpu::include_spirv!("shaders/frag.spv"));
+        let vs_mod = device.create_shader_module(&wgpu::include_spirv!("shaders/vert.spv"));
+        let fs_mod = device.create_shader_module(&wgpu::include_spirv!("shaders/frag.spv"));
 
         // Create the glyph cache texture.
         let glyph_cache_tex_desc = glyph_cache_tex_desc(glyph_cache_dims);
