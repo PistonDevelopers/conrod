@@ -400,7 +400,7 @@ rest happens elsewhere, as we'll see in the next Chapter.
 
 Then there's some straightforward event boilerplate that most Conrod apps have
 somewhere convenient. In this case, I'm going to put it into the same file as
-`fn main()'.
+`fn main()`.
 
 ```ignore
 pub struct EventLoop {
@@ -453,6 +453,7 @@ impl EventLoop {
     pub fn needs_update(&mut self) {
         self.ui_needs_update = true;
     }
+}
 ```
 
 'EventLoop' is a simple structure that stores the time of the last update, and
