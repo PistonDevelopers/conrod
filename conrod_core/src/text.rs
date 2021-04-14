@@ -138,6 +138,8 @@ pub mod font {
         IO(std::io::Error),
         /// No `Font`s could be yielded from the `FontCollection`.
         NoFont,
+        /// An error produced by rusttype.
+        Rusttype(rusttype::Error),
     }
 
     impl Id {
@@ -193,7 +195,7 @@ pub mod font {
         P: AsRef<std::path::Path>,
     {
         let bytes = std::fs::read(path)?;
-        super::Font::try_from_vec(bytes).ok_or(Error::NoFont)
+        super::Font::from_bytes(bytes).map_err(Error::Rusttype)
     }
 
     impl Iterator for NewIds {
@@ -216,10 +218,17 @@ pub mod font {
         }
     }
 
+    impl From<rusttype::Error> for Error {
+        fn from(e: rusttype::Error) -> Self {
+            Error::Rusttype(e)
+        }
+    }
+
     impl std::error::Error for Error {
         fn cause(&self) -> Option<&dyn std::error::Error> {
             match *self {
                 Error::IO(ref e) => Some(e),
+                Error::Rusttype(ref e) => Some(e),
                 _ => None,
             }
         }
@@ -230,6 +239,7 @@ pub mod font {
             let s = match *self {
                 Error::IO(ref e) => return std::fmt::Display::fmt(e, f),
                 Error::NoFont => "No `Font` found in the loaded `FontCollection`.",
+                Error::Rusttype(ref e) => return std::fmt::Display::fmt(e, f),
             };
             write!(f, "{}", s)
         }
@@ -248,7 +258,7 @@ pub mod glyph {
     pub type HalfW = Scalar;
 
     /// An iterator yielding the `Rect` for each `char`'s `Glyph` in the given `text`.
-    pub struct Rects<'a, 'b> {
+    pub struct Rects<'font, 'b> {
         /// The *y* axis `Range` of the `Line` for which character `Rect`s are being yielded.
         ///
         /// Every yielded `Rect` will use this as its `y` `Range`.
@@ -256,7 +266,7 @@ pub mod glyph {
         /// The position of the next `Rect`'s left edge along the *x* axis.
         next_left: Scalar,
         /// `PositionedGlyphs` yielded by the RustType `LayoutIter`.
-        layout: super::LayoutIter<'a, 'static, 'b>,
+        layout: super::LayoutIter<'font, 'b>,
     }
 
     /// An iterator that, for every `(line, line_rect)` pair yielded by the given iterator,
@@ -504,9 +514,9 @@ pub mod cursor {
     /// Each possible cursor position along the *x* axis within a line of text.
     ///
     /// `Xs` iterators are produced by the `XysPerLine` iterator.
-    pub struct Xs<'a, 'b> {
+    pub struct Xs<'font, 'b> {
         next_x: Option<Scalar>,
-        layout: super::LayoutIter<'a, 'static, 'b>,
+        layout: super::LayoutIter<'font, 'b>,
     }
 
     /// An index representing the position of a cursor within some text.
