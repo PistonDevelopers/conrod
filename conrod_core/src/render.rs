@@ -231,8 +231,10 @@ impl<'a> Text<'a> {
     /// out text. This is because conrod positioning uses a "pixel-agnostic" `Scalar` value
     /// representing *perceived* distances for its positioning and layout, rather than pixel
     /// values. During rendering however, the pixel density must be known
-    pub fn positioned_glyphs(self, dpi_factor: f32)
-        -> impl 'a + Iterator<Item = rusttype::PositionedGlyph<'static>> {
+    pub fn positioned_glyphs(
+        self,
+        dpi_factor: f32,
+    ) -> impl 'a + Iterator<Item = rusttype::PositionedGlyph<'static>> {
         let Text {
             window_dim,
             text,
@@ -258,16 +260,14 @@ impl<'a> Text<'a> {
 
         // Clear the existing glyphs and fill the buffer with glyphs for this Text.
         let scale = text::f32_pt_to_scale(font_size as f32 * dpi_factor);
-        lines
-            .zip(line_rects)
-            .flat_map(move |(line, line_rect)| {
-                let (x, y) = (
-                    trans_x(line_rect.left()) as f32,
-                    trans_y(line_rect.bottom()) as f32,
-                );
-                let point = text::rt::Point { x: x, y: y };
-                font.layout(line, scale, point)
-            })
+        lines.zip(line_rects).flat_map(move |(line, line_rect)| {
+            let (x, y) = (
+                trans_x(line_rect.left()) as f32,
+                trans_y(line_rect.bottom()) as f32,
+            );
+            let point = text::rt::Point { x: x, y: y };
+            font.layout(line, scale, point)
+        })
     }
 }
 
