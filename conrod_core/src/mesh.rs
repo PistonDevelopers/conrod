@@ -25,6 +25,7 @@ pub struct Mesh {
     glyph_cache_pixel_buffer: Vec<u8>,
     commands: Vec<PreparedCommand>,
     vertices: Vec<Vertex>,
+    positioned_glyphs: Vec<text::PositionedGlyph>,
 }
 
 /// Represents the scizzor in pixel coordinates.
@@ -138,11 +139,13 @@ impl Mesh {
         let glyph_cache_pixel_buffer = vec![0u8; gc_width as usize * gc_height as usize];
         let commands = vec![];
         let vertices = vec![];
+        let positioned_glyphs = vec![];
         Mesh {
             glyph_cache,
             glyph_cache_pixel_buffer,
             commands,
             vertices,
+            positioned_glyphs,
         }
     }
 
@@ -170,6 +173,7 @@ impl Mesh {
             ref mut glyph_cache_pixel_buffer,
             ref mut commands,
             ref mut vertices,
+            ref mut positioned_glyphs,
         } = *self;
 
         commands.clear();
@@ -342,10 +346,11 @@ impl Mesh {
                 } => {
                     switch_to_plain_state!();
 
-                    let positioned_glyphs = text.positioned_glyphs(dpi_factor as f32);
+                    positioned_glyphs.clear();
+                    positioned_glyphs.extend(text.positioned_glyphs(dpi_factor as f32));
 
                     // Queue the glyphs to be cached
-                    for glyph in positioned_glyphs {
+                    for glyph in positioned_glyphs.iter() {
                         glyph_cache.queue_glyph(font_id.index(), glyph.clone());
                     }
 
@@ -384,8 +389,8 @@ impl Mesh {
                             )) * 2.0,
                     };
 
-                    for g in positioned_glyphs {
-                        if let Ok(Some((uv_rect, screen_rect))) = glyph_cache.rect_for(cache_id, g)
+                    for g in positioned_glyphs.drain(..) {
+                        if let Ok(Some((uv_rect, screen_rect))) = glyph_cache.rect_for(cache_id, &g)
                         {
                             let vk_rect = to_vk_rect(screen_rect);
                             let v = |p, t| Vertex {

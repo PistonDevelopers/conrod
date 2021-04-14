@@ -84,7 +84,7 @@ fn main() {
     let logo_path = assets.join("images/rust.png");
     let rgba_logo_image = image::open(logo_path)
         .expect("Couldn't load logo")
-        .to_rgba();
+        .to_rgba8();
 
     // Create the GPU texture and upload the image data.
     let (logo_w, logo_h) = rgba_logo_image.dimensions();

@@ -272,7 +272,7 @@ where
                     line_num += 1;
                 }
             }};
-        };
+        }
 
         for axis in lines {
             match axis {

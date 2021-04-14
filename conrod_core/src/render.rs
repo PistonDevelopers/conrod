@@ -36,8 +36,6 @@ pub struct Primitives<'a> {
     window_rect: Rect,
     /// A buffer to use for triangulating polygons and lines for the `Triangles`.
     triangles: Vec<Triangle<Point>>,
-    /// The slice of rusttype `PositionedGlyph`s to re-use for the `Text` primitive.
-    positioned_glyphs: Vec<text::PositionedGlyph>,
 }
 
 /// An owned alternative to the `Primitives` type.
@@ -50,7 +48,6 @@ pub struct OwnedPrimitives {
     primitives: Vec<OwnedPrimitive>,
     triangles_single_color: Vec<Triangle<Point>>,
     triangles_multi_color: Vec<Triangle<ColoredPoint>>,
-    max_glyphs: usize,
     line_infos: Vec<text::line::Info>,
     texts_string: String,
 }
@@ -157,7 +154,6 @@ pub enum PrimitiveKind<'a> {
 /// We produce this type rather than the `&[PositionedGlyph]`s directly so that we can properly
 /// handle "HiDPI" scales when caching glyphs.
 pub struct Text<'a> {
-    positioned_glyphs: &'a mut Vec<text::PositionedGlyph>,
     window_dim: Dimensions,
     text: &'a str,
     line_infos: &'a [text::line::Info],
@@ -221,7 +217,6 @@ pub struct WalkOwnedPrimitives<'a> {
     triangles_multi_color: &'a [Triangle<ColoredPoint>],
     line_infos: &'a [text::line::Info],
     texts_str: &'a str,
-    positioned_glyphs: Vec<text::PositionedGlyph>,
 }
 
 impl<'a> Text<'a> {
@@ -236,9 +231,11 @@ impl<'a> Text<'a> {
     /// out text. This is because conrod positioning uses a "pixel-agnostic" `Scalar` value
     /// representing *perceived* distances for its positioning and layout, rather than pixel
     /// values. During rendering however, the pixel density must be known
-    pub fn positioned_glyphs(self, dpi_factor: f32) -> &'a [text::PositionedGlyph] {
+    pub fn positioned_glyphs(
+        self,
+        dpi_factor: f32,
+    ) -> impl 'a + Iterator<Item = rusttype::PositionedGlyph<'static>> {
         let Text {
-            positioned_glyphs,
             window_dim,
             text,
             line_infos,
@@ -248,31 +245,29 @@ impl<'a> Text<'a> {
             justify,
             y_align,
             line_spacing,
+            ..
         } = self;
 
         // Convert conrod coordinates to pixel coordinates.
-        let trans_x = |x: Scalar| (x + window_dim[0] / 2.0) * dpi_factor as Scalar;
-        let trans_y = |y: Scalar| ((-y) + window_dim[1] / 2.0) * dpi_factor as Scalar;
+        let trans_x = move |x: Scalar| (x + window_dim[0] / 2.0) * dpi_factor as Scalar;
+        let trans_y = move |y: Scalar| ((-y) + window_dim[1] / 2.0) * dpi_factor as Scalar;
 
         // Produce the text layout iterators.
         let line_infos = line_infos.iter().cloned();
-        let lines = line_infos.clone().map(|info| &text[info.byte_range()]);
+        let lines = line_infos.clone().map(move |info| &text[info.byte_range()]);
         let line_rects =
             text::line::rects(line_infos, font_size, rect, justify, y_align, line_spacing);
 
         // Clear the existing glyphs and fill the buffer with glyphs for this Text.
-        positioned_glyphs.clear();
         let scale = text::f32_pt_to_scale(font_size as f32 * dpi_factor);
-        for (line, line_rect) in lines.zip(line_rects) {
+        lines.zip(line_rects).flat_map(move |(line, line_rect)| {
             let (x, y) = (
                 trans_x(line_rect.left()) as f32,
                 trans_y(line_rect.bottom()) as f32,
             );
             let point = text::rt::Point { x: x, y: y };
-            positioned_glyphs.extend(font.layout(line, scale, point).map(|g| g.standalone()));
-        }
-
-        positioned_glyphs
+            font.layout(line, scale, point)
+        })
     }
 }
 
@@ -293,7 +288,6 @@ impl<'a> Primitives<'a> {
             fonts: fonts,
             window_rect: Rect::from_xy_dim([0.0, 0.0], window_dim),
             triangles: Vec::new(),
-            positioned_glyphs: Vec::new(),
         }
     }
 
@@ -303,7 +297,6 @@ impl<'a> Primitives<'a> {
             ref mut crop_stack,
             ref mut depth_order,
             ref mut triangles,
-            ref mut positioned_glyphs,
             graph,
             theme,
             fonts,
@@ -598,7 +591,6 @@ impl<'a> Primitives<'a> {
                     let y_align = Align::End;
 
                     let text = Text {
-                        positioned_glyphs: positioned_glyphs,
                         window_dim: window_rect.dim(),
                         text: &state.string,
                         line_infos: &state.line_infos,
@@ -652,7 +644,6 @@ impl<'a> Primitives<'a> {
         let mut primitive_triangles_single_color = Vec::new();
         let mut primitive_line_infos = Vec::new();
         let mut texts_string = String::new();
-        let mut max_glyphs = 0;
 
         while let Some(Primitive {
             id,
@@ -726,10 +717,6 @@ impl<'a> Primitives<'a> {
                         ..
                     } = text;
 
-                    // Keep a rough estimate of the maximum number of glyphs so that we know what
-                    // capacity we should allocate the `PositionedGlyph` buffer with.
-                    max_glyphs = std::cmp::max(max_glyphs, text.len());
-
                     // Pack the `texts_string`.
                     let start_str_byte = texts_string.len();
                     texts_string.push_str(text);
@@ -769,7 +756,6 @@ impl<'a> Primitives<'a> {
             primitives: primitives,
             triangles_single_color: primitive_triangles_single_color,
             triangles_multi_color: primitive_triangles_multi_color,
-            max_glyphs: max_glyphs,
             line_infos: primitive_line_infos,
             texts_string: texts_string,
         }
@@ -785,7 +771,6 @@ impl OwnedPrimitives {
             ref triangles_multi_color,
             ref line_infos,
             ref texts_string,
-            max_glyphs,
         } = *self;
         WalkOwnedPrimitives {
             primitives: primitives.iter(),
@@ -793,7 +778,6 @@ impl OwnedPrimitives {
             triangles_multi_color: triangles_multi_color,
             line_infos: line_infos,
             texts_str: texts_string,
-            positioned_glyphs: Vec::with_capacity(max_glyphs),
         }
     }
 }
@@ -803,7 +787,6 @@ impl<'a> WalkOwnedPrimitives<'a> {
     pub fn next(&mut self) -> Option<Primitive> {
         let WalkOwnedPrimitives {
             ref mut primitives,
-            ref mut positioned_glyphs,
             triangles_single_color,
             triangles_multi_color,
             line_infos,
@@ -869,7 +852,6 @@ impl<'a> WalkOwnedPrimitives<'a> {
                         let line_infos = &line_infos[line_infos_range.clone()];
 
                         let text = Text {
-                            positioned_glyphs: positioned_glyphs,
                             window_dim: window_dim,
                             text: text_str,
                             line_infos: line_infos,

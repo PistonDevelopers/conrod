@@ -142,7 +142,7 @@ pub fn primitive<'a, Img, G, T, C, F>(
                 .viewport
                 .map(|v| v.draw_size[0] as f32 / v.window_size[0] as f32)
                 .unwrap_or(1.0);
-            let positioned_glyphs = text.positioned_glyphs(dpi_factor);
+            let positioned_glyphs: Vec<_> = text.positioned_glyphs(dpi_factor).collect();
             // Re-orient the context to top-left origin with *y* facing downwards, as the
             // `positioned_glyphs` yield pixel positioning.
             let context = context
@@ -167,7 +167,7 @@ pub fn primitive<'a, Img, G, T, C, F>(
 
             let rectangles = positioned_glyphs
                 .into_iter()
-                .filter_map(|g| glyph_cache.rect_for(cache_id, g).ok().unwrap_or(None))
+                .filter_map(|g| glyph_cache.rect_for(cache_id, &g).ok().unwrap_or(None))
                 .map(|(uv_rect, screen_rect)| {
                     let rectangle = {
                         let div_dpi_factor = |s| (s as f32 / dpi_factor as f32) as f64;
