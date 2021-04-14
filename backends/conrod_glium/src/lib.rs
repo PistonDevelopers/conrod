@@ -46,6 +46,7 @@ pub struct Renderer {
     glyph_cache: GlyphCache,
     commands: Vec<PreparedCommand>,
     vertices: Vec<Vertex>,
+    positioned_glyphs: Vec<text::PositionedGlyph>,
 }
 
 /// An iterator yielding `Command`s, produced by the `Renderer::commands` method.
@@ -481,6 +482,7 @@ impl Renderer {
             glyph_cache: gc,
             commands: Vec::new(),
             vertices: Vec::new(),
+            positioned_glyphs: Vec::new(),
         })
     }
 
@@ -508,6 +510,7 @@ impl Renderer {
             ref mut commands,
             ref mut vertices,
             ref mut glyph_cache,
+            ref mut positioned_glyphs,
             ..
         } = *self;
 
@@ -694,7 +697,8 @@ impl Renderer {
                 } => {
                     switch_to_plain_state!();
 
-                    let positioned_glyphs = text.positioned_glyphs(dpi_factor as f32);
+                    positioned_glyphs.clear();
+                    positioned_glyphs.extend(text.positioned_glyphs(dpi_factor as f32));
 
                     let GlyphCache {
                         ref mut cache,
@@ -765,8 +769,8 @@ impl Renderer {
                             )) * 2.0,
                     };
 
-                    for g in positioned_glyphs {
-                        if let Ok(Some((uv_rect, screen_rect))) = cache.rect_for(cache_id, g) {
+                    for g in positioned_glyphs.drain(..) {
+                        if let Ok(Some((uv_rect, screen_rect))) = cache.rect_for(cache_id, &g) {
                             let gl_rect = to_gl_rect(screen_rect);
                             let v = |p, t| Vertex {
                                 position: p,
