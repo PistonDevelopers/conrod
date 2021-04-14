@@ -18,7 +18,7 @@ jobs:
         command: fmt
         args: --all -- --check
 
-  cargo-test:
+  cargo-test-core:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -36,14 +36,14 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --lib --bins --verbose
+        args: -p conrod_core --verbose
     - name: Test docs
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --doc --verbose
+        args: -p conrod_core --doc --verbose
 
-  cargo-check-examples:
+  cargo-check-gfx:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -61,7 +61,107 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: check
-        args: --examples --verbose
+        args: -p conrod_gfx --examples --verbose
+
+  cargo-check-glium:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Update apt
+      run: sudo apt update
+    - name: Install libxcb dev tools
+      run: sudo apt-get install libxcb-composite0-dev
+    - name: Install stable
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    - name: Run check
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+        args: -p conrod_glium --examples --verbose
+
+  cargo-check-piston:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Update apt
+      run: sudo apt update
+    - name: Install libxcb dev tools
+      run: sudo apt-get install libxcb-composite0-dev
+    - name: Install stable
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    - name: Run check
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+        args: -p conrod_piston --examples --verbose
+
+  cargo-check-rendy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Update apt
+      run: sudo apt update
+    - name: Install libxcb dev tools
+      run: sudo apt-get install libxcb-composite0-dev
+    - name: Install stable
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    - name: Run check
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+        args: -p conrod_rendy --examples --verbose
+
+  cargo-check-vulkano:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Update apt
+      run: sudo apt update
+    - name: Install libxcb dev tools
+      run: sudo apt-get install libxcb-composite0-dev
+    - name: Install stable
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    - name: Run check
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+        args: -p conrod_vulkano --examples --verbose
+
+  cargo-check-wgpu:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Update apt
+      run: sudo apt update
+    - name: Install libxcb dev tools
+      run: sudo apt-get install libxcb-composite0-dev
+    - name: Install stable
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    - name: Run check
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+        args: -p conrod_wgpu --examples --verbose
 
   cargo-publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
