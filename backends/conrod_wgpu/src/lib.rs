@@ -120,7 +120,7 @@ impl mesh::ImageDimensions for Image {
 }
 
 impl Image {
-    pub fn texture_component_type(&self) -> wgpu::TextureSampleType {
+    pub fn texture_sample_type(&self) -> wgpu::TextureSampleType {
         self.texture_format.describe().sample_type
     }
 }
@@ -291,13 +291,13 @@ impl Renderer {
         // - a bind group layout and render pipeline for each unique texture component type.
         // - a bind group ready for each image in the map.
         let default_tct = DEFAULT_IMAGE_TEX_FORMAT.describe().sample_type;
-        let unique_tex_component_types: HashSet<_> = image_map
+        let unique_tex_sample_types: HashSet<_> = image_map
             .values()
-            .map(|img| img.texture_component_type())
+            .map(|img| img.texture_sample_type())
             .chain(Some(default_tct))
             .collect();
         bind_groups.retain(|k, _| image_map.contains_key(k));
-        render_pipelines.retain(|tct, _| unique_tex_component_types.contains(tct));
+        render_pipelines.retain(|tct, _| unique_tex_sample_types.contains(tct));
         for (id, img) in image_map.iter() {
             // If we already have a bind group for this image move on.
             if bind_groups.contains_key(id) {
@@ -305,7 +305,7 @@ impl Renderer {
             }
 
             // Retrieve the bind group layout and pipeline for the image's texture component type.
-            let tct = img.texture_component_type();
+            let tct = img.texture_sample_type();
             let pipeline = render_pipelines.entry(tct).or_insert_with(|| {
                 let bind_group_layout = bind_group_layout(device, tct);
                 let pipeline_layout = pipeline_layout(device, &bind_group_layout);
@@ -401,10 +401,10 @@ impl Renderer {
                         let expected_bind_group = Some(BindGroup::Image(image_id));
                         if bind_group != expected_bind_group {
                             // Check whether or not we need to switch pipelines.
-                            let expected_tct = image_map[&image_id].texture_component_type();
+                            let expected_tct = image_map[&image_id].texture_sample_type();
                             let current_tct = bind_group.as_ref().map(|bg| match *bg {
                                 BindGroup::Default => default_tct,
-                                BindGroup::Image(id) => image_map[&id].texture_component_type(),
+                                BindGroup::Image(id) => image_map[&id].texture_sample_type(),
                             });
                             if current_tct != Some(expected_tct) {
                                 let pipeline = &render_pipelines[&expected_tct].render_pipeline;
