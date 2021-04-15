@@ -15,7 +15,7 @@ edition = "2018"
 
 [dependencies]
 conrod_core = { path = "../../conrod_core", version = "0.71" }
-wgpu = "0.6"
+wgpu = "0.7"
 
 [dev-dependencies]
 conrod_example_shared = { path = "../conrod_example_shared", version = "0.71" }
@@ -23,4 +23,4 @@ conrod_winit = { path = "../conrod_winit", version = "0.71" }
 find_folder = "0.3"
 futures = "0.3"
 image = "0.23"
-winit = "0.23"
+winit = "0.24"

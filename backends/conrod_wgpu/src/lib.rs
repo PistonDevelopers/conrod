@@ -64,10 +64,10 @@ pub struct Renderer {
     // In order to support a dynamic number of images we maintain a unique bind group for each.
     bind_groups: HashMap<image::Id, wgpu::BindGroup>,
     // We also need a unique
-    render_pipelines: HashMap<wgpu::TextureComponentType, Pipeline>,
+    render_pipelines: HashMap<wgpu::TextureSampleType, Pipeline>,
 }
 
-/// Data that must be unique per `wgpu::TextureComponentType`, i.e. bind group layout and render
+/// Data that must be unique per `wgpu::TextureSampleType`, i.e. bind group layout and render
 /// pipeline.
 struct Pipeline {
     bind_group_layout: wgpu::BindGroupLayout,
@@ -111,7 +111,6 @@ pub enum RenderPassCommand<'a> {
 }
 
 const GLYPH_TEX_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
-const GLYPH_TEX_COMPONENT_TY: wgpu::TextureComponentType = wgpu::TextureComponentType::Uint;
 const DEFAULT_IMAGE_TEX_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 
 impl mesh::ImageDimensions for Image {
@@ -121,8 +120,8 @@ impl mesh::ImageDimensions for Image {
 }
 
 impl Image {
-    pub fn texture_component_type(&self) -> wgpu::TextureComponentType {
-        self.texture_format.into()
+    pub fn texture_sample_type(&self) -> wgpu::TextureSampleType {
+        self.texture_format.describe().sample_type
     }
 }
 
@@ -162,8 +161,8 @@ impl Renderer {
         let mesh = Mesh::with_glyph_cache_dimensions(glyph_cache_dims);
 
         // Load shader modules.
-        let vs_mod = device.create_shader_module(wgpu::include_spirv!("shaders/vert.spv"));
-        let fs_mod = device.create_shader_module(wgpu::include_spirv!("shaders/frag.spv"));
+        let vs_mod = device.create_shader_module(&wgpu::include_spirv!("shaders/vert.spv"));
+        let fs_mod = device.create_shader_module(&wgpu::include_spirv!("shaders/frag.spv"));
 
         // Create the glyph cache texture.
         let glyph_cache_tex_desc = glyph_cache_tex_desc(glyph_cache_dims);
@@ -181,7 +180,7 @@ impl Renderer {
         // Create at least one render pipeline for the default texture.
         let mut render_pipelines = HashMap::new();
 
-        let default_tex_component_ty = DEFAULT_IMAGE_TEX_FORMAT.into();
+        let default_tex_component_ty = DEFAULT_IMAGE_TEX_FORMAT.describe().sample_type;
         let bind_group_layout = bind_group_layout(device, default_tex_component_ty);
         let pipeline_layout = pipeline_layout(device, &bind_group_layout);
         let render_pipeline = render_pipeline(
@@ -291,14 +290,14 @@ impl Renderer {
         // Ensure we have:
         // - a bind group layout and render pipeline for each unique texture component type.
         // - a bind group ready for each image in the map.
-        let default_tct = DEFAULT_IMAGE_TEX_FORMAT.into();
-        let unique_tex_component_types: HashSet<_> = image_map
+        let default_tct = DEFAULT_IMAGE_TEX_FORMAT.describe().sample_type;
+        let unique_tex_sample_types: HashSet<_> = image_map
             .values()
-            .map(|img| img.texture_component_type())
+            .map(|img| img.texture_sample_type())
             .chain(Some(default_tct))
             .collect();
         bind_groups.retain(|k, _| image_map.contains_key(k));
-        render_pipelines.retain(|tct, _| unique_tex_component_types.contains(tct));
+        render_pipelines.retain(|tct, _| unique_tex_sample_types.contains(tct));
         for (id, img) in image_map.iter() {
             // If we already have a bind group for this image move on.
             if bind_groups.contains_key(id) {
@@ -306,7 +305,7 @@ impl Renderer {
             }
 
             // Retrieve the bind group layout and pipeline for the image's texture component type.
-            let tct = img.texture_component_type();
+            let tct = img.texture_sample_type();
             let pipeline = render_pipelines.entry(tct).or_insert_with(|| {
                 let bind_group_layout = bind_group_layout(device, tct);
                 let pipeline_layout = pipeline_layout(device, &bind_group_layout);
@@ -402,10 +401,10 @@ impl Renderer {
                         let expected_bind_group = Some(BindGroup::Image(image_id));
                         if bind_group != expected_bind_group {
                             // Check whether or not we need to switch pipelines.
-                            let expected_tct = image_map[&image_id].texture_component_type();
+                            let expected_tct = image_map[&image_id].texture_sample_type();
                             let current_tct = bind_group.as_ref().map(|bg| match *bg {
                                 BindGroup::Default => default_tct,
-                                BindGroup::Image(id) => image_map[&id].texture_component_type(),
+                                BindGroup::Image(id) => image_map[&id].texture_sample_type(),
                             });
                             if current_tct != Some(expected_tct) {
                                 let pipeline = &render_pipelines[&expected_tct].render_pipeline;
@@ -550,38 +549,42 @@ fn sampler_desc() -> wgpu::SamplerDescriptor<'static> {
         mipmap_filter: wgpu::FilterMode::Linear,
         lod_min_clamp: -100.0,
         lod_max_clamp: 100.0,
-        compare: Some(wgpu::CompareFunction::Always),
+        compare: None,
         anisotropy_clamp: None,
+        ..Default::default()
     }
 }
 
 fn bind_group_layout(
     device: &wgpu::Device,
-    img_tex_component_ty: wgpu::TextureComponentType,
+    img_tex_component_ty: wgpu::TextureSampleType,
 ) -> wgpu::BindGroupLayout {
     let glyph_cache_texture_binding = wgpu::BindGroupLayoutEntry {
         binding: 0,
         visibility: wgpu::ShaderStage::FRAGMENT,
-        ty: wgpu::BindingType::SampledTexture {
+        ty: wgpu::BindingType::Texture {
             multisampled: false,
-            component_type: GLYPH_TEX_COMPONENT_TY,
-            dimension: wgpu::TextureViewDimension::D2,
+            sample_type: GLYPH_TEX_FORMAT.describe().sample_type,
+            view_dimension: wgpu::TextureViewDimension::D2,
         },
         count: None,
     };
     let sampler_binding = wgpu::BindGroupLayoutEntry {
         binding: 1,
         visibility: wgpu::ShaderStage::FRAGMENT,
-        ty: wgpu::BindingType::Sampler { comparison: true },
+        ty: wgpu::BindingType::Sampler {
+            filtering: true,
+            comparison: false,
+        },
         count: None,
     };
     let image_texture_binding = wgpu::BindGroupLayoutEntry {
         binding: 2,
         visibility: wgpu::ShaderStage::FRAGMENT,
-        ty: wgpu::BindingType::SampledTexture {
+        ty: wgpu::BindingType::Texture {
             multisampled: false,
-            component_type: img_tex_component_ty,
-            dimension: wgpu::TextureViewDimension::D2,
+            sample_type: img_tex_component_ty,
+            view_dimension: wgpu::TextureViewDimension::D2,
         },
         count: None,
     };
@@ -646,7 +649,7 @@ fn pipeline_layout(
     device.create_pipeline_layout(&desc)
 }
 
-fn vertex_attrs() -> [wgpu::VertexAttributeDescriptor; 4] {
+fn vertex_attrs() -> [wgpu::VertexAttribute; 4] {
     let position_offset = 0;
     let position_size = std::mem::size_of::<[f32; 2]>() as wgpu::BufferAddress;
     let tex_coords_offset = position_offset + position_size;
@@ -656,25 +659,25 @@ fn vertex_attrs() -> [wgpu::VertexAttributeDescriptor; 4] {
     let mode_offset = rgba_offset + rgba_size;
     [
         // position
-        wgpu::VertexAttributeDescriptor {
+        wgpu::VertexAttribute {
             format: wgpu::VertexFormat::Float2,
             offset: position_offset,
             shader_location: 0,
         },
         // tex_coords
-        wgpu::VertexAttributeDescriptor {
+        wgpu::VertexAttribute {
             format: wgpu::VertexFormat::Float2,
             offset: tex_coords_offset,
             shader_location: 1,
         },
         // rgba
-        wgpu::VertexAttributeDescriptor {
+        wgpu::VertexAttribute {
             format: wgpu::VertexFormat::Float4,
             offset: rgba_offset,
             shader_location: 2,
         },
         // mode
-        wgpu::VertexAttributeDescriptor {
+        wgpu::VertexAttribute {
             format: wgpu::VertexFormat::Uint,
             offset: mode_offset,
             shader_location: 3,
@@ -690,27 +693,14 @@ fn render_pipeline(
     dst_format: wgpu::TextureFormat,
     dst_sample_count: u32,
 ) -> wgpu::RenderPipeline {
-    let vs_desc = wgpu::ProgrammableStageDescriptor {
-        module: &vs_mod,
-        entry_point: "main",
-    };
-    let fs_desc = wgpu::ProgrammableStageDescriptor {
-        module: &fs_mod,
-        entry_point: "main",
-    };
-    let raster_desc = wgpu::RasterizationStateDescriptor {
-        front_face: wgpu::FrontFace::Ccw,
-        cull_mode: wgpu::CullMode::None,
-        ..Default::default()
-    };
-    let color_state_desc = wgpu::ColorStateDescriptor {
+    let color_state = wgpu::ColorTargetState {
         format: dst_format,
-        color_blend: wgpu::BlendDescriptor {
+        color_blend: wgpu::BlendState {
             src_factor: wgpu::BlendFactor::SrcAlpha,
             dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
             operation: wgpu::BlendOperation::Add,
         },
-        alpha_blend: wgpu::BlendDescriptor {
+        alpha_blend: wgpu::BlendState {
             src_factor: wgpu::BlendFactor::One,
             dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
             operation: wgpu::BlendOperation::Add,
@@ -718,28 +708,41 @@ fn render_pipeline(
         write_mask: wgpu::ColorWrite::ALL,
     };
     let vertex_attrs = vertex_attrs();
-    let vertex_buffer_desc = wgpu::VertexBufferDescriptor {
-        stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+    let vertex_buffer_desc = wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
         step_mode: wgpu::InputStepMode::Vertex,
         attributes: &vertex_attrs[..],
     };
-    let vertex_state_desc = wgpu::VertexStateDescriptor {
-        index_format: wgpu::IndexFormat::Uint16,
-        vertex_buffers: &[vertex_buffer_desc],
+    let vertex_state = wgpu::VertexState {
+        module: &vs_mod,
+        entry_point: "main",
+        buffers: &[vertex_buffer_desc],
+    };
+    let primitive_state = wgpu::PrimitiveState {
+        topology: wgpu::PrimitiveTopology::TriangleList,
+        front_face: wgpu::FrontFace::Ccw,
+        cull_mode: wgpu::CullMode::None,
+        strip_index_format: Some(wgpu::IndexFormat::Uint16),
+        ..Default::default()
+    };
+    let multisample_state = wgpu::MultisampleState {
+        count: dst_sample_count,
+        mask: !0,
+        alpha_to_coverage_enabled: false,
+    };
+    let fragment_state = wgpu::FragmentState {
+        module: &fs_mod,
+        entry_point: "main",
+        targets: &[color_state],
     };
     let desc = wgpu::RenderPipelineDescriptor {
         label: Some("conrod_render_pipeline_descriptor"),
         layout: Some(layout),
-        vertex_stage: vs_desc,
-        fragment_stage: Some(fs_desc),
-        rasterization_state: Some(raster_desc),
-        primitive_topology: wgpu::PrimitiveTopology::TriangleList,
-        color_states: &[color_state_desc],
-        depth_stencil_state: None,
-        vertex_state: vertex_state_desc,
-        sample_count: dst_sample_count,
-        sample_mask: !0,
-        alpha_to_coverage_enabled: false,
+        vertex: vertex_state,
+        primitive: primitive_state,
+        depth_stencil: None,
+        multisample: multisample_state,
+        fragment: Some(fragment_state),
     };
     device.create_render_pipeline(&desc)
 }
