@@ -16,13 +16,16 @@ categories = ["gui"]
 edition = "2018"
 
 [dependencies]
-conrod_core = { path = "../../conrod_core", version = "0.71" }
+#conrod_core = { path = "../../conrod_core", version = "0.71" }
+conrod_core = "0.71"
 vulkano = "0.16"
 vulkano-shaders = "0.16"
 
 [dev-dependencies]
-conrod_example_shared = { path = "../conrod_example_shared", version = "0.71" }
-conrod_winit = { path = "../conrod_winit", version = "0.71" }
+#conrod_example_shared = { path = "../conrod_example_shared", version = "0.71" }
+conrod_example_shared = "0.71"
+#conrod_winit = { path = "../conrod_winit", version = "0.71" }
+conrod_winit = "0.71"
 find_folder = "0.3"
 image = "0.22"
 vulkano-win = "0.16"
