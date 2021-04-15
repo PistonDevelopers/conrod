@@ -111,8 +111,6 @@ pub enum RenderPassCommand<'a> {
 }
 
 const GLYPH_TEX_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
-const GLYPH_TEX_COMPONENT_TY: wgpu::TextureSampleType =
-    wgpu::TextureSampleType::Float { filterable: true };
 const DEFAULT_IMAGE_TEX_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 
 impl mesh::ImageDimensions for Image {
@@ -551,7 +549,7 @@ fn sampler_desc() -> wgpu::SamplerDescriptor<'static> {
         mipmap_filter: wgpu::FilterMode::Linear,
         lod_min_clamp: -100.0,
         lod_max_clamp: 100.0,
-        compare: Some(wgpu::CompareFunction::Always),
+        compare: None,
         anisotropy_clamp: None,
         ..Default::default()
     }
@@ -566,7 +564,7 @@ fn bind_group_layout(
         visibility: wgpu::ShaderStage::FRAGMENT,
         ty: wgpu::BindingType::Texture {
             multisampled: false,
-            sample_type: GLYPH_TEX_COMPONENT_TY,
+            sample_type: GLYPH_TEX_FORMAT.describe().sample_type,
             view_dimension: wgpu::TextureViewDimension::D2,
         },
         count: None,
@@ -575,8 +573,8 @@ fn bind_group_layout(
         binding: 1,
         visibility: wgpu::ShaderStage::FRAGMENT,
         ty: wgpu::BindingType::Sampler {
-            filtering: false,
-            comparison: true,
+            filtering: true,
+            comparison: false,
         },
         count: None,
     };
