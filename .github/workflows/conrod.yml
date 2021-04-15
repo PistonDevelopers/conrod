@@ -184,47 +184,35 @@ jobs:
       continue-on-error: true
       run: cargo publish --token $CRATESIO_TOKEN --manifest-path conrod_derive/Cargo.toml
     - name: wait for crates.io
-      run: sleep 5
+      run: sleep 15
     - name: Cargo publish conrod_core
       continue-on-error: true
       run: cargo publish --token $CRATESIO_TOKEN --manifest-path conrod_core/Cargo.toml
     - name: wait for crates.io
-      run: sleep 5
+      run: sleep 15
     - name: Cargo publish conrod_winit
       continue-on-error: true
       run: cargo publish --token $CRATESIO_TOKEN --manifest-path backends/conrod_winit/Cargo.toml
-    - name: wait for crates.io
-      run: sleep 5
     - name: Cargo publish conrod_example_shared
       continue-on-error: true
       run: cargo publish --token $CRATESIO_TOKEN --manifest-path backends/conrod_example_shared/Cargo.toml
     - name: wait for crates.io
-      run: sleep 5
+      run: sleep 15
     - name: Cargo publish conrod_gfx
       continue-on-error: true
       run: cargo publish --token $CRATESIO_TOKEN --manifest-path backends/conrod_gfx/Cargo.toml
-    - name: wait for crates.io
-      run: sleep 5
     - name: Cargo publish conrod_glium
       continue-on-error: true
       run: cargo publish --token $CRATESIO_TOKEN --manifest-path backends/conrod_glium/Cargo.toml
-    - name: wait for crates.io
-      run: sleep 5
     - name: Cargo publish conrod_piston
       continue-on-error: true
       run: cargo publish --token $CRATESIO_TOKEN --manifest-path backends/conrod_piston/Cargo.toml
-    - name: wait for crates.io
-      run: sleep 5
     - name: Cargo publish conrod_rendy
       continue-on-error: true
       run: cargo publish --token $CRATESIO_TOKEN --manifest-path backends/conrod_rendy/Cargo.toml
-    - name: wait for crates.io
-      run: sleep 5
     - name: Cargo publish conrod_vulkano
       continue-on-error: true
       run: cargo publish --token $CRATESIO_TOKEN --manifest-path backends/conrod_vulkano/Cargo.toml
-    - name: wait for crates.io
-      run: sleep 5
     - name: Cargo publish conrod_wgpu
       continue-on-error: true
       run: cargo publish --token $CRATESIO_TOKEN --manifest-path backends/conrod_wgpu/Cargo.toml
