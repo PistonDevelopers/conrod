@@ -724,7 +724,7 @@ fn render_pipeline(
         topology: wgpu::PrimitiveTopology::TriangleList,
         front_face: wgpu::FrontFace::Ccw,
         cull_mode: None,
-        strip_index_format: Some(wgpu::IndexFormat::Uint16),
+        strip_index_format: None,
         ..Default::default()
     };
     let multisample_state = wgpu::MultisampleState {
