@@ -456,7 +456,7 @@ impl<'a> GlyphCacheCommand<'a> {
     }
 
     /// Create the copy view ready for copying the pixel data to the texture.
-    pub fn buffer_copy_view<'b>(&self, buffer: &'b wgpu::Buffer) -> wgpu::ImageCopyBuffer<'b> {
+    pub fn image_copy_buffer<'b>(&self, buffer: &'b wgpu::Buffer) -> wgpu::ImageCopyBuffer<'b> {
         wgpu::ImageCopyBuffer {
             buffer,
             layout: wgpu::ImageDataLayout {
@@ -468,7 +468,7 @@ impl<'a> GlyphCacheCommand<'a> {
     }
 
     /// Create the texture copy view ready for receiving the pixel data from the buffer.
-    pub fn texture_copy_view(&self) -> wgpu::ImageCopyTexture {
+    pub fn image_copy_texture(&self) -> wgpu::ImageCopyTexture {
         wgpu::ImageCopyTexture {
             texture: &self.glyph_cache_texture,
             mip_level: 0,
@@ -478,10 +478,10 @@ impl<'a> GlyphCacheCommand<'a> {
 
     /// Encode the command for copying the buffer's pixel data to the glyph cache texture.
     pub fn encode(&self, buffer: &wgpu::Buffer, encoder: &mut wgpu::CommandEncoder) {
-        let buffer_copy_view = self.buffer_copy_view(&buffer);
-        let texture_copy_view = self.texture_copy_view();
+        let image_copy_buffer = self.image_copy_buffer(&buffer);
+        let image_copy_texture = self.image_copy_texture();
         let extent = self.extent();
-        encoder.copy_buffer_to_texture(buffer_copy_view, texture_copy_view, extent);
+        encoder.copy_buffer_to_texture(image_copy_buffer, image_copy_texture, extent);
     }
 
     /// The extent required for the copy command.
