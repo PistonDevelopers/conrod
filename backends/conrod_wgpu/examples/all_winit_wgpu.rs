@@ -202,8 +202,8 @@ fn main() {
                         1 => (&frame.output.view, None),
                         _ => (&multisampled_framebuffer, Some(&frame.output.view)),
                     };
-                    let color_attachment_desc = wgpu::RenderPassColorAttachmentDescriptor {
-                        attachment,
+                    let color_attachment_desc = wgpu::RenderPassColorAttachment {
+                        view: attachment,
                         resolve_target,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
@@ -262,7 +262,7 @@ fn create_multisampled_framebuffer(
     let multisampled_texture_extent = wgpu::Extent3d {
         width: sc_desc.width,
         height: sc_desc.height,
-        depth: 1,
+        depth_or_array_layers: 1,
     };
     let multisampled_frame_descriptor = &wgpu::TextureDescriptor {
         label: Some("conrod_msaa_texture"),
@@ -288,7 +288,7 @@ fn create_logo_texture(
     let logo_tex_extent = wgpu::Extent3d {
         width,
         height,
-        depth: 1,
+        depth_or_array_layers: 1,
     };
     let logo_tex = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("conrod_rust_logo_texture"),
@@ -305,12 +305,12 @@ fn create_logo_texture(
 
     // Submit command for copying pixel data to the texture.
     let pixel_size_bytes = 4; // Rgba8, as above.
-    let data_layout = wgpu::TextureDataLayout {
+    let data_layout = wgpu::ImageDataLayout {
         offset: 0,
-        bytes_per_row: width * pixel_size_bytes,
-        rows_per_image: height,
+        bytes_per_row: std::num::NonZeroU32::new(width * pixel_size_bytes),
+        rows_per_image: std::num::NonZeroU32::new(height),
     };
-    let texture_copy_view = wgpu::TextureCopyView {
+    let texture_copy_view = wgpu::ImageCopyTexture {
         texture: &logo_tex,
         mip_level: 0,
         origin: wgpu::Origin3d::ZERO,
@@ -318,7 +318,7 @@ fn create_logo_texture(
     let extent = wgpu::Extent3d {
         width: width,
         height: height,
-        depth: 1,
+        depth_or_array_layers: 1,
     };
     let cmd_encoder_desc = wgpu::CommandEncoderDescriptor {
         label: Some("conrod_upload_image_command_encoder"),

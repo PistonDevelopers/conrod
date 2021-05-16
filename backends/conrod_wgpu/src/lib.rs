@@ -456,20 +456,20 @@ impl<'a> GlyphCacheCommand<'a> {
     }
 
     /// Create the copy view ready for copying the pixel data to the texture.
-    pub fn buffer_copy_view<'b>(&self, buffer: &'b wgpu::Buffer) -> wgpu::BufferCopyView<'b> {
-        wgpu::BufferCopyView {
+    pub fn image_copy_buffer<'b>(&self, buffer: &'b wgpu::Buffer) -> wgpu::ImageCopyBuffer<'b> {
+        wgpu::ImageCopyBuffer {
             buffer,
-            layout: wgpu::TextureDataLayout {
+            layout: wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: self.width,
-                rows_per_image: self.height,
+                bytes_per_row: std::num::NonZeroU32::new(self.width),
+                rows_per_image: std::num::NonZeroU32::new(self.height),
             },
         }
     }
 
     /// Create the texture copy view ready for receiving the pixel data from the buffer.
-    pub fn texture_copy_view(&self) -> wgpu::TextureCopyView {
-        wgpu::TextureCopyView {
+    pub fn image_copy_texture(&self) -> wgpu::ImageCopyTexture {
+        wgpu::ImageCopyTexture {
             texture: &self.glyph_cache_texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
@@ -478,10 +478,10 @@ impl<'a> GlyphCacheCommand<'a> {
 
     /// Encode the command for copying the buffer's pixel data to the glyph cache texture.
     pub fn encode(&self, buffer: &wgpu::Buffer, encoder: &mut wgpu::CommandEncoder) {
-        let buffer_copy_view = self.buffer_copy_view(&buffer);
-        let texture_copy_view = self.texture_copy_view();
+        let image_copy_buffer = self.image_copy_buffer(&buffer);
+        let image_copy_texture = self.image_copy_texture();
         let extent = self.extent();
-        encoder.copy_buffer_to_texture(buffer_copy_view, texture_copy_view, extent);
+        encoder.copy_buffer_to_texture(image_copy_buffer, image_copy_texture, extent);
     }
 
     /// The extent required for the copy command.
@@ -489,7 +489,7 @@ impl<'a> GlyphCacheCommand<'a> {
         wgpu::Extent3d {
             width: self.width,
             height: self.height,
-            depth: 1,
+            depth_or_array_layers: 1,
         }
     }
 
@@ -501,11 +501,11 @@ impl<'a> GlyphCacheCommand<'a> {
 }
 
 fn glyph_cache_tex_desc([width, height]: [u32; 2]) -> wgpu::TextureDescriptor<'static> {
-    let depth = 1;
+    let depth_or_array_layers = 1;
     let texture_extent = wgpu::Extent3d {
         width,
         height,
-        depth,
+        depth_or_array_layers,
     };
     wgpu::TextureDescriptor {
         label: Some("conrod_wgpu_glyph_cache_texture"),
@@ -521,11 +521,11 @@ fn glyph_cache_tex_desc([width, height]: [u32; 2]) -> wgpu::TextureDescriptor<'s
 fn default_image_tex_desc() -> wgpu::TextureDescriptor<'static> {
     let width = 64;
     let height = 64;
-    let depth = 1;
+    let depth_or_array_layers = 1;
     let texture_extent = wgpu::Extent3d {
         width,
         height,
-        depth,
+        depth_or_array_layers,
     };
     wgpu::TextureDescriptor {
         label: Some("conrod_wgpu_image_texture"),
@@ -660,25 +660,25 @@ fn vertex_attrs() -> [wgpu::VertexAttribute; 4] {
     [
         // position
         wgpu::VertexAttribute {
-            format: wgpu::VertexFormat::Float2,
+            format: wgpu::VertexFormat::Float32x2,
             offset: position_offset,
             shader_location: 0,
         },
         // tex_coords
         wgpu::VertexAttribute {
-            format: wgpu::VertexFormat::Float2,
+            format: wgpu::VertexFormat::Float32x2,
             offset: tex_coords_offset,
             shader_location: 1,
         },
         // rgba
         wgpu::VertexAttribute {
-            format: wgpu::VertexFormat::Float4,
+            format: wgpu::VertexFormat::Float32x4,
             offset: rgba_offset,
             shader_location: 2,
         },
         // mode
         wgpu::VertexAttribute {
-            format: wgpu::VertexFormat::Uint,
+            format: wgpu::VertexFormat::Uint32,
             offset: mode_offset,
             shader_location: 3,
         },
@@ -695,16 +695,18 @@ fn render_pipeline(
 ) -> wgpu::RenderPipeline {
     let color_state = wgpu::ColorTargetState {
         format: dst_format,
-        color_blend: wgpu::BlendState {
-            src_factor: wgpu::BlendFactor::SrcAlpha,
-            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-            operation: wgpu::BlendOperation::Add,
-        },
-        alpha_blend: wgpu::BlendState {
-            src_factor: wgpu::BlendFactor::One,
-            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-            operation: wgpu::BlendOperation::Add,
-        },
+        blend: Some(wgpu::BlendState {
+            color: wgpu::BlendComponent {
+                src_factor: wgpu::BlendFactor::SrcAlpha,
+                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                operation: wgpu::BlendOperation::Add,
+            },
+            alpha: wgpu::BlendComponent {
+                src_factor: wgpu::BlendFactor::One,
+                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                operation: wgpu::BlendOperation::Add,
+            },
+        }),
         write_mask: wgpu::ColorWrite::ALL,
     };
     let vertex_attrs = vertex_attrs();
@@ -721,8 +723,8 @@ fn render_pipeline(
     let primitive_state = wgpu::PrimitiveState {
         topology: wgpu::PrimitiveTopology::TriangleList,
         front_face: wgpu::FrontFace::Ccw,
-        cull_mode: wgpu::CullMode::None,
-        strip_index_format: Some(wgpu::IndexFormat::Uint16),
+        cull_mode: None,
+        strip_index_format: None,
         ..Default::default()
     };
     let multisample_state = wgpu::MultisampleState {

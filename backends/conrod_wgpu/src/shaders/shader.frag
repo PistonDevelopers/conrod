@@ -17,15 +17,15 @@ layout(location = 2) flat in uint v_mode;
 layout(location = 0) out vec4 Target0;
 
 void main() {
+    float text_alpha = texture(sampler2D(text_texture, image_sampler), v_uv).r;
+    vec4 image_color = texture(sampler2D(image_texture, image_sampler), v_uv);
+
     // Text
     if (v_mode == uint(0)) {
-        float a = texture(sampler2D(text_texture, image_sampler), v_uv).r;
-        Target0 = v_color * vec4(1.0, 1.0, 1.0, a);
-
+        Target0 = v_color * vec4(1.0, 1.0, 1.0, text_alpha);
     // Image
     } else if (v_mode == uint(1)) {
-        Target0 = texture(sampler2D(image_texture, image_sampler), v_uv);
-
+        Target0 = image_color;
     // 2D Geometry
     } else if (v_mode == uint(2)) {
         Target0 = v_color;
