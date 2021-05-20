@@ -1,6 +1,6 @@
 [package]
 name = "conrod_gfx"
-version = "0.72.0"
+version = "0.73.0"
 authors = ["Mitchell Nordine <mitchell.nordine@gmail.com>"]
 keywords = ["ui", "widgets", "gui", "interface", "graphics"]
 description = "An easy-to-use, 100% Rust, extensible 2D GUI library."
@@ -15,13 +15,13 @@ name = "conrod_gfx"
 path = "./src/lib.rs"
 
 [dependencies]
-conrod_core = { path = "../../conrod_core", version = "0.72" }
+conrod_core = { path = "../../conrod_core", version = "0.73" }
 gfx = { version = "0.18" }
 gfx_core = { version = "0.9" }
 
 [dev-dependencies]
-conrod_example_shared = { path = "../conrod_example_shared", version = "0.72" }
-conrod_winit = { path = "../conrod_winit", version = "0.72" }
+conrod_example_shared = { path = "../conrod_example_shared", version = "0.73" }
+conrod_winit = { path = "../conrod_winit", version = "0.73" }
 find_folder = "0.3.0"
 image = "0.22"
 petgraph = "0.4"
