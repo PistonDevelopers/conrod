@@ -1,10 +1,9 @@
 //! A demonstration of using `winit` to provide events and `vulkano` to draw the UI.
 use conrod_example_shared::{WIN_H, WIN_W};
-use vulkano::device::{Device, DeviceExtensions};
-use vulkano::image::{AttachmentImage, ImageUsage, MipmapsCount};
-use vulkano::instance::{Instance, PhysicalDevice};
-use vulkano::swapchain::{AcquireError, Swapchain};
-use vulkano_win::VkSurfaceBuild;
+
+use vulkano::image::{AttachmentImage, MipmapsCount};
+
+use vulkano::swapchain::AcquireError;
 
 use conrod_vulkano::Image as VulkanoGuiImage;
 use conrod_vulkano::Renderer;
@@ -13,17 +12,15 @@ use std::sync::Arc;
 use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, SubpassContents};
 use vulkano::format::Format;
 use vulkano::image::view::ImageView;
-use vulkano::pipeline::viewport::Viewport;
+
 use vulkano::render_pass::Framebuffer;
 use vulkano::render_pass::{FramebufferAbstract, RenderPass};
 use vulkano::single_pass_renderpass;
 use vulkano::sync::{FenceSignalFuture, GpuFuture};
 use winit::event;
-use winit::event::Event::WindowEvent;
-use winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode};
+
+use winit::event::{ElementState, KeyboardInput, VirtualKeyCode};
 use winit::event_loop::ControlFlow;
-use winit::window::WindowBuilder;
-use vulkano::descriptor::pipeline_layout::PipelineLayoutDesc;
 
 conrod_winit::v023_conversion_fns!();
 mod support;
@@ -92,7 +89,7 @@ fn main() {
     let sixteen_ms = std::time::Duration::from_millis(16);
     let mut next_update = None;
     let mut ui_update_needed = false;
-    event_loop.run(move |event, _, mut control_flow| {
+    event_loop.run(move |event, _, control_flow| {
         if let Some(event) = convert_event(&event, window.surface.window()) {
             ui.handle_event(event);
             ui_update_needed = true;
@@ -100,7 +97,7 @@ fn main() {
         match &event {
             // Recreate swapchain when window is resized.
             event::Event::WindowEvent { event, .. } => match event {
-                event::WindowEvent::Resized(new_size) => {
+                event::WindowEvent::Resized(_new_size) => {
                     window.handle_resize();
                     render_target.handle_resize(&window);
                 }
@@ -153,9 +150,9 @@ fn main() {
         };
         match &event {
             event::Event::RedrawRequested(_) => {
-                let primitives = ui.draw();
+                let _primitives = ui.draw();
                 if let Some(primitives) = ui.draw_if_changed() {
-                    let (image_num, sub_optimal, acquire_future) =
+                    let (image_num, _sub_optimal, acquire_future) =
                         match vulkano::swapchain::acquire_next_image(window.swapchain.clone(), None)
                         {
                             Ok(r) => r,
@@ -172,7 +169,7 @@ fn main() {
                             window.queue.family(),
                             CommandBufferUsage::OneTimeSubmit,
                         )
-                            .expect("Failed to create AutoCommandBufferBuilder");
+                        .expect("Failed to create AutoCommandBufferBuilder");
                         let viewport = [0.0, 0.0, win_w as f32, win_h as f32];
 
                         let dpi_factor = window.hidpi_factor() as f64;
@@ -186,13 +183,15 @@ fn main() {
                                 .unwrap();
                             command_buffer_builder
                                 .copy_buffer_to_image(buffer, cmd.glyph_cache_texture)
-                                .expect("failed to submit cimmand for caching glyph");
+                                .expect("failed to submit command for caching glyph");
                         }
-                        command_buffer_builder.begin_render_pass(
-                            render_target.framebuffers[image_num].clone(),
-                            SubpassContents::Inline,
-                            vec![CLEAR_COLOR.into(), 1f32.into()],
-                        );
+                        command_buffer_builder
+                            .begin_render_pass(
+                                render_target.framebuffers[image_num].clone(),
+                                SubpassContents::Inline,
+                                vec![CLEAR_COLOR.into(), 1f32.into()],
+                            )
+                            .unwrap();
                         let draw_cmds = renderer
                             .draw(window.queue.clone(), &image_map, viewport)
                             .unwrap();
@@ -215,14 +214,13 @@ fn main() {
                                 .expect("failed to submit draw command");
                         }
                         command_buffer_builder.end_render_pass().unwrap();
-                        let command_buffer = command_buffer_builder
-                            .build()
-                            .unwrap();
+                        let command_buffer = command_buffer_builder.build().unwrap();
                         if let Some(prev_frame) = previous_frame_end.take() {
                             prev_frame
                                 .wait(None)
                                 .expect("failed to wait for presentation of previous frame");
                         }
+
                         let future_result = acquire_future
                             .then_execute(window.queue.clone(), command_buffer)
                             .expect("failed to join previous frame new one")
@@ -232,9 +230,8 @@ fn main() {
                                 image_num,
                             )
                             .then_signal_fence_and_flush();
-                        if let Ok(future) = future_result {
-                            previous_frame_end = Some(future);
-                        }
+
+                        previous_frame_end = future_result.ok();
                     }
                 }
             }

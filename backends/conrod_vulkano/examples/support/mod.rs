@@ -5,9 +5,7 @@ use vulkano::{
     format::Format,
     image::SwapchainImage,
     instance::{Instance, PhysicalDevice},
-    swapchain::{
-        ColorSpace, PresentMode, Surface, SurfaceTransform, Swapchain, SwapchainCreationError,
-    },
+    swapchain::{ColorSpace, Surface, SurfaceTransform, Swapchain, SwapchainCreationError},
 };
 
 use vulkano::image::ImageUsage;
@@ -77,7 +75,7 @@ impl Window {
                 .expect("failed to get surface capabilities");
 
             let surface_dimensions = caps.current_extent.unwrap_or([width, height]);
-            let alpha = caps.supported_composite_alpha.iter().next().unwrap();
+            let _alpha = caps.supported_composite_alpha.iter().next().unwrap();
             let format = caps
                 .supported_formats
                 .iter()
