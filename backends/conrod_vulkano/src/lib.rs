@@ -20,14 +20,17 @@ use vulkano::descriptor::descriptor_set::{
     PersistentDescriptorSetError,
 };
 use vulkano::device::*;
-use vulkano::format::*;
-use vulkano::framebuffer::*;
+
+use vulkano::descriptor::PipelineLayoutAbstract;
+use vulkano::format::Format::R8Unorm;
+use vulkano::image::view::ImageView;
 use vulkano::image::*;
 use vulkano::instance::QueueFamily;
 use vulkano::memory::DeviceMemoryAllocError;
 use vulkano::pipeline::viewport::Scissor;
 use vulkano::pipeline::viewport::Viewport;
 use vulkano::pipeline::*;
+use vulkano::render_pass::Subpass;
 use vulkano::sampler::*;
 
 /// A loaded vulkan texture and it's width/height
@@ -35,7 +38,7 @@ pub struct Image {
     /// The immutable image type, represents the data loaded onto the GPU.
     ///
     /// Uses a dynamic format for flexibility on the kinds of images that might be loaded.
-    pub image_access: Arc<ImmutableImage<Format>>,
+    pub image_access: Arc<ImmutableImage>,
     /// The width of the image.
     pub width: u32,
     /// The height of the image.
@@ -132,9 +135,9 @@ void main() {
 pub struct Renderer {
     pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
     glyph_uploads: Arc<CpuBufferPool<u8>>,
-    glyph_cache_tex: Arc<StorageImage<R8Unorm>>,
+    glyph_cache_tex: Arc<StorageImage>,
     sampler: Arc<Sampler>,
-    tex_descs: FixedSizeDescriptorSetsPool<Arc<dyn GraphicsPipelineAbstract + Send + Sync>>,
+    tex_descs: FixedSizeDescriptorSetsPool,
     mesh: Mesh,
 }
 
@@ -145,7 +148,7 @@ pub struct GlyphCacheCommand<'a> {
     /// The cpu buffer pool used to upload glyph pixels.
     pub glyph_cpu_buffer_pool: Arc<CpuBufferPool<u8>>,
     /// The GPU image to which the glyphs are cached.
-    pub glyph_cache_texture: Arc<StorageImage<R8Unorm>>,
+    pub glyph_cache_texture: Arc<StorageImage>,
 }
 
 /// A draw command that maps directly to the `AutoCommandBufferBuilder::draw` method. By returning
@@ -186,16 +189,13 @@ impl Renderer {
     ///
     /// The dimensions of the glyph cache will be the dimensions of the window multiplied by the
     /// DPI factor.
-    pub fn new<'a, L>(
+    pub fn new(
         device: Arc<Device>,
-        subpass: Subpass<L>,
-        graphics_queue_family: QueueFamily<'a>,
+        subpass: Subpass,
+        graphics_queue_family: QueueFamily,
         window_dims: [u32; 2],
         dpi_factor: f64,
-    ) -> Result<Self, RendererCreationError>
-    where
-        L: RenderPassDesc + RenderPassAbstract + Send + Sync + 'static,
-    {
+    ) -> Result<Self, RendererCreationError> {
         // TODO: Check that necessary subpass properties exist?
         let [w, h] = window_dims;
         let glyph_cache_dims = [
@@ -206,15 +206,12 @@ impl Renderer {
     }
 
     /// Construct a new empty `Renderer`.
-    pub fn with_glyph_cache_dimensions<'a, L>(
+    pub fn with_glyph_cache_dimensions(
         device: Arc<Device>,
-        subpass: Subpass<L>,
-        graphics_queue_family: QueueFamily<'a>,
+        subpass: Subpass,
+        graphics_queue_family: QueueFamily,
         glyph_cache_dims: [u32; 2],
-    ) -> Result<Self, RendererCreationError>
-    where
-        L: RenderPassDesc + RenderPassAbstract + Send + Sync + 'static,
-    {
+    ) -> Result<Self, RendererCreationError> {
         let sampler = Sampler::new(
             device.clone(),
             Filter::Linear,
@@ -254,22 +251,35 @@ impl Renderer {
             let [width, height] = glyph_cache_dims;
             StorageImage::with_usage(
                 device.clone(),
-                Dimensions::Dim2d { width, height },
+                ImageDimensions::Dim2d {
+                    width,
+                    height,
+                    array_layers: 1,
+                },
                 R8Unorm,
                 ImageUsage {
                     transfer_destination: true,
                     sampled: true,
                     ..ImageUsage::none()
                 },
+                ImageCreateFlags {
+                    sparse_binding: false,
+                    sparse_residency: false,
+                    sparse_aliased: false,
+                    mutable_format: false,
+                    cube_compatible: false,
+                    array_2d_compatible: false,
+                },
                 vec![graphics_queue_family],
             )?
         };
 
-        let tex_descs = FixedSizeDescriptorSetsPool::new(pipeline.clone() as Arc<_>, 0);
+        let tex_descs =
+            FixedSizeDescriptorSetsPool::new(pipeline.descriptor_set_layout(0).unwrap().clone());
         let glyph_uploads = Arc::new(CpuBufferPool::upload(device.clone()));
 
         Ok(Renderer {
-            pipeline: pipeline,
+            pipeline,
             glyph_uploads,
             glyph_cache_tex,
             sampler,
@@ -288,13 +298,13 @@ impl Renderer {
     /// This method may return an `Option<GlyphCacheCommand>`, in which case the user should use
     /// the contained `glyph_cpu_buffer_pool` to write the pixel data to the GPU, and then use a
     /// `copy_buffer_to_image` command to write the data to the given `glyph_cache_texture` image.
-    pub fn fill<'a, P: render::PrimitiveWalker>(
-        &'a mut self,
+    pub fn fill<P: render::PrimitiveWalker>(
+        &mut self,
         image_map: &image::Map<Image>,
         viewport: [f32; 4],
         dpi_factor: f64,
         primitives: P,
-    ) -> Result<Option<GlyphCacheCommand<'a>>, rt::gpu_cache::CacheWriteErr> {
+    ) -> Result<Option<GlyphCacheCommand>, rt::gpu_cache::CacheWriteErr> {
         let Renderer {
             ref glyph_uploads,
             ref glyph_cache_tex,
@@ -354,7 +364,10 @@ impl Renderer {
         let desc_cache = Arc::new(
             self.tex_descs
                 .next()
-                .add_sampled_image(self.glyph_cache_tex.clone(), self.sampler.clone())?
+                .add_sampled_image(
+                    ImageView::new(self.glyph_cache_tex.clone()).unwrap(),
+                    self.sampler.clone(),
+                )?
                 .build()?,
         );
 
@@ -407,7 +420,7 @@ impl Renderer {
                                 tex_descs
                                     .next()
                                     .add_sampled_image(
-                                        image.image_access.clone(),
+                                        ImageView::new(image.image_access.clone()).unwrap(),
                                         self.sampler.clone(),
                                     )?
                                     .build()?,
