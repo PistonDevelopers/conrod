@@ -150,9 +150,8 @@ fn main() {
         };
         match &event {
             event::Event::RedrawRequested(_) => {
-                let _primitives = ui.draw();
                 if let Some(primitives) = ui.draw_if_changed() {
-                    let (image_num, _sub_optimal, acquire_future) =
+                    let (image_num, sub_optimal, acquire_future) =
                         match vulkano::swapchain::acquire_next_image(window.swapchain.clone(), None)
                         {
                             Ok(r) => r,
@@ -163,6 +162,11 @@ fn main() {
                             }
                             Err(err) => panic!("{:?}", err),
                         };
+                    if sub_optimal {
+                        return;
+                    }
+                    println!("bake to image_num {}", image_num);
+
                     {
                         let mut command_buffer_builder = AutoCommandBufferBuilder::primary(
                             window.device.clone(),
@@ -221,17 +225,16 @@ fn main() {
                                 .expect("failed to wait for presentation of previous frame");
                         }
 
-                        let future_result = acquire_future
+                        let future = acquire_future
                             .then_execute(window.queue.clone(), command_buffer)
-                            .expect("failed to join previous frame new one")
+                            .expect("failed to join previous frame with new one")
                             .then_swapchain_present(
                                 window.queue.clone(),
                                 window.swapchain.clone(),
                                 image_num,
                             )
                             .then_signal_fence_and_flush();
-
-                        previous_frame_end = future_result.ok();
+                        previous_frame_end = future.ok();
                     }
                 }
             }
@@ -307,6 +310,7 @@ fn create_framebuffers(
     render_pass: Arc<RenderPass>,
     depth_buffer: Arc<AttachmentImage>,
 ) -> Vec<Arc<dyn FramebufferAbstract + Send + Sync>> {
+    let depth_buffer = ImageView::new(depth_buffer.clone()).unwrap();
     window
         .images
         .iter()
@@ -315,7 +319,7 @@ fn create_framebuffers(
                 Framebuffer::start(render_pass.clone())
                     .add(ImageView::new(image.clone()).unwrap())
                     .unwrap()
-                    .add(ImageView::new(depth_buffer.clone()).unwrap())
+                    .add(depth_buffer.clone())
                     .unwrap()
                     .build()
                     .unwrap(),

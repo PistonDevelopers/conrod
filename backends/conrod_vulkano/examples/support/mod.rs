@@ -5,7 +5,7 @@ use vulkano::{
     format::Format,
     image::SwapchainImage,
     instance::{Instance, PhysicalDevice},
-    swapchain::{ColorSpace, Surface, SurfaceTransform, Swapchain, SwapchainCreationError},
+    swapchain::{ColorSpace, Surface, Swapchain, SwapchainCreationError},
 };
 
 use vulkano::image::ImageUsage;
@@ -24,7 +24,7 @@ impl Window {
         width: u32,
         height: u32,
         title: &str,
-        events_loop: &winit::event_loop::EventLoop<T>,
+        event_loop: &winit::event_loop::EventLoop<T>,
     ) -> Self {
         let size = winit::dpi::LogicalSize::new(width as f64, height as f64);
         let (width, height): (u32, u32) = size.into();
@@ -45,7 +45,7 @@ impl Window {
             .with_inner_size(size)
             .with_resizable(false)
             .with_title(title)
-            .build_vk_surface(events_loop, instance.clone())
+            .build_vk_surface(event_loop, instance.clone())
             .unwrap();
 
         let queue = physical
@@ -91,7 +91,6 @@ impl Window {
                     .dimensions(surface_dimensions)
                     .usage(ImageUsage::color_attachment())
                     .sharing_mode(&queue)
-                    .transform(SurfaceTransform::Identity)
                     .composite_alpha(caps.supported_composite_alpha.iter().next().unwrap())
                     .build()
                     .expect("failed to create swapchain"),
