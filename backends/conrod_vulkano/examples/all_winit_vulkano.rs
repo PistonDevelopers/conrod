@@ -3,13 +3,16 @@ use conrod_example_shared::{WIN_H, WIN_W};
 
 use vulkano::image::{AttachmentImage, MipmapsCount};
 
-use vulkano::swapchain::AcquireError;
+use vulkano::swapchain::{AcquireError, SwapchainAcquireFuture};
 
 use conrod_vulkano::Image as VulkanoGuiImage;
 use conrod_vulkano::Renderer;
 use conrod_winit::WinitWindow;
 use std::sync::Arc;
-use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, SubpassContents};
+use vulkano::command_buffer::{
+    AutoCommandBufferBuilder, CommandBufferExecError, CommandBufferExecFuture, CommandBufferUsage,
+    PrimaryAutoCommandBuffer, SubpassContents,
+};
 use vulkano::format::Format;
 use vulkano::image::view::ImageView;
 
@@ -19,8 +22,13 @@ use vulkano::single_pass_renderpass;
 use vulkano::sync::{FenceSignalFuture, GpuFuture};
 use winit::event;
 
+use vulkano::command_buffer::pool::standard::{
+    StandardCommandPoolAlloc, StandardCommandPoolBuilder,
+};
+use vulkano::descriptor::pipeline_layout::PipelineLayout;
 use winit::event::{ElementState, KeyboardInput, VirtualKeyCode};
 use winit::event_loop::ControlFlow;
+use winit::window::Window;
 
 conrod_winit::v023_conversion_fns!();
 mod support;
@@ -80,19 +88,16 @@ fn main() {
     // Keep track of the previous frame so we can wait for it to complete before presenting a new
     // one. This should make sure the CPU never gets ahead of the presentation of frames, which can
     // cause high user-input latency and synchronisation strange bugs.
-    let mut previous_frame_end: Option<FenceSignalFuture<_>> = None;
+
     logo_texture_future
         .then_signal_fence_and_flush()
         .expect("failed to signal fence and flush logo future")
         .wait(None)
         .expect("failed to wait for logo texture to load");
-    let sixteen_ms = std::time::Duration::from_millis(16);
-    let mut next_update = None;
-    let mut ui_update_needed = false;
+
     event_loop.run(move |event, _, control_flow| {
         if let Some(event) = convert_event(&event, window.surface.window()) {
             ui.handle_event(event);
-            ui_update_needed = true;
         }
         match &event {
             // Recreate swapchain when window is resized.
@@ -118,125 +123,102 @@ fn main() {
             },
             _ => {}
         }
-        let should_set_ui_on_main_events_cleared = next_update.is_none() && ui_update_needed;
-        match (&event, should_set_ui_on_main_events_cleared) {
-            (event::Event::NewEvents(event::StartCause::Init { .. }), _)
-            | (event::Event::NewEvents(event::StartCause::ResumeTimeReached { .. }), _)
-            | (event::Event::MainEventsCleared, true) => {
-                next_update = Some(std::time::Instant::now() + sixteen_ms);
-                ui_update_needed = false;
 
-                // Instantiate a GUI demonstrating every widget type provided by conrod.
-                conrod_example_shared::gui(&mut ui.set_widgets(), &ids, &mut app);
-
-                if ui.has_changed() {
-                    // If the view has changed at all, request a redraw.
-                    window.surface.window().request_redraw();
-                } else {
-                    // We don't need to update the UI anymore until more events arrives.
-                    next_update = None;
-                }
-            }
-            _ => (),
-        }
-        if let Some(next_update) = next_update {
-            *control_flow = ControlFlow::WaitUntil(next_update);
-        } else {
-            *control_flow = ControlFlow::Wait;
-        }
         let (win_w, win_h) = match window.get_dimensions() {
             Some(s) => s,
             None => return,
         };
+        // Update widgets if any event has happened
+        if ui.global_input().events().next().is_some() {
+            let mut ui = ui.set_widgets();
+            conrod_example_shared::gui(&mut ui, &ids, &mut app);
+        }
         match &event {
             event::Event::RedrawRequested(_) => {
-                if let Some(primitives) = ui.draw_if_changed() {
-                    let (image_num, sub_optimal, acquire_future) =
-                        match vulkano::swapchain::acquire_next_image(window.swapchain.clone(), None)
-                        {
-                            Ok(r) => r,
-                            Err(AcquireError::OutOfDate) => {
-                                window.handle_resize();
-                                render_target.handle_resize(&mut window);
-                                return;
-                            }
-                            Err(err) => panic!("{:?}", err),
-                        };
-                    if sub_optimal {
-                        return;
-                    }
-                    println!("bake to image_num {}", image_num);
+                let primitives = ui.draw();
+                let (image_num, sub_optimal, acquire_future) =
+                    match vulkano::swapchain::acquire_next_image(window.swapchain.clone(), None) {
+                        Ok(r) => r,
+                        Err(AcquireError::OutOfDate) => {
+                            window.handle_resize();
+                            render_target.handle_resize(&mut window);
+                            return;
+                        }
+                        Err(err) => panic!("{:?}", err),
+                    };
+                if sub_optimal {
+                    return;
+                }
+                println!("bake to image_num {}", image_num);
 
+                {
+                    let mut command_buffer_builder = AutoCommandBufferBuilder::primary(
+                        window.device.clone(),
+                        window.queue.family(),
+                        CommandBufferUsage::OneTimeSubmit,
+                    )
+                    .expect("Failed to create AutoCommandBufferBuilder");
+                    let viewport = [0.0, 0.0, win_w as f32, win_h as f32];
+
+                    let dpi_factor = window.hidpi_factor() as f64;
+                    if let Some(cmd) = renderer
+                        .fill(&image_map, viewport, dpi_factor, primitives)
+                        .unwrap()
                     {
-                        let mut command_buffer_builder = AutoCommandBufferBuilder::primary(
-                            window.device.clone(),
-                            window.queue.family(),
-                            CommandBufferUsage::OneTimeSubmit,
-                        )
-                        .expect("Failed to create AutoCommandBufferBuilder");
-                        let viewport = [0.0, 0.0, win_w as f32, win_h as f32];
-
-                        let dpi_factor = window.hidpi_factor() as f64;
-                        if let Some(cmd) = renderer
-                            .fill(&image_map, viewport, dpi_factor, primitives)
-                            .unwrap()
-                        {
-                            let buffer = cmd
-                                .glyph_cpu_buffer_pool
-                                .chunk(cmd.glyph_cache_pixel_buffer.iter().cloned())
-                                .unwrap();
-                            command_buffer_builder
-                                .copy_buffer_to_image(buffer, cmd.glyph_cache_texture)
-                                .expect("failed to submit command for caching glyph");
-                        }
+                        let buffer = cmd
+                            .glyph_cpu_buffer_pool
+                            .chunk(cmd.glyph_cache_pixel_buffer.iter().cloned())
+                            .unwrap();
                         command_buffer_builder
-                            .begin_render_pass(
-                                render_target.framebuffers[image_num].clone(),
-                                SubpassContents::Inline,
-                                vec![CLEAR_COLOR.into(), 1f32.into()],
-                            )
-                            .unwrap();
-                        let draw_cmds = renderer
-                            .draw(window.queue.clone(), &image_map, viewport)
-                            .unwrap();
-                        for cmd in draw_cmds {
-                            let conrod_vulkano::DrawCommand {
+                            .copy_buffer_to_image(buffer, cmd.glyph_cache_texture)
+                            .expect("failed to submit command for caching glyph");
+                    }
+                    command_buffer_builder
+                        .begin_render_pass(
+                            render_target.framebuffers[image_num].clone(),
+                            SubpassContents::Inline,
+                            vec![CLEAR_COLOR.into(), 1f32.into()],
+                        )
+                        .unwrap();
+                    let draw_cmds = renderer
+                        .draw(window.queue.clone(), &image_map, viewport)
+                        .unwrap();
+                    for cmd in draw_cmds {
+                        let conrod_vulkano::DrawCommand {
+                            graphics_pipeline,
+                            dynamic_state,
+                            vertex_buffer,
+                            descriptor_set,
+                        } = cmd;
+                        command_buffer_builder
+                            .draw(
                                 graphics_pipeline,
-                                dynamic_state,
-                                vertex_buffer,
+                                &dynamic_state,
+                                vec![vertex_buffer],
                                 descriptor_set,
-                            } = cmd;
-                            command_buffer_builder
-                                .draw(
-                                    graphics_pipeline,
-                                    &dynamic_state,
-                                    vec![vertex_buffer],
-                                    descriptor_set,
-                                    (),
-                                    vec![],
-                                )
-                                .expect("failed to submit draw command");
-                        }
-                        command_buffer_builder.end_render_pass().unwrap();
-                        let command_buffer = command_buffer_builder.build().unwrap();
-                        if let Some(prev_frame) = previous_frame_end.take() {
-                            prev_frame
-                                .wait(None)
-                                .expect("failed to wait for presentation of previous frame");
-                        }
-
-                        let future = acquire_future
-                            .then_execute(window.queue.clone(), command_buffer)
-                            .expect("failed to join previous frame with new one")
+                                (),
+                                vec![],
+                            )
+                            .expect("failed to submit draw command");
+                    }
+                    command_buffer_builder.end_render_pass().unwrap();
+                    let command_buffer = command_buffer_builder.build().unwrap();
+                    if let Ok(future) =
+                        acquire_future.then_execute(window.queue.clone(), command_buffer)
+                    {
+                        let _ = future
                             .then_swapchain_present(
                                 window.queue.clone(),
                                 window.swapchain.clone(),
                                 image_num,
                             )
-                            .then_signal_fence_and_flush();
-                        previous_frame_end = future.ok();
+                            .then_signal_fence_and_flush()
+                            .and_then(|future| future.wait(None));
                     }
                 }
+            }
+            event::Event::RedrawEventsCleared => {
+                //    window.surface.window().request_redraw();
             }
             _ => {}
         }

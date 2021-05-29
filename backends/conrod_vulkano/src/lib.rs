@@ -32,6 +32,7 @@ use vulkano::pipeline::viewport::Viewport;
 use vulkano::pipeline::*;
 use vulkano::render_pass::Subpass;
 use vulkano::sampler::*;
+use vulkano::sync::GpuFuture;
 
 /// A loaded vulkan texture and it's width/height
 pub struct Image {
@@ -395,11 +396,12 @@ impl Renderer {
                         if vert_range.len() > 0 {
                             let verts = &self.mesh.vertices()[vert_range];
                             let verts = conv_vertex_buffer(verts);
-                            let (vbuf, _vbuf_fut) = ImmutableBuffer::<[Vertex]>::from_iter(
+                            let (vbuf, vbuf_fut) = ImmutableBuffer::<[Vertex]>::from_iter(
                                 verts.iter().cloned(),
                                 BufferUsage::vertex_buffer(),
                                 queue.clone(),
                             )?;
+                            vbuf_fut.then_signal_fence_and_flush();
                             draw_commands.push(DrawCommand {
                                 graphics_pipeline: self.pipeline.clone(),
                                 dynamic_state: dynamic_state(current_scizzor.clone()),
@@ -427,11 +429,12 @@ impl Renderer {
                             );
                             let verts = &self.mesh.vertices()[vert_range];
                             let verts = conv_vertex_buffer(verts);
-                            let (vbuf, _vbuf_fut) = ImmutableBuffer::from_iter(
+                            let (vbuf, vbuf_fut) = ImmutableBuffer::from_iter(
                                 verts.iter().cloned(),
                                 BufferUsage::vertex_buffer(),
                                 queue.clone(),
                             )?;
+                            vbuf_fut.then_signal_fence_and_flush().unwrap();
                             draw_commands.push(DrawCommand {
                                 graphics_pipeline: self.pipeline.clone(),
                                 dynamic_state: dynamic_state(current_scizzor.clone()),
