@@ -43,7 +43,6 @@ impl Window {
 
         let surface = winit::window::WindowBuilder::new()
             .with_inner_size(size)
-            .with_resizable(false)
             .with_title(title)
             .build_vk_surface(event_loop, instance.clone())
             .unwrap();
