@@ -22,7 +22,6 @@ use winit::event;
 use winit::event::{ElementState, KeyboardInput, VirtualKeyCode};
 use winit::event_loop::ControlFlow;
 
-
 conrod_winit::v023_conversion_fns!();
 mod support;
 const DEPTH_FORMAT: Format = Format::D16Unorm;

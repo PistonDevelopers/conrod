@@ -1,7 +1,6 @@
 extern crate conrod_core;
 #[macro_use]
 extern crate vulkano;
-extern crate vulkano_shaders;
 
 use std::error::Error as StdError;
 use std::fmt;
@@ -28,6 +27,7 @@ use vulkano::descriptor::descriptor::{
 };
 use vulkano::descriptor::pipeline_layout::{PipelineLayoutDesc, PipelineLayoutDescPcRange};
 
+use vulkano::descriptor::PipelineLayoutAbstract;
 use vulkano::format::Format;
 use vulkano::format::Format::R8Unorm;
 use vulkano::image::view::ImageView;
@@ -35,8 +35,7 @@ use vulkano::image::*;
 use vulkano::instance::QueueFamily;
 use vulkano::memory::DeviceMemoryAllocError;
 use vulkano::pipeline::shader::{
-    GraphicsShaderType, ShaderInterfaceDef, ShaderInterfaceDefEntry,
-    ShaderModule,
+    GraphicsShaderType, ShaderInterfaceDef, ShaderInterfaceDefEntry, ShaderModule,
 };
 use vulkano::pipeline::viewport::Scissor;
 use vulkano::pipeline::viewport::Viewport;
@@ -44,7 +43,6 @@ use vulkano::pipeline::*;
 use vulkano::render_pass::Subpass;
 use vulkano::sampler::*;
 use vulkano::sync::GpuFuture;
-use vulkano::descriptor::PipelineLayoutAbstract;
 
 /// A loaded vulkan texture and it's width/height
 pub struct Image {
@@ -124,23 +122,27 @@ unsafe impl ShaderInterfaceDef for VSOutput {
     type Iter = Box<dyn ExactSizeIterator<Item = ShaderInterfaceDefEntry>>;
 
     fn elements(&self) -> Self::Iter {
-        Box::new([
-            ShaderInterfaceDefEntry {
-                location: 0..1,
-                format: Format::R32G32Sfloat,
-                name: Some(std::borrow::Cow::Borrowed("v_Uv")),
-            },
-            ShaderInterfaceDefEntry {
-                location: 1..2,
-                format: Format::R32G32B32A32Sfloat,
-                name: Some(std::borrow::Cow::Borrowed("v_Color")),
-            },
-            ShaderInterfaceDefEntry {
-                location: 2..3,
-                format: Format::R32Uint,
-                name: Some(std::borrow::Cow::Borrowed("v_Mode")),
-            },
-        ].iter().cloned())
+        Box::new(
+            [
+                ShaderInterfaceDefEntry {
+                    location: 0..1,
+                    format: Format::R32G32Sfloat,
+                    name: Some(std::borrow::Cow::Borrowed("v_Uv")),
+                },
+                ShaderInterfaceDefEntry {
+                    location: 1..2,
+                    format: Format::R32G32B32A32Sfloat,
+                    name: Some(std::borrow::Cow::Borrowed("v_Color")),
+                },
+                ShaderInterfaceDefEntry {
+                    location: 2..3,
+                    format: Format::R32Uint,
+                    name: Some(std::borrow::Cow::Borrowed("v_Mode")),
+                },
+            ]
+            .iter()
+            .cloned(),
+        )
     }
 }
 struct FSInput;
@@ -148,23 +150,27 @@ unsafe impl ShaderInterfaceDef for FSInput {
     type Iter = Box<dyn ExactSizeIterator<Item = ShaderInterfaceDefEntry>>;
 
     fn elements(&self) -> Self::Iter {
-        Box::new([
-            ShaderInterfaceDefEntry {
-                location: 0..1,
-                format: Format::R32G32Sfloat,
-                name: Some(std::borrow::Cow::Borrowed("v_uv")),
-            },
-            ShaderInterfaceDefEntry {
-                location: 1..2,
-                format: Format::R32G32B32A32Sfloat,
-                name: Some(std::borrow::Cow::Borrowed("v_color")),
-            },
-            ShaderInterfaceDefEntry {
-                location: 2..3,
-                format: Format::R32Uint,
-                name: Some(std::borrow::Cow::Borrowed("v_mode")),
-            },
-        ].iter().cloned())
+        Box::new(
+            [
+                ShaderInterfaceDefEntry {
+                    location: 0..1,
+                    format: Format::R32G32Sfloat,
+                    name: Some(std::borrow::Cow::Borrowed("v_uv")),
+                },
+                ShaderInterfaceDefEntry {
+                    location: 1..2,
+                    format: Format::R32G32B32A32Sfloat,
+                    name: Some(std::borrow::Cow::Borrowed("v_color")),
+                },
+                ShaderInterfaceDefEntry {
+                    location: 2..3,
+                    format: Format::R32Uint,
+                    name: Some(std::borrow::Cow::Borrowed("v_mode")),
+                },
+            ]
+            .iter()
+            .cloned(),
+        )
     }
 }
 struct FSOutput;
@@ -172,11 +178,15 @@ unsafe impl ShaderInterfaceDef for FSOutput {
     type Iter = Box<dyn ExactSizeIterator<Item = ShaderInterfaceDefEntry>>;
 
     fn elements(&self) -> Self::Iter {
-        Box::new([ShaderInterfaceDefEntry {
-            location: 0..1,
-            format: Format::R32G32B32A32Sfloat,
-            name: Some(std::borrow::Cow::Borrowed("Target0")),
-        }].iter().cloned())
+        Box::new(
+            [ShaderInterfaceDefEntry {
+                location: 0..1,
+                format: Format::R32G32B32A32Sfloat,
+                name: Some(std::borrow::Cow::Borrowed("Target0")),
+            }]
+            .iter()
+            .cloned(),
+        )
     }
 }
 #[derive(Clone)]
@@ -188,12 +198,8 @@ unsafe impl PipelineLayoutDesc for ConrodPipelineLayout {
 
     fn num_bindings_in_set(&self, set: usize) -> Option<usize> {
         match set {
-            0 => {
-                Some(1)
-            }
-            _ => {
-                None
-            }
+            0 => Some(1),
+            _ => None,
         }
     }
 
@@ -231,7 +237,7 @@ unsafe impl PipelineLayoutDesc for ConrodPipelineLayout {
         0
     }
 
-    fn push_constants_range(&self, num: usize) -> Option<PipelineLayoutDescPcRange> {
+    fn push_constants_range(&self, _num: usize) -> Option<PipelineLayoutDescPcRange> {
         None
     }
 }
@@ -332,31 +338,32 @@ impl Renderer {
             0.0,
         )?;
 
-            let vs_module =
-                unsafe { ShaderModule::new(device.clone(), include_bytes!("shaders/vert.spv")) }.unwrap();
-        println!("VS loaded");
-            let fs_module =
-                unsafe { ShaderModule::new(device.clone(), include_bytes!("shaders/frag.spv")).unwrap() };
-         println!("FS loaded");
-            let main = CString::new("main").unwrap();
-            let vs = unsafe {
-                vs_module.graphics_entry_point(
-                    &main,
-                    VSInput,
-                    VSOutput,
-                    ConrodPipelineLayout,
-                    GraphicsShaderType::Vertex,
-                )
-            };
-            let fs = unsafe {
-                fs_module.graphics_entry_point(
-                    &main,
-                    FSInput,
-                    FSOutput,
-                    ConrodPipelineLayout,
-                    GraphicsShaderType::Fragment,
-                )
-            };
+        let vs_module =
+            unsafe { ShaderModule::new(device.clone(), include_bytes!("shaders/vert.spv")) }
+                .unwrap();
+
+        let fs_module =
+            unsafe { ShaderModule::new(device.clone(), include_bytes!("shaders/frag.spv")) }
+                .unwrap();
+        let main = CString::new("main").unwrap();
+        let vs = unsafe {
+            vs_module.graphics_entry_point(
+                &main,
+                VSInput,
+                VSOutput,
+                ConrodPipelineLayout,
+                GraphicsShaderType::Vertex,
+            )
+        };
+        let fs = unsafe {
+            fs_module.graphics_entry_point(
+                &main,
+                FSInput,
+                FSOutput,
+                ConrodPipelineLayout,
+                GraphicsShaderType::Fragment,
+            )
+        };
 
         let pipeline = Arc::new(
             GraphicsPipeline::start()
@@ -371,7 +378,6 @@ impl Renderer {
                 .render_pass(subpass)
                 .build(device.clone())?,
         );
-        println!("Pipeline built");
         let mesh = Mesh::with_glyph_cache_dimensions(glyph_cache_dims);
 
         let glyph_cache_tex = {
@@ -403,7 +409,7 @@ impl Renderer {
 
         let tex_descs =
             FixedSizeDescriptorSetsPool::new(pipeline.descriptor_set_layout(0).unwrap().clone());
-        let glyph_uploads = Arc::new(CpuBufferPool::upload(device.clone()));
+        let glyph_uploads = Arc::new(CpuBufferPool::upload(device));
 
         Ok(Renderer {
             pipeline,
@@ -519,7 +525,7 @@ impl Renderer {
                 mesh::Command::Draw(draw) => match draw {
                     // Draw text and plain 2D geometry.
                     mesh::Draw::Plain(vert_range) => {
-                        if vert_range.len() > 0 {
+                        if !vert_range.is_empty() {
                             let verts = &self.mesh.vertices()[vert_range];
                             let verts = conv_vertex_buffer(verts);
                             let (vbuf, vbuf_fut) = ImmutableBuffer::<[Vertex]>::from_iter(
@@ -534,7 +540,7 @@ impl Renderer {
                                 .unwrap();
                             draw_commands.push(DrawCommand {
                                 graphics_pipeline: self.pipeline.clone(),
-                                dynamic_state: dynamic_state(current_scizzor.clone()),
+                                dynamic_state: dynamic_state(current_scizzor),
                                 vertex_buffer: vbuf,
                                 descriptor_set: desc_cache.clone(),
                             });
@@ -544,7 +550,7 @@ impl Renderer {
                     // Draw an image whose texture data lies within the `image_map` at the
                     // given `id`.
                     mesh::Draw::Image(image_id, vert_range) => {
-                        if vert_range.len() == 0 {
+                        if vert_range.is_empty() {
                             continue;
                         }
                         if let Some(image) = image_map.get(&image_id) {
@@ -571,7 +577,7 @@ impl Renderer {
                                 .unwrap();
                             draw_commands.push(DrawCommand {
                                 graphics_pipeline: self.pipeline.clone(),
-                                dynamic_state: dynamic_state(current_scizzor.clone()),
+                                dynamic_state: dynamic_state(current_scizzor),
                                 vertex_buffer: vbuf,
                                 descriptor_set: desc_image,
                             });
@@ -586,7 +592,7 @@ impl Renderer {
 }
 
 fn conv_vertex_buffer(buffer: &[mesh::Vertex]) -> &[Vertex] {
-    unsafe { std::mem::transmute(buffer) }
+    unsafe { &*(buffer as *const [conrod_core::mesh::Vertex] as *const [Vertex]) }
 }
 
 impl From<SamplerCreationError> for RendererCreationError {
