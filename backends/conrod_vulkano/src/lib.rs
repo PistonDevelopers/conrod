@@ -21,18 +21,30 @@ use vulkano::descriptor::descriptor_set::{
 };
 use vulkano::device::*;
 
-use vulkano::descriptor::PipelineLayoutAbstract;
+use std::ffi::CString;
+use vulkano::descriptor::descriptor::{
+    DescriptorDesc, DescriptorDescTy, DescriptorImageDesc, DescriptorImageDescArray,
+    DescriptorImageDescDimensions, ShaderStages,
+};
+use vulkano::descriptor::pipeline_layout::{PipelineLayoutDesc, PipelineLayoutDescPcRange};
+
+use vulkano::format::Format;
 use vulkano::format::Format::R8Unorm;
 use vulkano::image::view::ImageView;
 use vulkano::image::*;
 use vulkano::instance::QueueFamily;
 use vulkano::memory::DeviceMemoryAllocError;
+use vulkano::pipeline::shader::{
+    GraphicsShaderType, ShaderInterfaceDef, ShaderInterfaceDefEntry,
+    ShaderModule,
+};
 use vulkano::pipeline::viewport::Scissor;
 use vulkano::pipeline::viewport::Viewport;
 use vulkano::pipeline::*;
 use vulkano::render_pass::Subpass;
 use vulkano::sampler::*;
 use vulkano::sync::GpuFuture;
+use vulkano::descriptor::PipelineLayoutAbstract;
 
 /// A loaded vulkan texture and it's width/height
 pub struct Image {
@@ -73,61 +85,154 @@ pub struct Vertex {
 }
 
 impl_vertex!(Vertex, position, tex_coords, rgba, mode);
+//shader interface def entries
+struct VSInput;
+unsafe impl ShaderInterfaceDef for VSInput {
+    type Iter = Box<dyn ExactSizeIterator<Item = ShaderInterfaceDefEntry>>;
 
-mod vs {
-    vulkano_shaders::shader! {
-    ty: "vertex",
-        src: "
-#version 450
-
-layout(location = 0) in vec2 position;
-layout(location = 1) in vec2 tex_coords;
-layout(location = 2) in vec4 rgba;
-layout(location = 3) in uint mode;
-
-layout(location = 0) out vec2 v_Uv;
-layout(location = 1) out vec4 v_Color;
-layout(location = 2) flat out uint v_Mode;
-
-void main() {
-    v_Uv = tex_coords;
-    v_Color = rgba;
-    gl_Position = vec4(position, 0.0, 1.0);
-    v_Mode = mode;
-}
-"
+    fn elements(&self) -> Self::Iter {
+        Box::new(
+            [
+                ShaderInterfaceDefEntry {
+                    location: 0..1,
+                    format: Format::R32G32Sfloat,
+                    name: Some(std::borrow::Cow::Borrowed("position")),
+                },
+                ShaderInterfaceDefEntry {
+                    location: 1..2,
+                    format: Format::R32G32Sfloat,
+                    name: Some(std::borrow::Cow::Borrowed("tex_coords")),
+                },
+                ShaderInterfaceDefEntry {
+                    location: 2..3,
+                    format: Format::R32G32B32A32Sfloat,
+                    name: Some(std::borrow::Cow::Borrowed("rgba")),
+                },
+                ShaderInterfaceDefEntry {
+                    location: 3..4,
+                    format: Format::R32Uint,
+                    name: Some(std::borrow::Cow::Borrowed("mode")),
+                },
+            ]
+            .iter()
+            .cloned(),
+        )
     }
 }
+struct VSOutput;
+unsafe impl ShaderInterfaceDef for VSOutput {
+    type Iter = Box<dyn ExactSizeIterator<Item = ShaderInterfaceDefEntry>>;
 
-mod fs {
-    vulkano_shaders::shader! {
-    ty: "fragment",
-        src: "
-#version 450
-
-layout(set = 0, binding = 0) uniform sampler2D t_Color;
-
-layout(location = 0) in vec2 v_Uv;
-layout(location = 1) in vec4 v_Color;
-layout(location = 2) flat in uint v_Mode;
-
-layout(location = 0) out vec4 Target0;
-
-void main() {
-    // Text
-    if (v_Mode == uint(0)) {
-        Target0 = v_Color * vec4(1.0, 1.0, 1.0, texture(t_Color, v_Uv).r);
-
-    // Image
-    } else if (v_Mode == uint(1)) {
-        Target0 = texture(t_Color, v_Uv);
-
-    // 2D Geometry
-    } else if (v_Mode == uint(2)) {
-        Target0 = v_Color;
+    fn elements(&self) -> Self::Iter {
+        Box::new([
+            ShaderInterfaceDefEntry {
+                location: 0..1,
+                format: Format::R32G32Sfloat,
+                name: Some(std::borrow::Cow::Borrowed("v_Uv")),
+            },
+            ShaderInterfaceDefEntry {
+                location: 1..2,
+                format: Format::R32G32B32A32Sfloat,
+                name: Some(std::borrow::Cow::Borrowed("v_Color")),
+            },
+            ShaderInterfaceDefEntry {
+                location: 2..3,
+                format: Format::R32Uint,
+                name: Some(std::borrow::Cow::Borrowed("v_Mode")),
+            },
+        ].iter().cloned())
     }
 }
-"
+struct FSInput;
+unsafe impl ShaderInterfaceDef for FSInput {
+    type Iter = Box<dyn ExactSizeIterator<Item = ShaderInterfaceDefEntry>>;
+
+    fn elements(&self) -> Self::Iter {
+        Box::new([
+            ShaderInterfaceDefEntry {
+                location: 0..1,
+                format: Format::R32G32Sfloat,
+                name: Some(std::borrow::Cow::Borrowed("v_uv")),
+            },
+            ShaderInterfaceDefEntry {
+                location: 1..2,
+                format: Format::R32G32B32A32Sfloat,
+                name: Some(std::borrow::Cow::Borrowed("v_color")),
+            },
+            ShaderInterfaceDefEntry {
+                location: 2..3,
+                format: Format::R32Uint,
+                name: Some(std::borrow::Cow::Borrowed("v_mode")),
+            },
+        ].iter().cloned())
+    }
+}
+struct FSOutput;
+unsafe impl ShaderInterfaceDef for FSOutput {
+    type Iter = Box<dyn ExactSizeIterator<Item = ShaderInterfaceDefEntry>>;
+
+    fn elements(&self) -> Self::Iter {
+        Box::new([ShaderInterfaceDefEntry {
+            location: 0..1,
+            format: Format::R32G32B32A32Sfloat,
+            name: Some(std::borrow::Cow::Borrowed("Target0")),
+        }].iter().cloned())
+    }
+}
+#[derive(Clone)]
+struct ConrodPipelineLayout;
+unsafe impl PipelineLayoutDesc for ConrodPipelineLayout {
+    fn num_sets(&self) -> usize {
+        1
+    }
+
+    fn num_bindings_in_set(&self, set: usize) -> Option<usize> {
+        match set {
+            0 => {
+                Some(1)
+            }
+            _ => {
+                None
+            }
+        }
+    }
+
+    fn descriptor(&self, set: usize, binding: usize) -> Option<DescriptorDesc> {
+        if set == 0 {
+            match binding {
+                0 => Some(DescriptorDesc {
+                    ty: DescriptorDescTy::CombinedImageSampler(DescriptorImageDesc {
+                        sampled: true,
+                        dimensions: DescriptorImageDescDimensions::TwoDimensional,
+                        format: None,
+                        multisampled: false,
+                        array_layers: DescriptorImageDescArray::NonArrayed,
+                    }),
+                    array_count: 1,
+                    stages: ShaderStages {
+                        vertex: false,
+                        tessellation_control: false,
+                        tessellation_evaluation: false,
+                        geometry: false,
+                        fragment: true,
+                        compute: false,
+                    },
+                    readonly: true,
+                }),
+
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
+    fn num_push_constants_ranges(&self) -> usize {
+        0
+    }
+
+    fn push_constants_range(&self, num: usize) -> Option<PipelineLayoutDescPcRange> {
+        None
     }
 }
 
@@ -227,25 +332,46 @@ impl Renderer {
             0.0,
         )?;
 
-        let vertex_shader = vs::Shader::load(device.clone())
-            .map_err(|err| RendererCreationError::ShaderLoad(err))?;
-        let fragment_shader = fs::Shader::load(device.clone())
-            .map_err(|err| RendererCreationError::ShaderLoad(err))?;
+            let vs_module =
+                unsafe { ShaderModule::new(device.clone(), include_bytes!("shaders/vert.spv")) }.unwrap();
+        println!("VS loaded");
+            let fs_module =
+                unsafe { ShaderModule::new(device.clone(), include_bytes!("shaders/frag.spv")).unwrap() };
+         println!("FS loaded");
+            let main = CString::new("main").unwrap();
+            let vs = unsafe {
+                vs_module.graphics_entry_point(
+                    &main,
+                    VSInput,
+                    VSOutput,
+                    ConrodPipelineLayout,
+                    GraphicsShaderType::Vertex,
+                )
+            };
+            let fs = unsafe {
+                fs_module.graphics_entry_point(
+                    &main,
+                    FSInput,
+                    FSOutput,
+                    ConrodPipelineLayout,
+                    GraphicsShaderType::Fragment,
+                )
+            };
 
         let pipeline = Arc::new(
             GraphicsPipeline::start()
                 .vertex_input_single_buffer::<Vertex>()
-                .vertex_shader(vertex_shader.main_entry_point(), ())
+                .vertex_shader(vs, ())
                 .depth_stencil_disabled()
                 .triangle_list()
                 .front_face_clockwise()
                 .viewports_scissors_dynamic(1)
-                .fragment_shader(fragment_shader.main_entry_point(), ())
+                .fragment_shader(fs, ())
                 .blend_alpha_blending()
                 .render_pass(subpass)
                 .build(device.clone())?,
         );
-
+        println!("Pipeline built");
         let mesh = Mesh::with_glyph_cache_dimensions(glyph_cache_dims);
 
         let glyph_cache_tex = {

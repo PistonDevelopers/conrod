@@ -19,9 +19,9 @@ use vulkano::single_pass_renderpass;
 use vulkano::sync::GpuFuture;
 use winit::event;
 
-use winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode};
+use winit::event::{ElementState, KeyboardInput, VirtualKeyCode};
 use winit::event_loop::ControlFlow;
-use winit::event_loop::ControlFlow::Poll;
+
 
 conrod_winit::v023_conversion_fns!();
 mod support;
