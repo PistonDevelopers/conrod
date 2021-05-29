@@ -401,7 +401,11 @@ impl Renderer {
                                 BufferUsage::vertex_buffer(),
                                 queue.clone(),
                             )?;
-                            vbuf_fut.then_signal_fence_and_flush();
+                            vbuf_fut
+                                .then_signal_fence_and_flush()
+                                .expect("failed to flush future")
+                                .wait(None)
+                                .unwrap();
                             draw_commands.push(DrawCommand {
                                 graphics_pipeline: self.pipeline.clone(),
                                 dynamic_state: dynamic_state(current_scizzor.clone()),
@@ -434,7 +438,11 @@ impl Renderer {
                                 BufferUsage::vertex_buffer(),
                                 queue.clone(),
                             )?;
-                            vbuf_fut.then_signal_fence_and_flush().unwrap();
+                            vbuf_fut
+                                .then_signal_fence_and_flush()
+                                .unwrap()
+                                .wait(None)
+                                .unwrap();
                             draw_commands.push(DrawCommand {
                                 graphics_pipeline: self.pipeline.clone(),
                                 dynamic_state: dynamic_state(current_scizzor.clone()),

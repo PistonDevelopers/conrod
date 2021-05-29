@@ -3,7 +3,7 @@ use conrod_example_shared::{WIN_H, WIN_W};
 
 use vulkano::image::{AttachmentImage, MipmapsCount};
 
-use vulkano::swapchain::{AcquireError, SwapchainAcquireFuture};
+use vulkano::swapchain::AcquireError;
 
 use conrod_vulkano::Image as VulkanoGuiImage;
 use conrod_vulkano::Renderer;
@@ -19,16 +19,11 @@ use vulkano::image::view::ImageView;
 use vulkano::render_pass::Framebuffer;
 use vulkano::render_pass::{FramebufferAbstract, RenderPass};
 use vulkano::single_pass_renderpass;
-use vulkano::sync::{FenceSignalFuture, GpuFuture};
+use vulkano::sync::GpuFuture;
 use winit::event;
 
-use vulkano::command_buffer::pool::standard::{
-    StandardCommandPoolAlloc, StandardCommandPoolBuilder,
-};
-use vulkano::descriptor::pipeline_layout::PipelineLayout;
 use winit::event::{ElementState, KeyboardInput, VirtualKeyCode};
 use winit::event_loop::ControlFlow;
-use winit::window::Window;
 
 conrod_winit::v023_conversion_fns!();
 mod support;
