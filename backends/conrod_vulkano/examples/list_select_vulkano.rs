@@ -101,9 +101,13 @@ fn main() {
 
     // List of selections, should be same length as list of entries. Will be updated by the widget.
     let mut list_selected = std::collections::HashSet::new();
+    let sixteen_ms = std::time::Duration::from_millis(16);
+    let mut next_update = None;
+    let mut ui_update_needed = false;
     event_loop.run(move |event, _, control_flow| {
         if let Some(event) = support::convert_event(&event, window.surface.window()) {
             ui.handle_event(event);
+            ui_update_needed = true;
         }
         match &event {
             // Recreate swapchain when window is resized.
@@ -111,6 +115,7 @@ fn main() {
                 event::WindowEvent::Resized(_new_size) => {
                     window.handle_resize();
                     render_target.handle_resize(&window);
+                    return;
                 }
                 event::WindowEvent::CloseRequested
                 | event::WindowEvent::KeyboardInput {
@@ -134,11 +139,31 @@ fn main() {
             Some(s) => s,
             None => return,
         };
-        // Update widgets if any event has happened
-        if ui.global_input().events().next().is_some() {
-            let mut ui = ui.set_widgets();
-            gui(&mut ui, &ids, &list_items[..], &mut list_selected);
+        let should_set_ui_on_main_events_cleared = next_update.is_none() && ui_update_needed;
+        match (&event, should_set_ui_on_main_events_cleared) {
+            (event::Event::NewEvents(event::StartCause::Init { .. }), _)
+            | (event::Event::NewEvents(event::StartCause::ResumeTimeReached { .. }), _)
+            | (event::Event::MainEventsCleared, true) => {
+                next_update = Some(std::time::Instant::now() + sixteen_ms);
+                ui_update_needed = false;
+
+                gui(&mut ui.set_widgets(), &ids, &list_items, &mut list_selected);
+                if ui.has_changed() {
+                    // If the view has changed at all, request a redraw.
+                    window.surface.window().request_redraw();
+                } else {
+                    // We don't need to update the UI anymore until more events arrives.
+                    next_update = None;
+                }
+            }
+            _ => (),
         }
+        if let Some(next_update) = next_update {
+            *control_flow = ControlFlow::WaitUntil(next_update);
+        } else {
+            *control_flow = ControlFlow::Wait;
+        }
+
         match &event {
             event::Event::RedrawRequested(_) => {
                 let primitives = ui.draw();
@@ -156,7 +181,7 @@ fn main() {
                     return;
                 }
                 println!("bake to image_num {}", image_num);
-
+                //begin the render pass and add the draw command
                 {
                     let mut command_buffer_builder = AutoCommandBufferBuilder::primary(
                         window.device.clone(),
@@ -222,9 +247,6 @@ fn main() {
                             .and_then(|future| future.wait(None));
                     }
                 }
-            }
-            event::Event::RedrawEventsCleared => {
-                //    window.surface.window().request_redraw();
             }
             _ => {}
         }

@@ -19,8 +19,9 @@ use vulkano::single_pass_renderpass;
 use vulkano::sync::GpuFuture;
 use winit::event;
 
-use winit::event::{ElementState, KeyboardInput, VirtualKeyCode};
+use winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode};
 use winit::event_loop::ControlFlow;
+use winit::event_loop::ControlFlow::Poll;
 
 conrod_winit::v023_conversion_fns!();
 mod support;
@@ -92,6 +93,7 @@ fn main() {
     event_loop.run(move |event, _, control_flow| {
         if let Some(event) = convert_event(&event, window.surface.window()) {
             ui.handle_event(event);
+            ui_update_needed = true;
         }
         match &event {
             // Recreate swapchain when window is resized.
@@ -99,6 +101,7 @@ fn main() {
                 event::WindowEvent::Resized(_new_size) => {
                     window.handle_resize();
                     render_target.handle_resize(&window);
+                    return;
                 }
                 event::WindowEvent::CloseRequested
                 | event::WindowEvent::KeyboardInput {
@@ -148,11 +151,7 @@ fn main() {
         } else {
             *control_flow = ControlFlow::Wait;
         }
-        // Update widgets if any event has happened
-        if ui.global_input().events().next().is_some() {
-            let mut ui = ui.set_widgets();
-            conrod_example_shared::gui(&mut ui, &ids, &mut app);
-        }
+
         match &event {
             event::Event::RedrawRequested(_) => {
                 let primitives = ui.draw();
@@ -170,7 +169,7 @@ fn main() {
                     return;
                 }
                 println!("bake to image_num {}", image_num);
-
+                //begin the render pass and add the draw command
                 {
                     let mut command_buffer_builder = AutoCommandBufferBuilder::primary(
                         window.device.clone(),
@@ -236,9 +235,6 @@ fn main() {
                             .and_then(|future| future.wait(None));
                     }
                 }
-            }
-            event::Event::RedrawEventsCleared => {
-                //    window.surface.window().request_redraw();
             }
             _ => {}
         }
