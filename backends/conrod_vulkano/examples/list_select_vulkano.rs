@@ -180,7 +180,6 @@ fn main() {
                 if sub_optimal {
                     return;
                 }
-                println!("bake to image_num {}", image_num);
                 //begin the render pass and add the draw command
                 {
                     let mut command_buffer_builder = AutoCommandBufferBuilder::primary(
