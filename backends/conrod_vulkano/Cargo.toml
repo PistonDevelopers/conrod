@@ -1,6 +1,6 @@
 [package]
 name = "conrod_vulkano"
-version = "0.73.0"
+version = "0.74.0"
 authors = [
     "mitchmindtree <mitchell.nordine@gmail.com>",
     "Kurble",
@@ -17,15 +17,15 @@ edition = "2018"
 
 [dependencies]
 #conrod_core = { path = "../../conrod_core", version = "0.71" }
-conrod_core = "0.73"
-vulkano = "0.23"
+conrod_core = "0.74"
+vulkano = "0.24"
 
 [dev-dependencies]
 #conrod_example_shared = { path = "../conrod_example_shared", version = "0.71" }
-conrod_example_shared = "0.73"
+conrod_example_shared = "0.74"
 #conrod_winit = { path = "../conrod_winit", version = "0.71" }
-conrod_winit = "0.73"
+conrod_winit = "0.74"
 find_folder = "0.3"
 image = "0.23"
-vulkano-win = "0.23"
-winit = "0.24"
+vulkano-win = "0.24"
+winit = "0.25"

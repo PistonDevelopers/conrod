@@ -6,6 +6,7 @@ use vulkano::{
     image::SwapchainImage,
     instance::{Instance, PhysicalDevice},
     swapchain::{ColorSpace, Surface, Swapchain, SwapchainCreationError},
+    Version,
 };
 
 use vulkano::image::ImageUsage;
@@ -31,7 +32,17 @@ impl Window {
 
         let instance: Arc<Instance> = {
             let extensions = vulkano_win::required_extensions();
-            Instance::new(None, &extensions, None).expect("failed to create Vulkan instance")
+            Instance::new(
+                None,
+                Version {
+                    major: 1,
+                    minor: 0,
+                    patch: 0,
+                },
+                &extensions,
+                None,
+            )
+            .expect("failed to create Vulkan instance")
         };
 
         let cloned_instance = instance.clone();
