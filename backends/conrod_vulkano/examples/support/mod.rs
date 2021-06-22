@@ -5,30 +5,44 @@ use vulkano::{
     format::Format,
     image::SwapchainImage,
     instance::{Instance, PhysicalDevice},
-    swapchain::{
-        ColorSpace, PresentMode, Surface, SurfaceTransform, Swapchain, SwapchainCreationError,
-    },
+    swapchain::{ColorSpace, Surface, Swapchain, SwapchainCreationError},
+    Version,
 };
 
+use vulkano::image::ImageUsage;
 use vulkano_win::{self, VkSurfaceBuild};
-use winit::{self, EventsLoop};
 
 pub struct Window {
-    pub surface: Arc<Surface<winit::Window>>,
-    pub swapchain: Arc<Swapchain<winit::Window>>,
+    pub surface: Arc<Surface<winit::window::Window>>,
+    pub swapchain: Arc<Swapchain<winit::window::Window>>,
     pub queue: Arc<Queue>,
     pub device: Arc<Device>,
-    pub images: Vec<Arc<SwapchainImage<winit::Window>>>,
+    pub images: Vec<Arc<SwapchainImage<winit::window::Window>>>,
 }
 
 impl Window {
-    pub fn new(width: u32, height: u32, title: &str, events_loop: &EventsLoop) -> Self {
+    pub fn new<T>(
+        width: u32,
+        height: u32,
+        title: &str,
+        event_loop: &winit::event_loop::EventLoop<T>,
+    ) -> Self {
         let size = winit::dpi::LogicalSize::new(width as f64, height as f64);
         let (width, height): (u32, u32) = size.into();
 
         let instance: Arc<Instance> = {
             let extensions = vulkano_win::required_extensions();
-            Instance::new(None, &extensions, None).expect("failed to create Vulkan instance")
+            Instance::new(
+                None,
+                Version {
+                    major: 1,
+                    minor: 0,
+                    patch: 0,
+                },
+                &extensions,
+                None,
+            )
+            .expect("failed to create Vulkan instance")
         };
 
         let cloned_instance = instance.clone();
@@ -38,11 +52,10 @@ impl Window {
                 .next()
                 .expect("no device available");
 
-        let surface = winit::WindowBuilder::new()
-            .with_dimensions(size)
-            .with_resizable(false)
+        let surface = winit::window::WindowBuilder::new()
+            .with_inner_size(size)
             .with_title(title)
-            .build_vk_surface(events_loop, instance.clone())
+            .build_vk_surface(event_loop, instance.clone())
             .unwrap();
 
         let queue = physical
@@ -72,7 +85,7 @@ impl Window {
                 .expect("failed to get surface capabilities");
 
             let surface_dimensions = caps.current_extent.unwrap_or([width, height]);
-            let alpha = caps.supported_composite_alpha.iter().next().unwrap();
+            let _alpha = caps.supported_composite_alpha.iter().next().unwrap();
             let format = caps
                 .supported_formats
                 .iter()
@@ -82,22 +95,15 @@ impl Window {
                 .expect("failed to find sRGB format");
 
             (
-                Swapchain::new(
-                    device.clone(),
-                    surface.clone(),
-                    caps.min_image_count,
-                    format,
-                    surface_dimensions,
-                    1,
-                    caps.supported_usage_flags,
-                    &queue,
-                    SurfaceTransform::Identity,
-                    alpha,
-                    PresentMode::Fifo,
-                    true,
-                    None,
-                )
-                .expect("failed to create swapchain"),
+                Swapchain::start(device.clone(), surface.clone())
+                    .num_images(caps.min_image_count)
+                    .format(format)
+                    .dimensions(surface_dimensions)
+                    .usage(ImageUsage::color_attachment())
+                    .sharing_mode(&queue)
+                    .composite_alpha(caps.supported_composite_alpha.iter().next().unwrap())
+                    .build()
+                    .expect("failed to create swapchain"),
                 surface_dimensions,
             )
         };
@@ -112,12 +118,7 @@ impl Window {
     }
 
     pub fn get_dimensions(&self) -> Option<(u32, u32)> {
-        let inner_size = self
-            .surface
-            .window()
-            .get_inner_size()
-            .unwrap()
-            .to_physical(self.surface.window().get_hidpi_factor());
+        let inner_size = self.surface.window().inner_size();
         Some(inner_size.into())
     }
 
@@ -129,9 +130,8 @@ impl Window {
             .expect("failed to get surface capabilities")
             .current_extent
             .unwrap();
-
         let (new_swapchain, new_images) =
-            match self.swapchain.recreate_with_dimension(new_dimensions) {
+            match self.swapchain.recreate().dimensions(new_dimensions).build() {
                 Ok(r) => r,
                 // This error tends to happen when the user is manually resizing the window.
                 // Simply restarting the loop is the easiest way to fix this issue.
@@ -148,15 +148,15 @@ impl Window {
 // functions.
 impl conrod_winit::WinitWindow for Window {
     fn get_inner_size(&self) -> Option<(u32, u32)> {
-        winit::Window::get_inner_size(self.surface.window()).map(Into::into)
+        Some(winit::window::Window::inner_size(self.surface.window()).into())
     }
     fn hidpi_factor(&self) -> f32 {
-        winit::Window::get_hidpi_factor(self.surface.window()) as _
+        winit::window::Window::scale_factor(self.surface.window()) as _
     }
 }
 
 // Generate the winit <-> conrod type conversion fns.
-conrod_winit::conversion_fns!();
+conrod_winit::v023_conversion_fns!();
 
 pub fn format_is_srgb(format: Format) -> bool {
     use vulkano::format::Format::*;

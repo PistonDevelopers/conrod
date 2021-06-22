@@ -1,46 +1,36 @@
 //! A demonstration of using `winit` to provide events and `vulkano` to draw the UI.
-
-#![allow(unused_variables)]
-
-extern crate conrod_core;
-extern crate conrod_example_shared;
-extern crate conrod_vulkano;
-extern crate conrod_winit;
-extern crate find_folder;
-extern crate image;
-#[macro_use]
-extern crate vulkano;
-extern crate vulkano_win;
-extern crate winit;
-
-mod support;
-
 use conrod_example_shared::{WIN_H, WIN_W};
+
+use vulkano::image::{AttachmentImage, MipmapsCount};
+
+use vulkano::swapchain::AcquireError;
+
+use conrod_vulkano::Image as VulkanoGuiImage;
+use conrod_vulkano::Renderer;
+use conrod_winit::WinitWindow;
 use std::sync::Arc;
-use vulkano::{
-    command_buffer::AutoCommandBufferBuilder,
-    format::{D16Unorm, Format},
-    framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract},
-    image::AttachmentImage,
-    swapchain,
-    swapchain::AcquireError,
-    sync::{FenceSignalFuture, GpuFuture},
-};
+use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, SubpassContents};
+use vulkano::format::Format;
+use vulkano::image::view::ImageView;
 
-use conrod_vulkano::{Image as VulkanoGuiImage, Renderer};
+use vulkano::render_pass::Framebuffer;
+use vulkano::render_pass::{FramebufferAbstract, RenderPass};
+use vulkano::single_pass_renderpass;
+use vulkano::sync::GpuFuture;
+use winit::event;
 
-type DepthFormat = D16Unorm;
-const DEPTH_FORMAT_TY: DepthFormat = D16Unorm;
+use winit::event::{ElementState, KeyboardInput, VirtualKeyCode};
+use winit::event_loop::ControlFlow;
+
+conrod_winit::v023_conversion_fns!();
+mod support;
 const DEPTH_FORMAT: Format = Format::D16Unorm;
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
-
 fn main() {
-    let mut events_loop = winit::EventsLoop::new();
-    let mut window = support::Window::new(WIN_W, WIN_H, "Conrod with vulkano", &events_loop);
-
+    let event_loop = winit::event_loop::EventLoop::new();
+    let mut window = support::Window::new(WIN_W, WIN_H, "Conrod with vulkno", &event_loop);
     let mut render_target = RenderTarget::new(&window);
-
-    let subpass = vulkano::framebuffer::Subpass::from(render_target.render_pass.clone(), 0)
+    let subpass = vulkano::render_pass::Subpass::from(render_target.render_pass.clone(), 0)
         .expect("Couldn't create subpass for gui!");
     let queue = window.queue.clone();
     let mut renderer = Renderer::new(
@@ -48,41 +38,35 @@ fn main() {
         subpass,
         queue.family(),
         [WIN_W, WIN_H],
-        window.surface.window().get_hidpi_factor() as f64,
+        window.surface.window().scale_factor(),
     )
     .unwrap();
-
-    // Create Ui and Ids of widgets to instantiate
     let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
         .theme(conrod_example_shared::theme())
         .build();
     let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
-
-    // Load font from file
     let assets = find_folder::Search::KidsThenParents(3, 5)
         .for_folder("assets")
         .unwrap();
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
-
-    // Load the Rust logo from our assets folder to use as an example image.
     let logo_path = assets.join("images/rust.png");
     let rgba_logo_image = image::open(logo_path)
         .expect("Couldn't load logo")
-        .to_rgba();
+        .to_rgba8();
     let logo_dimensions = rgba_logo_image.dimensions();
-
     let (logo_texture, logo_texture_future) = vulkano::image::immutable::ImmutableImage::from_iter(
         rgba_logo_image.into_raw().clone().iter().cloned(),
-        vulkano::image::Dimensions::Dim2d {
+        vulkano::image::ImageDimensions::Dim2d {
             width: logo_dimensions.0,
             height: logo_dimensions.1,
+            array_layers: 1,
         },
+        MipmapsCount::One,
         vulkano::format::Format::R8G8B8A8Srgb,
         window.queue.clone(),
     )
     .expect("Couldn't create vulkan texture for logo");
-
     let logo = VulkanoGuiImage {
         image_access: logo_texture,
         width: logo_dimensions.0,
@@ -90,167 +74,173 @@ fn main() {
     };
     let mut image_map = conrod_core::image::Map::new();
     let rust_logo = image_map.insert(logo);
-
     // Demonstration app state that we'll control with our conrod GUI.
     let mut app = conrod_example_shared::DemoApp::new(rust_logo);
 
     // Keep track of the previous frame so we can wait for it to complete before presenting a new
     // one. This should make sure the CPU never gets ahead of the presentation of frames, which can
     // cause high user-input latency and synchronisation strange bugs.
-    let mut previous_frame_end: Option<FenceSignalFuture<_>> = None;
 
-    // Wait for the logo to load onto the GPU before we begin our main loop.
     logo_texture_future
         .then_signal_fence_and_flush()
         .expect("failed to signal fence and flush logo future")
         .wait(None)
         .expect("failed to wait for logo texture to load");
-
-    'main: loop {
-        // If the window is closed, this will be None for one tick, so to avoid panicking with
-        // unwrap, instead break the loop
-        let (win_w, win_h) = match window.get_dimensions() {
-            Some(s) => s,
-            None => break 'main,
-        };
-
-        if let Some(primitives) = ui.draw_if_changed() {
-            let (image_num, acquire_future) =
-                match swapchain::acquire_next_image(window.swapchain.clone(), None) {
-                    Ok(r) => r,
-                    Err(AcquireError::OutOfDate) => {
-                        window.handle_resize();
-                        render_target.handle_resize(&mut window);
-                        continue;
-                    }
-                    Err(err) => panic!("{:?}", err),
-                };
-
-            let mut command_buffer_builder = AutoCommandBufferBuilder::primary_one_time_submit(
-                window.device.clone(),
-                window.queue.family(),
-            )
-            .expect("Failed to create AutoCommandBufferBuilder");
-
-            let viewport = [0.0, 0.0, win_w as f32, win_h as f32];
-            let dpi_factor = window.surface.window().get_hidpi_factor() as f64;
-            if let Some(cmd) = renderer
-                .fill(&image_map, viewport, dpi_factor, primitives)
-                .unwrap()
-            {
-                let buffer = cmd
-                    .glyph_cpu_buffer_pool
-                    .chunk(cmd.glyph_cache_pixel_buffer.iter().cloned())
-                    .unwrap();
-                command_buffer_builder = command_buffer_builder
-                    .copy_buffer_to_image(buffer, cmd.glyph_cache_texture)
-                    .expect("failed to submit command for caching glyph");
-            }
-
-            let mut command_buffer_builder = command_buffer_builder
-                .begin_render_pass(
-                    render_target.framebuffers[image_num].clone(),
-                    false,
-                    vec![CLEAR_COLOR.into(), 1f32.into()],
-                ) // Info: We need to clear background AND depth buffer here!
-                .expect("Failed to begin render pass!");
-
-            let draw_cmds = renderer
-                .draw(
-                    window.queue.clone(),
-                    &image_map,
-                    [0.0, 0.0, win_w as f32, win_h as f32],
-                )
-                .unwrap();
-            for cmd in draw_cmds {
-                let conrod_vulkano::DrawCommand {
-                    graphics_pipeline,
-                    dynamic_state,
-                    vertex_buffer,
-                    descriptor_set,
-                } = cmd;
-                command_buffer_builder = command_buffer_builder
-                    .draw(
-                        graphics_pipeline,
-                        &dynamic_state,
-                        vec![vertex_buffer],
-                        descriptor_set,
-                        (),
-                    )
-                    .expect("failed to submit draw command");
-            }
-
-            let command_buffer = command_buffer_builder
-                .end_render_pass()
-                .unwrap()
-                .build()
-                .unwrap();
-
-            // Wait for the previous frame to finish presentation.
-            if let Some(prev_frame) = previous_frame_end.take() {
-                prev_frame
-                    .wait(None)
-                    .expect("failed to wait for presentation of previous frame");
-            }
-
-            let future_result = acquire_future
-                .then_execute(window.queue.clone(), command_buffer)
-                .expect("failed to join previous frame with new one")
-                .then_swapchain_present(window.queue.clone(), window.swapchain.clone(), image_num)
-                .then_signal_fence_and_flush();
-
-            // Hold onto the future representing the presentation of this frame.
-            // We'll wait for it before we present the next one.
-            if let Ok(future) = future_result {
-                previous_frame_end = Some(future);
-            }
+    let sixteen_ms = std::time::Duration::from_millis(16);
+    let mut next_update = None;
+    let mut ui_update_needed = false;
+    event_loop.run(move |event, _, control_flow| {
+        if let Some(event) = convert_event(&event, window.surface.window()) {
+            ui.handle_event(event);
+            ui_update_needed = true;
         }
-
-        let mut should_quit = false;
-
-        events_loop.poll_events(|event| {
-            // Convert winit event to conrod event.
-            // Function generated by `conrod_winit::conversion_fns` in `support` module.
-            if let Some(event) = support::convert_event(event.clone(), &window) {
-                ui.handle_event(event);
-            }
-
-            // Close window if the escape key or the exit button is pressed
-            match event {
-                winit::Event::WindowEvent {
-                    event:
-                        winit::WindowEvent::KeyboardInput {
-                            input:
-                                winit::KeyboardInput {
-                                    virtual_keycode: Some(winit::VirtualKeyCode::Escape),
-                                    ..
-                                },
+        match &event {
+            // Recreate swapchain when window is resized.
+            event::Event::WindowEvent { event, .. } => match event {
+                event::WindowEvent::Resized(_new_size) => {
+                    window.handle_resize();
+                    render_target.handle_resize(&window);
+                    return;
+                }
+                event::WindowEvent::CloseRequested
+                | event::WindowEvent::KeyboardInput {
+                    input:
+                        KeyboardInput {
+                            state: ElementState::Pressed,
+                            virtual_keycode: Some(VirtualKeyCode::Escape),
                             ..
                         },
                     ..
+                } => {
+                    *control_flow = ControlFlow::Exit;
+                    return;
                 }
-                | winit::Event::WindowEvent {
-                    event: winit::WindowEvent::CloseRequested,
-                    ..
-                } => should_quit = true,
                 _ => {}
+            },
+            _ => {}
+        }
+
+        let (win_w, win_h) = match window.get_dimensions() {
+            Some(s) => s,
+            None => return,
+        };
+        let should_set_ui_on_main_events_cleared = next_update.is_none() && ui_update_needed;
+        match (&event, should_set_ui_on_main_events_cleared) {
+            (event::Event::NewEvents(event::StartCause::Init { .. }), _)
+            | (event::Event::NewEvents(event::StartCause::ResumeTimeReached { .. }), _)
+            | (event::Event::MainEventsCleared, true) => {
+                next_update = Some(std::time::Instant::now() + sixteen_ms);
+                ui_update_needed = false;
+
+                // Instantiate a GUI demonstrating every widget type provided by conrod.
+                conrod_example_shared::gui(&mut ui.set_widgets(), &ids, &mut app);
+
+                if ui.has_changed() {
+                    // If the view has changed at all, request a redraw.
+                    window.surface.window().request_redraw();
+                } else {
+                    // We don't need to update the UI anymore until more events arrives.
+                    next_update = None;
+                }
             }
-        });
-        if should_quit {
-            break 'main;
+            _ => (),
+        }
+        if let Some(next_update) = next_update {
+            *control_flow = ControlFlow::WaitUntil(next_update);
+        } else {
+            *control_flow = ControlFlow::Wait;
         }
 
-        // Update widgets if any event has happened
-        if ui.global_input().events().next().is_some() {
-            let mut ui = ui.set_widgets();
-            conrod_example_shared::gui(&mut ui, &ids, &mut app);
+        match &event {
+            event::Event::RedrawRequested(_) => {
+                let primitives = ui.draw();
+                let (image_num, sub_optimal, acquire_future) =
+                    match vulkano::swapchain::acquire_next_image(window.swapchain.clone(), None) {
+                        Ok(r) => r,
+                        Err(AcquireError::OutOfDate) => {
+                            window.handle_resize();
+                            render_target.handle_resize(&mut window);
+                            return;
+                        }
+                        Err(err) => panic!("{:?}", err),
+                    };
+                if sub_optimal {
+                    return;
+                }
+                //begin the render pass and add the draw command
+                {
+                    let mut command_buffer_builder = AutoCommandBufferBuilder::primary(
+                        window.device.clone(),
+                        window.queue.family(),
+                        CommandBufferUsage::OneTimeSubmit,
+                    )
+                    .expect("Failed to create AutoCommandBufferBuilder");
+                    let viewport = [0.0, 0.0, win_w as f32, win_h as f32];
+
+                    let dpi_factor = window.hidpi_factor() as f64;
+                    if let Some(cmd) = renderer
+                        .fill(&image_map, viewport, dpi_factor, primitives)
+                        .unwrap()
+                    {
+                        let buffer = cmd
+                            .glyph_cpu_buffer_pool
+                            .chunk(cmd.glyph_cache_pixel_buffer.iter().cloned())
+                            .unwrap();
+                        command_buffer_builder
+                            .copy_buffer_to_image(buffer, cmd.glyph_cache_texture)
+                            .expect("failed to submit command for caching glyph");
+                    }
+                    command_buffer_builder
+                        .begin_render_pass(
+                            render_target.framebuffers[image_num].clone(),
+                            SubpassContents::Inline,
+                            vec![CLEAR_COLOR.into(), 1f32.into()],
+                        )
+                        .unwrap();
+                    let draw_cmds = renderer
+                        .draw(window.queue.clone(), &image_map, viewport)
+                        .unwrap();
+                    for cmd in draw_cmds {
+                        let conrod_vulkano::DrawCommand {
+                            graphics_pipeline,
+                            dynamic_state,
+                            vertex_buffer,
+                            descriptor_set,
+                        } = cmd;
+                        command_buffer_builder
+                            .draw(
+                                graphics_pipeline,
+                                &dynamic_state,
+                                vec![vertex_buffer],
+                                descriptor_set,
+                                (),
+                                vec![],
+                            )
+                            .expect("failed to submit draw command");
+                    }
+                    command_buffer_builder.end_render_pass().unwrap();
+                    let command_buffer = command_buffer_builder.build().unwrap();
+                    if let Ok(future) =
+                        acquire_future.then_execute(window.queue.clone(), command_buffer)
+                    {
+                        let _ = future
+                            .then_swapchain_present(
+                                window.queue.clone(),
+                                window.swapchain.clone(),
+                                image_num,
+                            )
+                            .then_signal_fence_and_flush()
+                            .and_then(|future| future.wait(None));
+                    }
+                }
+            }
+            _ => {}
         }
-    }
+    });
 }
-
 pub struct RenderTarget {
-    depth_buffer: Arc<AttachmentImage<D16Unorm>>,
-    render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
+    depth_buffer: Arc<AttachmentImage>,
+    render_pass: Arc<RenderPass>,
     framebuffers: Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
 }
 
@@ -261,7 +251,7 @@ impl RenderTarget {
             .expect("couldn't get window dimensions");
         let win_dims = [win_w, win_h];
         let device = window.device.clone();
-        let depth_buffer = AttachmentImage::transient(device, win_dims, DEPTH_FORMAT_TY).unwrap();
+        let depth_buffer = AttachmentImage::transient(device, win_dims, DEPTH_FORMAT).unwrap();
 
         let render_pass = Arc::new(
             single_pass_renderpass!(window.device.clone(),
@@ -304,8 +294,7 @@ impl RenderTarget {
         let win_dims = [win_w, win_h];
         let device = window.device.clone();
         if fb_w != win_w || fb_h != win_h {
-            self.depth_buffer =
-                AttachmentImage::transient(device, win_dims, DEPTH_FORMAT_TY).unwrap();
+            self.depth_buffer = AttachmentImage::transient(device, win_dims, DEPTH_FORMAT).unwrap();
             self.framebuffers =
                 create_framebuffers(window, self.render_pass.clone(), self.depth_buffer.clone());
         }
@@ -314,16 +303,17 @@ impl RenderTarget {
 
 fn create_framebuffers(
     window: &support::Window,
-    render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
-    depth_buffer: Arc<AttachmentImage<D16Unorm>>,
+    render_pass: Arc<RenderPass>,
+    depth_buffer: Arc<AttachmentImage>,
 ) -> Vec<Arc<dyn FramebufferAbstract + Send + Sync>> {
+    let depth_buffer = ImageView::new(depth_buffer.clone()).unwrap();
     window
         .images
         .iter()
         .map(|image| {
             Arc::new(
                 Framebuffer::start(render_pass.clone())
-                    .add(image.clone())
+                    .add(ImageView::new(image.clone()).unwrap())
                     .unwrap()
                     .add(depth_buffer.clone())
                     .unwrap()
