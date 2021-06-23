@@ -815,14 +815,6 @@ impl From<gfx::PipelineStateError<String>> for RendererCreationError {
     }
 }
 
-impl std::error::Error for RendererCreationError {
-    fn description(&self) -> &str {
-        match *self {
-            RendererCreationError::PipelineState(ref e) => std::error::Error::description(e),
-        }
-    }
-}
-
 impl std::fmt::Display for RendererCreationError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         match *self {
