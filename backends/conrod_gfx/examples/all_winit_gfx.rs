@@ -12,60 +12,59 @@ extern crate conrod_winit;
 extern crate find_folder;
 extern crate gfx;
 extern crate gfx_core;
-extern crate gfx_window_glutin;
+extern crate gfx_device_gl;
 extern crate glutin;
 extern crate image;
+extern crate old_school_gfx_glutin_ext;
 extern crate winit;
 
 use conrod_example_shared::{WIN_H, WIN_W};
+use gfx::format::Formatted;
 use gfx::Device;
+use old_school_gfx_glutin_ext::*;
 
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
 
 type DepthFormat = gfx::format::DepthStencil;
 
-// A wrapper around the winit window that allows us to implement the trait necessary for enabling
-// the winit <-> conrod conversion functions.
-struct WindowRef<'a>(&'a winit::Window);
+fn get_window_dimensions(
+    ctx: &glutin::WindowedContext<glutin::PossiblyCurrent>,
+) -> gfx::texture::Dimensions {
+    let window = ctx.window();
+    let (width, height) = {
+        let size = window.inner_size();
+        (size.width as _, size.height as _)
+    };
+    let aa = ctx.get_pixel_format().multisampling.unwrap_or(0) as gfx::texture::NumSamples;
 
-// Implement the `WinitWindow` trait for `WindowRef` to allow for generating compatible conversion
-// functions.
-impl<'a> conrod_winit::WinitWindow for WindowRef<'a> {
-    fn get_inner_size(&self) -> Option<(u32, u32)> {
-        winit::Window::get_inner_size(&self.0).map(Into::into)
-    }
-    fn hidpi_factor(&self) -> f32 {
-        winit::Window::get_hidpi_factor(&self.0) as _
-    }
+    (width, height, 1, aa.into())
 }
 
 // Generate the winit <-> conrod_core type conversion fns.
-conrod_winit::conversion_fns!();
+conrod_winit::v023_conversion_fns!();
 
 fn main() {
     // Builder for window
-    let builder = glutin::WindowBuilder::new()
+    let builder = glutin::window::WindowBuilder::new()
         .with_title("Conrod with GFX and Glutin")
-        .with_dimensions((WIN_W, WIN_H).into());
+        .with_inner_size(glutin::dpi::Size::new(glutin::dpi::PhysicalSize::new(
+            WIN_W, WIN_H,
+        )));
 
     let context = glutin::ContextBuilder::new().with_multisampling(4);
 
-    let mut events_loop = winit::EventsLoop::new();
+    let event_loop = winit::event_loop::EventLoop::new();
 
     // Initialize gfx things
-    let (context, mut device, mut factory, rtv, _) = gfx_window_glutin::init::<
-        conrod_gfx::ColorFormat,
-        DepthFormat,
-    >(builder, context, &events_loop)
-    .unwrap();
+    let (context, mut device, mut factory, rtv, _) = context
+        .build_windowed(builder, &event_loop)
+        .unwrap()
+        .init_gfx::<conrod_gfx::ColorFormat, DepthFormat>();
+
     let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
 
-    let mut renderer = conrod_gfx::Renderer::new(
-        &mut factory,
-        &rtv,
-        context.window().get_hidpi_factor() as f64,
-    )
-    .unwrap();
+    let mut renderer =
+        conrod_gfx::Renderer::new(&mut factory, &rtv, context.window().scale_factor()).unwrap();
 
     // Create Ui and Ids of widgets to instantiate
     let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
@@ -133,29 +132,20 @@ fn main() {
     // Demonstration app state that we'll control with our conrod GUI.
     let mut app = conrod_example_shared::DemoApp::new(rust_logo);
 
-    'main: loop {
-        // If the window is closed, this will be None for one tick, so to avoid panicking with
-        // unwrap, instead break the loop
-        let (win_w, win_h): (u32, u32) = match context.window().get_inner_size() {
-            Some(s) => s.into(),
-            None => break 'main,
-        };
+    // Gfx dimensions. Tracked for updated_views_raw() call.
+    let mut dimensions = get_window_dimensions(&context);
 
-        let dpi_factor = context.window().get_hidpi_factor() as f32;
+    event_loop.run(move |event, _, control_flow| {
+        let window_size = context.window().inner_size();
+        let dpi_factor = context.window().scale_factor();
 
         if let Some(primitives) = ui.draw_if_changed() {
-            let dims = (win_w as f32 * dpi_factor, win_h as f32 * dpi_factor);
+            let dims = window_size.into();
 
             //Clear the window
             renderer.clear(&mut encoder, CLEAR_COLOR);
 
-            renderer.fill(
-                &mut encoder,
-                dims,
-                dpi_factor as f64,
-                primitives,
-                &image_map,
-            );
+            renderer.fill(&mut encoder, dims, dpi_factor, primitives, &image_map);
 
             renderer.draw(&mut factory, &mut encoder, &image_map);
 
@@ -164,42 +154,39 @@ fn main() {
             device.cleanup();
         }
 
-        let mut should_quit = false;
-        events_loop.poll_events(|event| {
-            // Convert winit event to conrod event, requires conrod to be built with the `winit` feature
-            if let Some(event) = convert_event(event.clone(), &WindowRef(context.window())) {
-                ui.handle_event(event);
-            }
+        // Convert winit event to conrod event, requires conrod to be built with the `winit` feature
+        if let Some(event) = convert_event(&event, &context.window()) {
+            ui.handle_event(event);
+        }
 
-            // Close window if the escape key or the exit button is pressed
-            match event {
-                winit::Event::WindowEvent { event, .. } => match event {
-                    winit::WindowEvent::KeyboardInput {
-                        input:
-                            winit::KeyboardInput {
-                                virtual_keycode: Some(winit::VirtualKeyCode::Escape),
-                                ..
-                            },
-                        ..
+        // Close window if the escape key or the exit button is pressed
+        match event {
+            winit::event::Event::WindowEvent { event, .. } => match event {
+                winit::event::WindowEvent::KeyboardInput {
+                    input:
+                        winit::event::KeyboardInput {
+                            virtual_keycode: Some(winit::event::VirtualKeyCode::Escape),
+                            ..
+                        },
+                    ..
+                }
+                | winit::event::WindowEvent::CloseRequested => {
+                    *control_flow = glutin::event_loop::ControlFlow::Exit
+                }
+                winit::event::WindowEvent::Resized(physical_size) => {
+                    context.resize(physical_size);
+                    if let Some((new_color, _)) = context.updated_views_raw(
+                        dimensions,
+                        conrod_gfx::ColorFormat::get_format(),
+                        DepthFormat::get_format(),
+                    ) {
+                        renderer.on_resize(gfx::memory::Typed::new(new_color));
+                        dimensions = get_window_dimensions(&context);
                     }
-                    | winit::WindowEvent::CloseRequested => should_quit = true,
-                    winit::WindowEvent::Resized(logical_size) => {
-                        let hidpi_factor = context.window().get_hidpi_factor();
-                        let physical_size = logical_size.to_physical(hidpi_factor);
-                        context.resize(physical_size);
-                        let (new_color, _) = gfx_window_glutin::new_views::<
-                            conrod_gfx::ColorFormat,
-                            DepthFormat,
-                        >(&context);
-                        renderer.on_resize(new_color);
-                    }
-                    _ => {}
-                },
+                }
                 _ => {}
-            }
-        });
-        if should_quit {
-            break 'main;
+            },
+            _ => {}
         }
 
         // Update widgets if any event has happened
@@ -207,5 +194,5 @@ fn main() {
             let mut ui = ui.set_widgets();
             conrod_example_shared::gui(&mut ui, &ids, &mut app);
         }
-    }
+    });
 }
