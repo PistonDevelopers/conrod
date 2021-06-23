@@ -27,7 +27,9 @@ const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
 
 type DepthFormat = gfx::format::DepthStencil;
 
-fn get_window_dimensions(ctx: &glutin::WindowedContext<glutin::PossiblyCurrent>) -> gfx::texture::Dimensions {
+fn get_window_dimensions(
+    ctx: &glutin::WindowedContext<glutin::PossiblyCurrent>,
+) -> gfx::texture::Dimensions {
     let window = ctx.window();
     let (width, height) = {
         let size = window.inner_size();
@@ -143,13 +145,7 @@ fn main() {
             //Clear the window
             renderer.clear(&mut encoder, CLEAR_COLOR);
 
-            renderer.fill(
-                &mut encoder,
-                dims,
-                dpi_factor,
-                primitives,
-                &image_map,
-            );
+            renderer.fill(&mut encoder, dims, dpi_factor, primitives, &image_map);
 
             renderer.draw(&mut factory, &mut encoder, &image_map);
 
