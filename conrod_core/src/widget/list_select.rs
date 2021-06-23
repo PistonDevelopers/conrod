@@ -48,24 +48,24 @@ pub trait Mode {
     /// Update the `PendingEvents` in accordance with the given `Click` event.
     fn click_selection<F, D, S>(
         &self,
-        event::Click,
+        _: event::Click,
         i: usize,
         num_items: usize,
-        &State,
+        _: &State,
         is_selected: F,
-        &mut PendingEvents<Self::Selection, D, S>,
+        _: &mut PendingEvents<Self::Selection, D, S>,
     ) where
         F: Fn(usize) -> bool;
 
     /// Update the `PendingEvents` in accordance with the given `KeyPress` event.
     fn key_selection<F, D, S>(
         &self,
-        event::KeyPress,
+        _: event::KeyPress,
         i: usize,
         num_items: usize,
-        &State,
+        _: &State,
         is_selected: F,
-        &mut PendingEvents<Self::Selection, D, S>,
+        _: &mut PendingEvents<Self::Selection, D, S>,
     ) where
         F: Fn(usize) -> bool,
         D: Direction;
