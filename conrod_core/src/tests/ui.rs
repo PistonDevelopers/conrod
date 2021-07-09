@@ -42,11 +42,9 @@ fn assert_event_was_pushed(ui: &Ui, event: event::Event) {
     let found = ui.global_input().events().find(|evt| **evt == event);
     assert!(
         found.is_some(),
-        format!(
             "expected to find event: {:?} in: \nevents: {:?}",
             event,
             ui.global_input().events().collect::<Vec<&event::Event>>()
-        )
     );
 }
 
