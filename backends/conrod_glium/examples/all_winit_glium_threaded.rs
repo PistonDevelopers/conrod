@@ -71,6 +71,7 @@ fn main() {
         render_tx: std::sync::mpsc::Sender<conrod_core::render::OwnedPrimitives>,
         events_loop_proxy: glium::glutin::event_loop::EventLoopProxy<()>,
     ) {
+        let mut user_input =("Editable text!".to_string(),"Multiple lines of \neditable text!".to_string());
         // Construct our `Ui`.
         let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
             .theme(conrod_example_shared::theme())
@@ -116,7 +117,7 @@ fn main() {
             }
 
             // Instantiate a GUI demonstrating every widget type provided by conrod.
-            conrod_example_shared::gui(&mut ui.set_widgets(), &ids, &mut app);
+            user_input = conrod_example_shared::gui(&mut ui.set_widgets(), &ids, &mut app, &mut user_input.0, &mut user_input.1);
 
             // Render the `Ui` to a list of primitives that we can send to the main thread for
             // display. Wakeup `winit` for rendering.

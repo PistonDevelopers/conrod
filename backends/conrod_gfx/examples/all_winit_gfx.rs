@@ -50,6 +50,7 @@ fn main() {
         .with_inner_size(glutin::dpi::Size::new(glutin::dpi::PhysicalSize::new(
             WIN_W, WIN_H,
         )));
+    let mut user_input =("Editable text!".to_string(),"Multiple lines of \neditable text!".to_string());
 
     let context = glutin::ContextBuilder::new().with_multisampling(4);
 
@@ -192,7 +193,7 @@ fn main() {
         // Update widgets if any event has happened
         if ui.global_input().events().next().is_some() {
             let mut ui = ui.set_widgets();
-            conrod_example_shared::gui(&mut ui, &ids, &mut app);
+            user_input = conrod_example_shared::gui(&mut ui, &ids, &mut app, &mut user_input.0, &mut user_input.1);
         }
     });
 }

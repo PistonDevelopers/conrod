@@ -95,13 +95,19 @@ widget_ids! {
         dialer_title,
         number_dialer,
         plot_path,
+        //user_input
+        text_edit_title,
+        text_box,
+        text_edit,
         // Scrollbar
         canvas_scrollbar,
     }
 }
 
 /// Instantiate a GUI demonstrating every widget available in conrod.
-pub fn gui(ui: &mut conrod_core::UiCell, ids: &Ids, app: &mut DemoApp) {
+pub fn gui(ui: &mut conrod_core::UiCell, ids: &Ids, app: &mut DemoApp,  demo_text:  &String,  demo_text_block:  &String) -> (String, String) {
+    let mut textbox_string = demo_text.to_string();
+    let mut textedit_string = demo_text_block.to_string();
     use conrod_core::{widget, Colorable, Labelable, Positionable, Sizeable, Widget};
     use std::iter::once;
 
@@ -348,6 +354,37 @@ pub fn gui(ui: &mut conrod_core::UiCell, ids: &Ids, app: &mut DemoApp) {
         .align_middle_x_of(ids.canvas)
         .set(ids.plot_path, ui);
 
+    ///////////////////////////
+    ///// user text input /////
+    ///////////////////////////
+    
+    widget::Text::new("Editable text widgets")
+        .down_from(ids.plot_path, 50.0)
+        .align_middle_x_of(ids.canvas)
+        .font_size(SUBTITLE_SIZE)
+        .set(ids.text_edit_title, ui);    
+
+    for text_box in conrod_core::widget::text_box::TextBox::new(&demo_text)
+        .down_from(ids.text_edit_title, 20.0)
+        .center_justify()
+        .set(ids.text_box, ui)
+        {
+                textbox_string = match &text_box{
+                    conrod_core::widget::text_box::Event::Update(textbox_string) => textbox_string.to_string(),
+                    _none => {demo_text.to_string()}
+                };
+        }
+
+    for text_edit in widget::TextEdit::new(&demo_text_block)
+        .center_justify()
+        //.line_spacing(2.5)
+        .restrict_to_height(false)
+        .down_from(ids.text_box, 50.0)
+        .set(ids.text_edit, ui)
+        {
+            textedit_string = text_edit;
+        }
+
     /////////////////////
     ///// Scrollbar /////
     /////////////////////
@@ -355,4 +392,6 @@ pub fn gui(ui: &mut conrod_core::UiCell, ids: &Ids, app: &mut DemoApp) {
     widget::Scrollbar::y_axis(ids.canvas)
         .auto_hide(true)
         .set(ids.canvas_scrollbar, ui);
+
+(textbox_string.to_string(), textedit_string.to_string())
 }

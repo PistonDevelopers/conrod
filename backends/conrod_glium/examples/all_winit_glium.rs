@@ -24,6 +24,8 @@ fn main() {
         .with_multisampling(4);
     let display = glium::Display::new(window, context, &event_loop).unwrap();
 
+    let mut user_input =("Editable text!".to_string(),"Multiple lines of \neditable text!".to_string());
+
     // Construct our `Ui`.
     let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
         .theme(conrod_example_shared::theme())
@@ -111,7 +113,7 @@ fn main() {
             }
             support::Request::SetUi { needs_redraw } => {
                 // Instantiate a GUI demonstrating every widget type provided by conrod.
-                conrod_example_shared::gui(&mut ui.set_widgets(), &ids, &mut app);
+                user_input = conrod_example_shared::gui(&mut ui.set_widgets(), &ids, &mut app, &mut user_input.0, &mut user_input.1);
 
                 *needs_redraw = ui.has_changed();
             }

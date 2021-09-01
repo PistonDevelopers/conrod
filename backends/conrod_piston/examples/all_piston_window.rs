@@ -14,6 +14,7 @@ use self::piston_window::{PistonWindow, UpdateEvent, Window, WindowSettings};
 pub fn main() {
     const WIDTH: u32 = conrod_example_shared::WIN_W;
     const HEIGHT: u32 = conrod_example_shared::WIN_H;
+    let mut user_input =("Editable text!".to_string(),"Multiple lines of \neditable text!".to_string());
 
     // Construct the window.
     let mut window: PistonWindow =
@@ -93,7 +94,7 @@ pub fn main() {
 
         event.update(|_| {
             let mut ui = ui.set_widgets();
-            conrod_example_shared::gui(&mut ui, &ids, &mut app);
+            user_input = conrod_example_shared::gui(&mut ui, &ids, &mut app, &mut user_input.0, &mut user_input.1);
         });
 
         window.draw_2d(&event, |context, graphics, device| {
