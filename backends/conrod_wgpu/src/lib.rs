@@ -161,8 +161,8 @@ impl Renderer {
         let mesh = Mesh::with_glyph_cache_dimensions(glyph_cache_dims);
 
         // Load shader modules.
-        let vs_mod = device.create_shader_module(&wgpu::include_spirv!("shaders/vert.spv"));
-        let fs_mod = device.create_shader_module(&wgpu::include_spirv!("shaders/frag.spv"));
+        let vs_mod = device.create_shader_module(&wgpu::include_wgsl!("shaders/vert.wgsl"));
+        let fs_mod = device.create_shader_module(&wgpu::include_wgsl!("shaders/frag.wgsl"));
 
         // Create the glyph cache texture.
         let glyph_cache_tex_desc = glyph_cache_tex_desc(glyph_cache_dims);
@@ -337,7 +337,7 @@ impl Renderer {
         // Prepare a single vertex buffer containing all vertices for all geometry.
         let vertices = mesh.vertices();
         let vertices_bytes = vertices_as_bytes(vertices);
-        let usage = wgpu::BufferUsage::VERTEX;
+        let usage = wgpu::BufferUsages::VERTEX;
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("conrod_buffer_init_descriptor"),
             contents: vertices_bytes,
@@ -438,7 +438,7 @@ impl Renderer {
 impl<'a> GlyphCacheCommand<'a> {
     /// Creates a buffer on the GPU loaded with the updated pixel data.
     ///
-    /// Created with `BufferUsage::COPY_SRC`, ready to be copied to the texture.
+    /// Created with `BufferUsages::COPY_SRC`, ready to be copied to the texture.
     ///
     /// TODO: In the future, we should consider re-using the same buffer and writing to it via
     /// `Buffer::map_write_async`. When asking about how to ensure that the write completes before
@@ -451,7 +451,7 @@ impl<'a> GlyphCacheCommand<'a> {
         device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("conrod_buffer_init_descriptor"),
             contents: &self.glyph_cache_pixel_buffer,
-            usage: wgpu::BufferUsage::COPY_SRC,
+            usage: wgpu::BufferUsages::COPY_SRC,
         })
     }
 
@@ -473,6 +473,7 @@ impl<'a> GlyphCacheCommand<'a> {
             texture: &self.glyph_cache_texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
         }
     }
 
@@ -514,7 +515,7 @@ fn glyph_cache_tex_desc([width, height]: [u32; 2]) -> wgpu::TextureDescriptor<'s
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: GLYPH_TEX_FORMAT,
-        usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
     }
 }
 
@@ -534,7 +535,7 @@ fn default_image_tex_desc() -> wgpu::TextureDescriptor<'static> {
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: DEFAULT_IMAGE_TEX_FORMAT,
-        usage: wgpu::TextureUsage::SAMPLED,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING,
     }
 }
 
@@ -561,7 +562,7 @@ fn bind_group_layout(
 ) -> wgpu::BindGroupLayout {
     let glyph_cache_texture_binding = wgpu::BindGroupLayoutEntry {
         binding: 0,
-        visibility: wgpu::ShaderStage::FRAGMENT,
+        visibility: wgpu::ShaderStages::FRAGMENT,
         ty: wgpu::BindingType::Texture {
             multisampled: false,
             sample_type: GLYPH_TEX_FORMAT.describe().sample_type,
@@ -571,7 +572,7 @@ fn bind_group_layout(
     };
     let sampler_binding = wgpu::BindGroupLayoutEntry {
         binding: 1,
-        visibility: wgpu::ShaderStage::FRAGMENT,
+        visibility: wgpu::ShaderStages::FRAGMENT,
         ty: wgpu::BindingType::Sampler {
             filtering: true,
             comparison: false,
@@ -580,7 +581,7 @@ fn bind_group_layout(
     };
     let image_texture_binding = wgpu::BindGroupLayoutEntry {
         binding: 2,
-        visibility: wgpu::ShaderStage::FRAGMENT,
+        visibility: wgpu::ShaderStages::FRAGMENT,
         ty: wgpu::BindingType::Texture {
             multisampled: false,
             sample_type: img_tex_component_ty,
@@ -707,12 +708,12 @@ fn render_pipeline(
                 operation: wgpu::BlendOperation::Add,
             },
         }),
-        write_mask: wgpu::ColorWrite::ALL,
+        write_mask: wgpu::ColorWrites::ALL,
     };
     let vertex_attrs = vertex_attrs();
     let vertex_buffer_desc = wgpu::VertexBufferLayout {
         array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
-        step_mode: wgpu::InputStepMode::Vertex,
+        step_mode: wgpu::VertexStepMode::Vertex,
         attributes: &vertex_attrs[..],
     };
     let vertex_state = wgpu::VertexState {

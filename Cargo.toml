@@ -11,3 +11,6 @@ members = [
     "backends/conrod_vulkano",
     "backends/conrod_wgpu",
 ]
+
+# wgpu requires this feature resolver version.
+resolver = "2"

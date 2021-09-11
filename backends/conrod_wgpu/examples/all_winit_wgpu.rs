@@ -15,7 +15,7 @@ const MSAA_SAMPLES: u32 = 4;
 fn main() {
     let event_loop = EventLoop::new();
 
-    let backends = wgpu::BackendBit::PRIMARY;
+    let backends = wgpu::Backends::PRIMARY;
     let instance = wgpu::Instance::new(backends);
 
     // Create the window and surface.
@@ -39,8 +39,9 @@ fn main() {
         power_preference: wgpu::PowerPreference::default(),
         compatible_surface: Some(&surface),
     };
+
     let adapter = futures::executor::block_on(instance.request_adapter(&adapter_opts)).unwrap();
-    let limits = wgpu::Limits::default();
+    let limits = wgpu::Limits::default().using_resolution(adapter.limits());
     let device_desc = wgpu::DeviceDescriptor {
         label: Some("conrod_device_descriptor"),
         features: wgpu::Features::empty(),
@@ -50,22 +51,22 @@ fn main() {
     let (device, mut queue) = futures::executor::block_on(device_request).unwrap();
 
     // Create the swapchain.
-    let format = wgpu::TextureFormat::Bgra8UnormSrgb;
-    let mut swap_chain_desc = wgpu::SwapChainDescriptor {
-        usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
+    let format = surface.get_preferred_format(&adapter).unwrap();
+    let mut surface_config = wgpu::SurfaceConfiguration {
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
         format,
         width: size.width,
         height: size.height,
         present_mode: wgpu::PresentMode::Fifo,
     };
-    let mut swap_chain = device.create_swap_chain(&surface, &swap_chain_desc);
+    surface.configure(&device, &surface_config);
 
     // Create the renderer for rendering conrod primitives.
     let mut renderer = conrod_wgpu::Renderer::new(&device, MSAA_SAMPLES, format);
 
     // The intermediary multisampled texture that will be resolved (MSAA).
     let mut multisampled_framebuffer =
-        create_multisampled_framebuffer(&device, &swap_chain_desc, MSAA_SAMPLES);
+        create_multisampled_framebuffer(&device, &surface_config, MSAA_SAMPLES);
 
     // Create Ui and Ids of widgets to instantiate
     let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
@@ -115,11 +116,11 @@ fn main() {
                 // Recreate swapchain when window is resized.
                 event::WindowEvent::Resized(new_size) => {
                     size = *new_size;
-                    swap_chain_desc.width = new_size.width;
-                    swap_chain_desc.height = new_size.height;
-                    swap_chain = device.create_swap_chain(&surface, &swap_chain_desc);
+                    surface_config.width = new_size.width;
+                    surface_config.height = new_size.height;
+                    surface.configure(&device, &surface_config);
                     multisampled_framebuffer =
-                        create_multisampled_framebuffer(&device, &swap_chain_desc, MSAA_SAMPLES);
+                        create_multisampled_framebuffer(&device, &surface_config, MSAA_SAMPLES);
                 }
 
                 // Close on request or on Escape.
@@ -176,7 +177,7 @@ fn main() {
                 let primitives = ui.draw();
 
                 // The window frame that we will draw to.
-                let frame = swap_chain.get_current_frame().unwrap();
+                let frame = surface.get_current_frame().unwrap();
 
                 // Begin encoding commands.
                 let cmd_encoder_desc = wgpu::CommandEncoderDescriptor {
@@ -195,12 +196,16 @@ fn main() {
                     cmd.load_buffer_and_encode(&device, &mut encoder);
                 }
 
+                // Create a view for the surface's texture.
+                let frame_tex_view = frame.output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+
                 // Begin the render pass and add the draw commands.
                 {
+
                     // This condition allows to more easily tweak the MSAA_SAMPLES constant.
                     let (attachment, resolve_target) = match MSAA_SAMPLES {
-                        1 => (&frame.output.view, None),
-                        _ => (&multisampled_framebuffer, Some(&frame.output.view)),
+                        1 => (&frame_tex_view, None),
+                        _ => (&multisampled_framebuffer, Some(&frame_tex_view)),
                     };
                     let color_attachment_desc = wgpu::RenderPassColorAttachment {
                         view: attachment,
@@ -256,12 +261,12 @@ fn main() {
 
 fn create_multisampled_framebuffer(
     device: &wgpu::Device,
-    sc_desc: &wgpu::SwapChainDescriptor,
+    surface_config: &wgpu::SurfaceConfiguration,
     sample_count: u32,
 ) -> wgpu::TextureView {
     let multisampled_texture_extent = wgpu::Extent3d {
-        width: sc_desc.width,
-        height: sc_desc.height,
+        width: surface_config.width,
+        height: surface_config.height,
         depth_or_array_layers: 1,
     };
     let multisampled_frame_descriptor = &wgpu::TextureDescriptor {
@@ -270,8 +275,8 @@ fn create_multisampled_framebuffer(
         mip_level_count: 1,
         sample_count: sample_count,
         dimension: wgpu::TextureDimension::D2,
-        format: sc_desc.format,
-        usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
+        format: surface_config.format,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
     };
     device
         .create_texture(multisampled_frame_descriptor)
@@ -297,7 +302,7 @@ fn create_logo_texture(
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: LOGO_TEXTURE_FORMAT,
-        usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
     });
 
     // Upload the pixel data.
@@ -314,6 +319,7 @@ fn create_logo_texture(
         texture: &logo_tex,
         mip_level: 0,
         origin: wgpu::Origin3d::ZERO,
+        aspect: wgpu::TextureAspect::All,
     };
     let extent = wgpu::Extent3d {
         width: width,
