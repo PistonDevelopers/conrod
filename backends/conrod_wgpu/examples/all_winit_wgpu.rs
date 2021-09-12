@@ -201,7 +201,6 @@ fn main() {
 
                 // Begin the render pass and add the draw commands.
                 {
-
                     // This condition allows to more easily tweak the MSAA_SAMPLES constant.
                     let (attachment, resolve_target) = match MSAA_SAMPLES {
                         1 => (&frame_tex_view, None),
@@ -326,12 +325,7 @@ fn create_logo_texture(
         height: height,
         depth_or_array_layers: 1,
     };
-    let cmd_encoder_desc = wgpu::CommandEncoderDescriptor {
-        label: Some("conrod_upload_image_command_encoder"),
-    };
-    let encoder = device.create_command_encoder(&cmd_encoder_desc);
     queue.write_texture(texture_copy_view, data, data_layout, extent);
-    queue.submit(Some(encoder.finish()));
 
     logo_tex
 }
