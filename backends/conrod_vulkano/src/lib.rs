@@ -1,7 +1,6 @@
 extern crate conrod_core;
 #[macro_use]
 extern crate vulkano;
-extern crate vulkano_shaders;
 
 use std::error::Error as StdError;
 use std::fmt;
@@ -20,22 +19,36 @@ use vulkano::descriptor::descriptor_set::{
     PersistentDescriptorSetError,
 };
 use vulkano::device::*;
-use vulkano::format::*;
-use vulkano::framebuffer::*;
+
+use std::ffi::CString;
+use vulkano::descriptor::descriptor::{
+    DescriptorDesc, DescriptorDescTy, DescriptorImageDesc, DescriptorImageDescArray,
+    DescriptorImageDescDimensions, ShaderStages,
+};
+
+use vulkano::format::Format;
+use vulkano::format::Format::R8Unorm;
+use vulkano::image::view::ImageView;
 use vulkano::image::*;
 use vulkano::instance::QueueFamily;
 use vulkano::memory::DeviceMemoryAllocError;
+use vulkano::pipeline::layout::PipelineLayoutDesc;
+use vulkano::pipeline::shader::{
+    GraphicsShaderType, ShaderInterface, ShaderInterfaceEntry, ShaderModule,
+};
 use vulkano::pipeline::viewport::Scissor;
 use vulkano::pipeline::viewport::Viewport;
 use vulkano::pipeline::*;
+use vulkano::render_pass::Subpass;
 use vulkano::sampler::*;
+use vulkano::sync::GpuFuture;
 
 /// A loaded vulkan texture and it's width/height
 pub struct Image {
     /// The immutable image type, represents the data loaded onto the GPU.
     ///
     /// Uses a dynamic format for flexibility on the kinds of images that might be loaded.
-    pub image_access: Arc<ImmutableImage<Format>>,
+    pub image_access: Arc<ImmutableImage>,
     /// The width of the image.
     pub width: u32,
     /// The height of the image.
@@ -69,62 +82,87 @@ pub struct Vertex {
 }
 
 impl_vertex!(Vertex, position, tex_coords, rgba, mode);
-
-mod vs {
-    vulkano_shaders::shader! {
-    ty: "vertex",
-        src: "
-#version 450
-
-layout(location = 0) in vec2 position;
-layout(location = 1) in vec2 tex_coords;
-layout(location = 2) in vec4 rgba;
-layout(location = 3) in uint mode;
-
-layout(location = 0) out vec2 v_Uv;
-layout(location = 1) out vec4 v_Color;
-layout(location = 2) flat out uint v_Mode;
-
-void main() {
-    v_Uv = tex_coords;
-    v_Color = rgba;
-    gl_Position = vec4(position, 0.0, 1.0);
-    v_Mode = mode;
-}
-"
+//shader interface def entries
+fn create_shader_interface_vs_in() -> ShaderInterface {
+    unsafe {
+        ShaderInterface::new_unchecked(vec![
+            ShaderInterfaceEntry {
+                location: 0..1,
+                format: Format::R32G32Sfloat,
+                name: Some(std::borrow::Cow::Borrowed("position")),
+            },
+            ShaderInterfaceEntry {
+                location: 1..2,
+                format: Format::R32G32Sfloat,
+                name: Some(std::borrow::Cow::Borrowed("tex_coords")),
+            },
+            ShaderInterfaceEntry {
+                location: 2..3,
+                format: Format::R32G32B32A32Sfloat,
+                name: Some(std::borrow::Cow::Borrowed("rgba")),
+            },
+            ShaderInterfaceEntry {
+                location: 3..4,
+                format: Format::R32Uint,
+                name: Some(std::borrow::Cow::Borrowed("mode")),
+            },
+        ])
     }
 }
-
-mod fs {
-    vulkano_shaders::shader! {
-    ty: "fragment",
-        src: "
-#version 450
-
-layout(set = 0, binding = 0) uniform sampler2D t_Color;
-
-layout(location = 0) in vec2 v_Uv;
-layout(location = 1) in vec4 v_Color;
-layout(location = 2) flat in uint v_Mode;
-
-layout(location = 0) out vec4 Target0;
-
-void main() {
-    // Text
-    if (v_Mode == uint(0)) {
-        Target0 = v_Color * vec4(1.0, 1.0, 1.0, texture(t_Color, v_Uv).r);
-
-    // Image
-    } else if (v_Mode == uint(1)) {
-        Target0 = texture(t_Color, v_Uv);
-
-    // 2D Geometry
-    } else if (v_Mode == uint(2)) {
-        Target0 = v_Color;
+fn create_shader_interface_vs_out() -> ShaderInterface {
+    unsafe {
+        ShaderInterface::new_unchecked(vec![
+            ShaderInterfaceEntry {
+                location: 0..1,
+                format: Format::R32G32Sfloat,
+                name: Some(std::borrow::Cow::Borrowed("v_Uv")),
+            },
+            ShaderInterfaceEntry {
+                location: 1..2,
+                format: Format::R32G32B32A32Sfloat,
+                name: Some(std::borrow::Cow::Borrowed("v_Color")),
+            },
+            ShaderInterfaceEntry {
+                location: 2..3,
+                format: Format::R32Uint,
+                name: Some(std::borrow::Cow::Borrowed("v_Mode")),
+            },
+        ])
     }
 }
-"
+fn create_shader_interface_fs_out() -> ShaderInterface {
+    unsafe {
+        ShaderInterface::new_unchecked(vec![ShaderInterfaceEntry {
+            location: 0..1,
+            format: Format::R32G32B32A32Sfloat,
+            name: Some(std::borrow::Cow::Borrowed("Target0")),
+        }])
     }
+}
+fn create_conrod_pipeline_layout_desc() -> PipelineLayoutDesc {
+    PipelineLayoutDesc::new(
+        vec![vec![Some(DescriptorDesc {
+            ty: DescriptorDescTy::CombinedImageSampler(DescriptorImageDesc {
+                sampled: true,
+                dimensions: DescriptorImageDescDimensions::TwoDimensional,
+                format: None,
+                multisampled: false,
+                array_layers: DescriptorImageDescArray::NonArrayed,
+            }),
+            array_count: 1,
+            stages: ShaderStages {
+                vertex: false,
+                tessellation_control: false,
+                tessellation_evaluation: false,
+                geometry: false,
+                fragment: true,
+                compute: false,
+            },
+            readonly: true,
+        })]],
+        vec![],
+    )
+    .unwrap()
 }
 
 /// A type used for translating `render::Primitives` into `Command`s that indicate how to draw the
@@ -132,9 +170,9 @@ void main() {
 pub struct Renderer {
     pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
     glyph_uploads: Arc<CpuBufferPool<u8>>,
-    glyph_cache_tex: Arc<StorageImage<R8Unorm>>,
+    glyph_cache_tex: Arc<StorageImage>,
     sampler: Arc<Sampler>,
-    tex_descs: FixedSizeDescriptorSetsPool<Arc<dyn GraphicsPipelineAbstract + Send + Sync>>,
+    tex_descs: FixedSizeDescriptorSetsPool,
     mesh: Mesh,
 }
 
@@ -145,7 +183,7 @@ pub struct GlyphCacheCommand<'a> {
     /// The cpu buffer pool used to upload glyph pixels.
     pub glyph_cpu_buffer_pool: Arc<CpuBufferPool<u8>>,
     /// The GPU image to which the glyphs are cached.
-    pub glyph_cache_texture: Arc<StorageImage<R8Unorm>>,
+    pub glyph_cache_texture: Arc<StorageImage>,
 }
 
 /// A draw command that maps directly to the `AutoCommandBufferBuilder::draw` method. By returning
@@ -186,16 +224,13 @@ impl Renderer {
     ///
     /// The dimensions of the glyph cache will be the dimensions of the window multiplied by the
     /// DPI factor.
-    pub fn new<'a, L>(
+    pub fn new(
         device: Arc<Device>,
-        subpass: Subpass<L>,
-        graphics_queue_family: QueueFamily<'a>,
+        subpass: Subpass,
+        graphics_queue_family: QueueFamily,
         window_dims: [u32; 2],
         dpi_factor: f64,
-    ) -> Result<Self, RendererCreationError>
-    where
-        L: RenderPassDesc + RenderPassAbstract + Send + Sync + 'static,
-    {
+    ) -> Result<Self, RendererCreationError> {
         // TODO: Check that necessary subpass properties exist?
         let [w, h] = window_dims;
         let glyph_cache_dims = [
@@ -206,15 +241,12 @@ impl Renderer {
     }
 
     /// Construct a new empty `Renderer`.
-    pub fn with_glyph_cache_dimensions<'a, L>(
+    pub fn with_glyph_cache_dimensions(
         device: Arc<Device>,
-        subpass: Subpass<L>,
-        graphics_queue_family: QueueFamily<'a>,
+        subpass: Subpass,
+        graphics_queue_family: QueueFamily,
         glyph_cache_dims: [u32; 2],
-    ) -> Result<Self, RendererCreationError>
-    where
-        L: RenderPassDesc + RenderPassAbstract + Send + Sync + 'static,
-    {
+    ) -> Result<Self, RendererCreationError> {
         let sampler = Sampler::new(
             device.clone(),
             Filter::Linear,
@@ -229,47 +261,89 @@ impl Renderer {
             0.0,
         )?;
 
-        let vertex_shader = vs::Shader::load(device.clone())
-            .map_err(|err| RendererCreationError::ShaderLoad(err))?;
-        let fragment_shader = fs::Shader::load(device.clone())
-            .map_err(|err| RendererCreationError::ShaderLoad(err))?;
+        let vs_module =
+            unsafe { ShaderModule::new(device.clone(), include_bytes!("shaders/vert.spv")) }
+                .unwrap();
+
+        let fs_module =
+            unsafe { ShaderModule::new(device.clone(), include_bytes!("shaders/frag.spv")) }
+                .unwrap();
+        let main = CString::new("main").unwrap();
+        let vs_in = create_shader_interface_vs_in();
+        let vs_out = create_shader_interface_vs_out();
+        let fs_out = create_shader_interface_fs_out();
+        let layout_desc = create_conrod_pipeline_layout_desc();
+        let empty_spec_const = &[];
+        let vs = unsafe {
+            vs_module.graphics_entry_point(
+                &main,
+                layout_desc.clone(),
+                empty_spec_const,
+                vs_in,
+                vs_out.clone(),
+                GraphicsShaderType::Vertex,
+            )
+        };
+        let fs = unsafe {
+            fs_module.graphics_entry_point(
+                &main,
+                layout_desc,
+                empty_spec_const,
+                vs_out,
+                fs_out,
+                GraphicsShaderType::Fragment,
+            )
+        };
 
         let pipeline = Arc::new(
             GraphicsPipeline::start()
                 .vertex_input_single_buffer::<Vertex>()
-                .vertex_shader(vertex_shader.main_entry_point(), ())
+                .vertex_shader(vs, ())
                 .depth_stencil_disabled()
                 .triangle_list()
                 .front_face_clockwise()
                 .viewports_scissors_dynamic(1)
-                .fragment_shader(fragment_shader.main_entry_point(), ())
+                .fragment_shader(fs, ())
                 .blend_alpha_blending()
                 .render_pass(subpass)
                 .build(device.clone())?,
         );
-
         let mesh = Mesh::with_glyph_cache_dimensions(glyph_cache_dims);
 
         let glyph_cache_tex = {
             let [width, height] = glyph_cache_dims;
             StorageImage::with_usage(
                 device.clone(),
-                Dimensions::Dim2d { width, height },
+                ImageDimensions::Dim2d {
+                    width,
+                    height,
+                    array_layers: 1,
+                },
                 R8Unorm,
                 ImageUsage {
                     transfer_destination: true,
                     sampled: true,
                     ..ImageUsage::none()
                 },
+                ImageCreateFlags {
+                    sparse_binding: false,
+                    sparse_residency: false,
+                    sparse_aliased: false,
+                    mutable_format: false,
+                    cube_compatible: false,
+                    array_2d_compatible: false,
+                },
                 vec![graphics_queue_family],
             )?
         };
 
-        let tex_descs = FixedSizeDescriptorSetsPool::new(pipeline.clone() as Arc<_>, 0);
-        let glyph_uploads = Arc::new(CpuBufferPool::upload(device.clone()));
+        let tex_descs = FixedSizeDescriptorSetsPool::new(
+            pipeline.layout().descriptor_set_layout(0).unwrap().clone(),
+        );
+        let glyph_uploads = Arc::new(CpuBufferPool::upload(device));
 
         Ok(Renderer {
-            pipeline: pipeline,
+            pipeline,
             glyph_uploads,
             glyph_cache_tex,
             sampler,
@@ -288,13 +362,13 @@ impl Renderer {
     /// This method may return an `Option<GlyphCacheCommand>`, in which case the user should use
     /// the contained `glyph_cpu_buffer_pool` to write the pixel data to the GPU, and then use a
     /// `copy_buffer_to_image` command to write the data to the given `glyph_cache_texture` image.
-    pub fn fill<'a, P: render::PrimitiveWalker>(
-        &'a mut self,
+    pub fn fill<P: render::PrimitiveWalker>(
+        &mut self,
         image_map: &image::Map<Image>,
         viewport: [f32; 4],
         dpi_factor: f64,
         primitives: P,
-    ) -> Result<Option<GlyphCacheCommand<'a>>, rt::gpu_cache::CacheWriteErr> {
+    ) -> Result<Option<GlyphCacheCommand>, rt::gpu_cache::CacheWriteErr> {
         let Renderer {
             ref glyph_uploads,
             ref glyph_cache_tex,
@@ -354,7 +428,10 @@ impl Renderer {
         let desc_cache = Arc::new(
             self.tex_descs
                 .next()
-                .add_sampled_image(self.glyph_cache_tex.clone(), self.sampler.clone())?
+                .add_sampled_image(
+                    ImageView::new(self.glyph_cache_tex.clone()).unwrap(),
+                    self.sampler.clone(),
+                )?
                 .build()?,
         );
 
@@ -379,17 +456,22 @@ impl Renderer {
                 mesh::Command::Draw(draw) => match draw {
                     // Draw text and plain 2D geometry.
                     mesh::Draw::Plain(vert_range) => {
-                        if vert_range.len() > 0 {
+                        if !vert_range.is_empty() {
                             let verts = &self.mesh.vertices()[vert_range];
                             let verts = conv_vertex_buffer(verts);
-                            let (vbuf, _vbuf_fut) = ImmutableBuffer::<[Vertex]>::from_iter(
+                            let (vbuf, vbuf_fut) = ImmutableBuffer::<[Vertex]>::from_iter(
                                 verts.iter().cloned(),
                                 BufferUsage::vertex_buffer(),
                                 queue.clone(),
                             )?;
+                            vbuf_fut
+                                .then_signal_fence_and_flush()
+                                .expect("failed to flush future")
+                                .wait(None)
+                                .unwrap();
                             draw_commands.push(DrawCommand {
                                 graphics_pipeline: self.pipeline.clone(),
-                                dynamic_state: dynamic_state(current_scizzor.clone()),
+                                dynamic_state: dynamic_state(current_scizzor),
                                 vertex_buffer: vbuf,
                                 descriptor_set: desc_cache.clone(),
                             });
@@ -399,7 +481,7 @@ impl Renderer {
                     // Draw an image whose texture data lies within the `image_map` at the
                     // given `id`.
                     mesh::Draw::Image(image_id, vert_range) => {
-                        if vert_range.len() == 0 {
+                        if vert_range.is_empty() {
                             continue;
                         }
                         if let Some(image) = image_map.get(&image_id) {
@@ -407,21 +489,26 @@ impl Renderer {
                                 tex_descs
                                     .next()
                                     .add_sampled_image(
-                                        image.image_access.clone(),
+                                        ImageView::new(image.image_access.clone()).unwrap(),
                                         self.sampler.clone(),
                                     )?
                                     .build()?,
                             );
                             let verts = &self.mesh.vertices()[vert_range];
                             let verts = conv_vertex_buffer(verts);
-                            let (vbuf, _vbuf_fut) = ImmutableBuffer::from_iter(
+                            let (vbuf, vbuf_fut) = ImmutableBuffer::from_iter(
                                 verts.iter().cloned(),
                                 BufferUsage::vertex_buffer(),
                                 queue.clone(),
                             )?;
+                            vbuf_fut
+                                .then_signal_fence_and_flush()
+                                .unwrap()
+                                .wait(None)
+                                .unwrap();
                             draw_commands.push(DrawCommand {
                                 graphics_pipeline: self.pipeline.clone(),
-                                dynamic_state: dynamic_state(current_scizzor.clone()),
+                                dynamic_state: dynamic_state(current_scizzor),
                                 vertex_buffer: vbuf,
                                 descriptor_set: desc_image,
                             });
@@ -436,7 +523,7 @@ impl Renderer {
 }
 
 fn conv_vertex_buffer(buffer: &[mesh::Vertex]) -> &[Vertex] {
-    unsafe { std::mem::transmute(buffer) }
+    unsafe { &*(buffer as *const [conrod_core::mesh::Vertex] as *const [Vertex]) }
 }
 
 impl From<SamplerCreationError> for RendererCreationError {
