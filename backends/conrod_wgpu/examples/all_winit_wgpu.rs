@@ -197,7 +197,10 @@ fn main() {
                 }
 
                 // Create a view for the surface's texture.
-                let frame_tex_view = frame.output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+                let frame_tex_view = frame
+                    .output
+                    .texture
+                    .create_view(&wgpu::TextureViewDescriptor::default());
 
                 // Begin the render pass and add the draw commands.
                 {
