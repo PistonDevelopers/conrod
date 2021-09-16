@@ -184,16 +184,16 @@ fn set_widgets(ui: &mut conrod_core::UiCell, ids: &Ids, graph: &mut MyGraph, lay
             Event::Node(event) => match event {
                 // NodeEvent::Add(node_kind) => {
                 // },
-                NodeEvent::Remove(node_id) => {}
+                NodeEvent::Remove(_node_id) => {}
                 NodeEvent::Dragged { node_id, to, .. } => {
                     *layout.get_mut(&node_id).unwrap() = to;
                 }
             },
             Event::Edge(event) => match event {
-                EdgeEvent::AddStart(node_socket) => {}
-                EdgeEvent::Add { start, end } => {}
-                EdgeEvent::Cancelled(node_socket) => {}
-                EdgeEvent::Remove { start, end } => {}
+                EdgeEvent::AddStart(_node_socket) => {}
+                EdgeEvent::Add { start: _, end: _ } => {}
+                EdgeEvent::Cancelled(_node_socket) => {}
+                EdgeEvent::Remove { start: _, end: _ } => {}
             },
         }
     }
