@@ -606,7 +606,7 @@ pub trait Widget: Common + Sized {
     ///
     /// The `Ui` will only call this once, immediately prior to the first time that
     /// **Widget::update** is first called.
-    fn init_state(&self, id::Generator) -> Self::State;
+    fn init_state(&self, id_gen: id::Generator) -> Self::State;
 
     /// Return the styling of the widget.
     ///
