@@ -65,6 +65,8 @@ pub enum Cap {
     Round,
 }
 
+const DEFAULT_THICKNESS: Scalar = 1.0;
+
 impl Line {
     /// Build a new **Line** widget with the given style.
     pub fn styled(start: Point, end: Point, style: Style) -> Self {
@@ -93,8 +95,9 @@ impl Line {
 
     /// The same as [**Line::abs**](./struct.Line#method.abs) but with the given style.
     pub fn abs_styled(start: Point, end: Point, style: Style) -> Self {
-        let (xy, dim) = Rect::from_corners(start, end).xy_dim();
-        Line::styled(start, end, style).wh(dim).xy(xy)
+        let line = Line::styled(start, end, style);
+        let (xy, wh) = line.calc_rect().xy_dim();
+        Line::styled(start, end, style).wh(wh).xy(xy)
     }
 
     /// Build a new **Line** and shift the location of the start and end points so that the centre
@@ -112,10 +115,10 @@ impl Line {
 
     /// The same as [**Line::centred**](./struct.Line#method.centred) but with the given style.
     pub fn centred_styled(start: Point, end: Point, style: Style) -> Self {
-        let dim = Rect::from_corners(start, end).dim();
-        let mut line = Line::styled(start, end, style).wh(dim);
+        let mut line = Line::styled(start, end, style);
         line.should_centre_points = true;
-        line
+        let r = line.calc_rect();
+        line.wh(r.dim())
     }
 
     /// The thickness or width of the Line.
@@ -143,6 +146,12 @@ impl Line {
     pub fn dotted(mut self) -> Self {
         self.style.set_pattern(Pattern::Dotted);
         self
+    }
+
+    fn calc_rect(&self) -> Rect {
+        let thickness = self.style.maybe_thickness.unwrap_or(DEFAULT_THICKNESS);
+        let corners = rect_corners(self.start, self.end, thickness * 0.5);
+        super::bounding_box_for_points(corners.iter().cloned())
     }
 }
 
@@ -241,7 +250,6 @@ impl Style {
 
     /// The width or thickness of the Line.
     pub fn get_thickness(&self, theme: &Theme) -> Scalar {
-        const DEFAULT_THICKNESS: Scalar = 1.0;
         self.maybe_thickness
             .or_else(|| {
                 theme
