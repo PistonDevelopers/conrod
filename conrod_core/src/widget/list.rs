@@ -61,10 +61,10 @@ pub trait Direction {
     type Axis: widget::scrollbar::Axis;
 
     /// For some given `Rect`, returns the parallel and perpendicular ranges respectively.
-    fn ranges(Rect) -> (Range, Range);
+    fn ranges(r: Rect) -> (Range, Range);
 
     /// Begin building the scrollbar for the `List`.
-    fn scrollbar(widget::Id) -> widget::Scrollbar<Self::Axis>;
+    fn scrollbar(id: widget::Id) -> widget::Scrollbar<Self::Axis>;
 
     /// Borrow the scroll state associated with this `Direction`'s axis.
     fn common_scroll(common: &widget::CommonBuilder) -> Option<&widget::scroll::Scroll>;
@@ -105,8 +105,8 @@ pub trait Direction {
 pub trait ItemSize: Sized + Clone + Copy {
     /// Update the `List` widget.
     fn update_list<D>(
-        List<D, Self>,
-        widget::UpdateArgs<List<D, Self>>,
+        list: List<D, Self>,
+        args: widget::UpdateArgs<List<D, Self>>,
     ) -> <List<D, Self> as Widget>::Event
     where
         D: Direction;

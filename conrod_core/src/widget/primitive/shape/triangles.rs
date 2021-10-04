@@ -26,7 +26,7 @@ pub trait Vertex: Clone + Copy + PartialEq {
     /// The x y location of the vertex.
     fn point(&self) -> Point;
     /// Add the given vector onto the position of self and return the result.
-    fn add(self, Point) -> Self;
+    fn add(self, p: Point) -> Self;
 }
 
 /// Unique styling types for `Triangles`.
