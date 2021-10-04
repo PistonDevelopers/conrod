@@ -236,12 +236,7 @@ impl Range {
 
     /// The Range that represents the range of the overlap between two Ranges if there is some.
     ///
-    /// Note that If one end of `self` aligns exactly with the opposite end of `other`, `Some`
-    /// `Range` will be returned with a magnitude of `0.0`. This is useful for algorithms that
-    /// involve calculating the visibility of widgets, as it allows for including widgets whose
-    /// bounding box may be a one dimensional straight line.
-    ///
-    /// The returned `Range`'s `start` will always be <= its `end`.
+    /// The returned `Range`'s `start` will always be < its `end`.
     ///
     /// # Examples
     ///
@@ -266,7 +261,7 @@ impl Range {
         let start = ::utils::partial_max(self.start, other.start);
         let end = ::utils::partial_min(self.end, other.end);
         let magnitude = end - start;
-        if magnitude >= 0.0 {
+        if magnitude > 0.0 {
             Some(Range::new(start, end))
         } else {
             None

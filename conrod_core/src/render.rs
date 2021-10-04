@@ -942,7 +942,7 @@ fn next_widget<'a>(
         }
 
         // We only want to return primitives that are actually visible.
-        let is_visible = container.rect.overlap(window_rect).is_some()
+        let is_visible = container.rect.overlap(scizzor).is_some()
             && graph::algo::cropped_area_of_widget(graph, id).is_some();
         if !is_visible {
             continue;

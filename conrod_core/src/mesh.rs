@@ -206,11 +206,15 @@ impl Mesh {
             let (w, h) = rect.w_h();
             let left = (rect.left() * dpi_factor + half_viewport_w).round() as i32;
             let top = (rect.top() * dpi_factor - half_viewport_h).round().abs() as i32;
-            let width = (w * dpi_factor).round() as u32;
-            let height = (h * dpi_factor).round() as u32;
-            Scizzor {
-                top_left: [left.max(0), top.max(0)],
-                dimensions: [width.min(viewport_w as u32), height.min(viewport_h as u32)],
+            let width = ((w * dpi_factor).round() as u32).min(viewport_w as u32);
+            let height = ((h * dpi_factor).round() as u32).min(viewport_h as u32);
+            if width == 0 || height == 0 {
+                None
+            } else {
+                Some(Scizzor {
+                    top_left: [left.max(0), top.max(0)],
+                    dimensions: [width, height],
+                })
             }
         };
 
@@ -257,12 +261,19 @@ impl Mesh {
 
                 // Update the scizzor and produce a command.
                 current_scizzor = new_scizzor;
-                commands.push(PreparedCommand::Scizzor(new_scizzor));
+                if let Some(scizzor) = new_scizzor {
+                    commands.push(PreparedCommand::Scizzor(scizzor));
+                }
 
                 // Set the state back to plain drawing.
                 current_state = State::Plain {
                     start: vertices.len(),
                 };
+            }
+
+            // If the scizzor is `None`, then nothing is viewable, so don't draw anything.
+            if current_scizzor.is_none() {
+                continue;
             }
 
             match kind {
