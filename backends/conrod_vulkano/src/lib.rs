@@ -9,39 +9,31 @@ use std::sync::Arc;
 use conrod_core::mesh::{self, Mesh};
 use conrod_core::text::rt;
 use conrod_core::{image, render, Rect, Scalar};
-
-use vulkano::buffer::cpu_pool::CpuBufferPool;
-use vulkano::buffer::BufferUsage;
-use vulkano::buffer::ImmutableBuffer;
-use vulkano::command_buffer::DynamicState;
-use vulkano::descriptor::descriptor_set::{
-    DescriptorSet, FixedSizeDescriptorSetsPool, PersistentDescriptorSetBuildError,
-    PersistentDescriptorSetError,
-};
-use vulkano::device::*;
-
 use std::ffi::CString;
-use vulkano::descriptor::descriptor::{
-    DescriptorDesc, DescriptorDescTy, DescriptorImageDesc, DescriptorImageDescArray,
-    DescriptorImageDescDimensions, ShaderStages,
+use vulkano::buffer::{BufferUsage, CpuBufferPool, ImmutableBuffer};
+use vulkano::descriptor_set::layout::{
+    DescriptorDesc, DescriptorDescImage, DescriptorDescTy, DescriptorSetDesc, DescriptorSetLayout,
 };
-
+use vulkano::descriptor_set::{DescriptorSet, DescriptorSetError, SingleLayoutDescSetPool};
+use vulkano::device::physical::QueueFamily;
+use vulkano::device::{Device, Queue};
 use vulkano::format::Format;
-use vulkano::format::Format::R8Unorm;
-use vulkano::image::view::ImageView;
-use vulkano::image::*;
-use vulkano::instance::QueueFamily;
-use vulkano::memory::DeviceMemoryAllocError;
-use vulkano::pipeline::layout::PipelineLayoutDesc;
-use vulkano::pipeline::shader::{
-    GraphicsShaderType, ShaderInterface, ShaderInterfaceEntry, ShaderModule,
+use vulkano::image::view::{ImageView, ImageViewType};
+use vulkano::image::{
+    ImageCreateFlags, ImageCreationError, ImageDimensions, ImageUsage, ImmutableImage, StorageImage,
 };
-use vulkano::pipeline::viewport::Scissor;
-use vulkano::pipeline::viewport::Viewport;
-use vulkano::pipeline::*;
+use vulkano::memory::DeviceMemoryAllocError;
+use vulkano::pipeline::layout::PipelineLayout;
+use vulkano::pipeline::shader::{
+    GraphicsShaderType, ShaderInterface, ShaderInterfaceEntry, ShaderModule, ShaderStages,
+    SpecializationConstants,
+};
+use vulkano::pipeline::viewport::{Scissor, Viewport};
+use vulkano::pipeline::{GraphicsPipeline, GraphicsPipelineCreationError};
 use vulkano::render_pass::Subpass;
-use vulkano::sampler::*;
+use vulkano::sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode, SamplerCreationError};
 use vulkano::sync::GpuFuture;
+use vulkano::OomError;
 
 /// A loaded vulkan texture and it's width/height
 pub struct Image {
@@ -88,22 +80,22 @@ fn create_shader_interface_vs_in() -> ShaderInterface {
         ShaderInterface::new_unchecked(vec![
             ShaderInterfaceEntry {
                 location: 0..1,
-                format: Format::R32G32Sfloat,
+                format: Format::R32G32_SFLOAT,
                 name: Some(std::borrow::Cow::Borrowed("position")),
             },
             ShaderInterfaceEntry {
                 location: 1..2,
-                format: Format::R32G32Sfloat,
+                format: Format::R32G32_SFLOAT,
                 name: Some(std::borrow::Cow::Borrowed("tex_coords")),
             },
             ShaderInterfaceEntry {
                 location: 2..3,
-                format: Format::R32G32B32A32Sfloat,
+                format: Format::R32G32B32A32_SFLOAT,
                 name: Some(std::borrow::Cow::Borrowed("rgba")),
             },
             ShaderInterfaceEntry {
                 location: 3..4,
-                format: Format::R32Uint,
+                format: Format::R32_UINT,
                 name: Some(std::borrow::Cow::Borrowed("mode")),
             },
         ])
@@ -114,17 +106,17 @@ fn create_shader_interface_vs_out() -> ShaderInterface {
         ShaderInterface::new_unchecked(vec![
             ShaderInterfaceEntry {
                 location: 0..1,
-                format: Format::R32G32Sfloat,
+                format: Format::R32G32_SFLOAT,
                 name: Some(std::borrow::Cow::Borrowed("v_Uv")),
             },
             ShaderInterfaceEntry {
                 location: 1..2,
-                format: Format::R32G32B32A32Sfloat,
+                format: Format::R32G32B32A32_SFLOAT,
                 name: Some(std::borrow::Cow::Borrowed("v_Color")),
             },
             ShaderInterfaceEntry {
                 location: 2..3,
-                format: Format::R32Uint,
+                format: Format::R32_UINT,
                 name: Some(std::borrow::Cow::Borrowed("v_Mode")),
             },
         ])
@@ -134,45 +126,20 @@ fn create_shader_interface_fs_out() -> ShaderInterface {
     unsafe {
         ShaderInterface::new_unchecked(vec![ShaderInterfaceEntry {
             location: 0..1,
-            format: Format::R32G32B32A32Sfloat,
+            format: Format::R32G32B32A32_SFLOAT,
             name: Some(std::borrow::Cow::Borrowed("Target0")),
         }])
     }
-}
-fn create_conrod_pipeline_layout_desc() -> PipelineLayoutDesc {
-    PipelineLayoutDesc::new(
-        vec![vec![Some(DescriptorDesc {
-            ty: DescriptorDescTy::CombinedImageSampler(DescriptorImageDesc {
-                sampled: true,
-                dimensions: DescriptorImageDescDimensions::TwoDimensional,
-                format: None,
-                multisampled: false,
-                array_layers: DescriptorImageDescArray::NonArrayed,
-            }),
-            array_count: 1,
-            stages: ShaderStages {
-                vertex: false,
-                tessellation_control: false,
-                tessellation_evaluation: false,
-                geometry: false,
-                fragment: true,
-                compute: false,
-            },
-            readonly: true,
-        })]],
-        vec![],
-    )
-    .unwrap()
 }
 
 /// A type used for translating `render::Primitives` into `Command`s that indicate how to draw the
 /// conrod GUI using `vulkano`.
 pub struct Renderer {
-    pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
+    pipeline: Arc<GraphicsPipeline>,
     glyph_uploads: Arc<CpuBufferPool<u8>>,
     glyph_cache_tex: Arc<StorageImage>,
     sampler: Arc<Sampler>,
-    tex_descs: FixedSizeDescriptorSetsPool,
+    tex_descs: SingleLayoutDescSetPool,
     mesh: Mesh,
 }
 
@@ -190,8 +157,9 @@ pub struct GlyphCacheCommand<'a> {
 /// `DrawCommand`s, we can avoid consuming the entire `AutoCommandBufferBuilder` itself which might
 /// not always be available from APIs that wrap Vulkan.
 pub struct DrawCommand {
-    pub graphics_pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
-    pub dynamic_state: DynamicState,
+    pub graphics_pipeline: Arc<GraphicsPipeline>,
+    pub scissor: Scissor,
+    pub viewport: Viewport,
     pub descriptor_set: Arc<dyn DescriptorSet + Send + Sync>,
     pub vertex_buffer: Arc<ImmutableBuffer<[Vertex]>>,
 }
@@ -208,8 +176,8 @@ pub enum RendererCreationError {
 /// Errors that might occur during draw calls.
 #[derive(Debug)]
 pub enum DrawError {
-    PersistentDescriptorSet(PersistentDescriptorSetError),
-    PersistentDescriptorSetBuild(PersistentDescriptorSetBuildError),
+    DescriptorSet(DescriptorSetError),
+
     VertexBufferAlloc(DeviceMemoryAllocError),
 }
 
@@ -260,25 +228,48 @@ impl Renderer {
             0.0,
             0.0,
         )?;
-
+        let descriptor_set_desc = DescriptorSetDesc::new(vec![Some(DescriptorDesc {
+            ty: DescriptorDescTy::CombinedImageSampler {
+                image_desc: DescriptorDescImage {
+                    format: None,
+                    multisampled: false,
+                    view_type: ImageViewType::Dim2d,
+                },
+                immutable_samplers: vec![],
+            },
+            stages: ShaderStages {
+                vertex: false,
+                tessellation_control: false,
+                tessellation_evaluation: false,
+                geometry: false,
+                fragment: true,
+                compute: false,
+            },
+            variable_count: false,
+            descriptor_count: 1,
+            mutable: false,
+        })]);
+        let descriptor_set_layout = Arc::new(
+            DescriptorSetLayout::new(device.clone(), descriptor_set_desc.clone()).unwrap(),
+        );
+        let layout = Arc::new(
+            PipelineLayout::new(device.clone(), vec![descriptor_set_layout], vec![]).unwrap(),
+        );
         let vs_module =
-            unsafe { ShaderModule::new(device.clone(), include_bytes!("shaders/vert.spv")) }
-                .unwrap();
+            unsafe { ShaderModule::new(device.clone(), include_bytes!("shaders/vert.spv")) }?;
 
         let fs_module =
-            unsafe { ShaderModule::new(device.clone(), include_bytes!("shaders/frag.spv")) }
-                .unwrap();
+            unsafe { ShaderModule::new(device.clone(), include_bytes!("shaders/frag.spv")) }?;
         let main = CString::new("main").unwrap();
         let vs_in = create_shader_interface_vs_in();
         let vs_out = create_shader_interface_vs_out();
         let fs_out = create_shader_interface_fs_out();
-        let layout_desc = create_conrod_pipeline_layout_desc();
-        let empty_spec_const = &[];
         let vs = unsafe {
             vs_module.graphics_entry_point(
                 &main,
-                layout_desc.clone(),
-                empty_spec_const,
+                vec![descriptor_set_desc.clone()],
+                None,
+                <()>::descriptors(),
                 vs_in,
                 vs_out.clone(),
                 GraphicsShaderType::Vertex,
@@ -287,8 +278,9 @@ impl Renderer {
         let fs = unsafe {
             fs_module.graphics_entry_point(
                 &main,
-                layout_desc,
-                empty_spec_const,
+                vec![descriptor_set_desc.clone()],
+                None,
+                <()>::descriptors(),
                 vs_out,
                 fs_out,
                 GraphicsShaderType::Fragment,
@@ -306,7 +298,7 @@ impl Renderer {
                 .fragment_shader(fs, ())
                 .blend_alpha_blending()
                 .render_pass(subpass)
-                .build(device.clone())?,
+                .with_pipeline_layout(device.clone(), layout)?,
         );
         let mesh = Mesh::with_glyph_cache_dimensions(glyph_cache_dims);
 
@@ -319,7 +311,7 @@ impl Renderer {
                     height,
                     array_layers: 1,
                 },
-                R8Unorm,
+                Format::R8_UNORM,
                 ImageUsage {
                     transfer_destination: true,
                     sampled: true,
@@ -332,14 +324,14 @@ impl Renderer {
                     mutable_format: false,
                     cube_compatible: false,
                     array_2d_compatible: false,
+                    block_texel_view_compatible: false,
                 },
                 vec![graphics_queue_family],
             )?
         };
 
-        let tex_descs = FixedSizeDescriptorSetsPool::new(
-            pipeline.layout().descriptor_set_layout(0).unwrap().clone(),
-        );
+        let tex_descs =
+            SingleLayoutDescSetPool::new(pipeline.layout().descriptor_set_layouts()[0].clone());
         let glyph_uploads = Arc::new(CpuBufferPool::upload(device));
 
         Ok(Renderer {
@@ -413,7 +405,7 @@ impl Renderer {
         };
 
         let mut current_scizzor = Scissor {
-            origin: [viewport[0] as i32, viewport[1] as i32],
+            origin: [viewport[0] as u32, viewport[1] as u32],
             dimensions: [
                 (viewport[2] - viewport[0]) as u32,
                 (viewport[3] - viewport[1]) as u32,
@@ -421,29 +413,18 @@ impl Renderer {
         };
 
         let conv_scizzor = |s: mesh::Scizzor| Scissor {
-            origin: s.top_left,
+            origin: [s.top_left[0] as u32, s.top_left[1] as u32],
             dimensions: s.dimensions,
         };
-
-        let desc_cache = Arc::new(
-            self.tex_descs
-                .next()
-                .add_sampled_image(
-                    ImageView::new(self.glyph_cache_tex.clone()).unwrap(),
-                    self.sampler.clone(),
-                )?
-                .build()?,
-        );
-
-        let tex_descs = &mut self.tex_descs;
+        // ?????????????????? is there any reason to use self.tex_descs
+        let mut desc_set_builder = self.tex_descs.next();
+        desc_set_builder.add_sampled_image(
+            ImageView::new(self.glyph_cache_tex.clone()).unwrap(),
+            self.sampler.clone(),
+        )?;
+        let desc_cache = Arc::new(desc_set_builder.build()?);
 
         let commands = self.mesh.commands();
-
-        let dynamic_state = |scissor| DynamicState {
-            viewports: Some(vec![current_viewport.clone()]),
-            scissors: Some(vec![scissor]),
-            ..DynamicState::none()
-        };
 
         let mut draw_commands = vec![];
 
@@ -471,7 +452,8 @@ impl Renderer {
                                 .unwrap();
                             draw_commands.push(DrawCommand {
                                 graphics_pipeline: self.pipeline.clone(),
-                                dynamic_state: dynamic_state(current_scizzor),
+                                scissor: current_scizzor,
+                                viewport: current_viewport.clone(),
                                 vertex_buffer: vbuf,
                                 descriptor_set: desc_cache.clone(),
                             });
@@ -485,15 +467,25 @@ impl Renderer {
                             continue;
                         }
                         if let Some(image) = image_map.get(&image_id) {
-                            let desc_image = Arc::new(
-                                tex_descs
-                                    .next()
-                                    .add_sampled_image(
-                                        ImageView::new(image.image_access.clone()).unwrap(),
-                                        self.sampler.clone(),
-                                    )?
-                                    .build()?,
-                            );
+                            // ??????????? is there any reason to use self.tex_descs
+                            /*
+                            let tex_desc = self
+                                .tex_descs
+                                .next()
+                                .add_sampled_image(
+                                    ImageView::new(image.image_access.clone()).unwrap(),
+                                    self.sampler.clone(),
+                                ).unwrap()
+                                .build()?;*/
+                            let mut desc_set_builder = self.tex_descs.next();
+                            desc_set_builder.add_sampled_image(
+                                ImageView::new(image.image_access.clone()).unwrap(),
+                                self.sampler.clone(),
+                            )?;
+                            let desc_image = Arc::new(desc_set_builder.build()?);
+
+                            //let desc_image = Arc::new(tex_desc);
+
                             let verts = &self.mesh.vertices()[vert_range];
                             let verts = conv_vertex_buffer(verts);
                             let (vbuf, vbuf_fut) = ImmutableBuffer::from_iter(
@@ -508,7 +500,8 @@ impl Renderer {
                                 .unwrap();
                             draw_commands.push(DrawCommand {
                                 graphics_pipeline: self.pipeline.clone(),
-                                dynamic_state: dynamic_state(current_scizzor),
+                                scissor: current_scizzor,
+                                viewport: current_viewport.clone(),
                                 vertex_buffer: vbuf,
                                 descriptor_set: desc_image,
                             });
@@ -524,6 +517,12 @@ impl Renderer {
 
 fn conv_vertex_buffer(buffer: &[mesh::Vertex]) -> &[Vertex] {
     unsafe { &*(buffer as *const [conrod_core::mesh::Vertex] as *const [Vertex]) }
+}
+
+impl From<vulkano::OomError> for RendererCreationError {
+    fn from(err: OomError) -> Self {
+        RendererCreationError::ShaderLoad(err)
+    }
 }
 
 impl From<SamplerCreationError> for RendererCreationError {
@@ -544,15 +543,9 @@ impl From<ImageCreationError> for RendererCreationError {
     }
 }
 
-impl From<PersistentDescriptorSetError> for DrawError {
-    fn from(err: PersistentDescriptorSetError) -> Self {
-        DrawError::PersistentDescriptorSet(err)
-    }
-}
-
-impl From<PersistentDescriptorSetBuildError> for DrawError {
-    fn from(err: PersistentDescriptorSetBuildError) -> Self {
-        DrawError::PersistentDescriptorSetBuild(err)
+impl From<DescriptorSetError> for DrawError {
+    fn from(err: DescriptorSetError) -> Self {
+        DrawError::DescriptorSet(err)
     }
 }
 
@@ -576,8 +569,7 @@ impl StdError for RendererCreationError {
 impl StdError for DrawError {
     fn cause(&self) -> Option<&dyn StdError> {
         match *self {
-            DrawError::PersistentDescriptorSet(ref err) => Some(err),
-            DrawError::PersistentDescriptorSetBuild(ref err) => Some(err),
+            DrawError::DescriptorSet(ref err) => Some(err),
             DrawError::VertexBufferAlloc(ref err) => Some(err),
         }
     }
@@ -597,8 +589,7 @@ impl fmt::Display for RendererCreationError {
 impl fmt::Display for DrawError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            DrawError::PersistentDescriptorSet(ref err) => err.fmt(f),
-            DrawError::PersistentDescriptorSetBuild(ref err) => err.fmt(f),
+            DrawError::DescriptorSet(ref err) => err.fmt(f),
             DrawError::VertexBufferAlloc(ref err) => err.fmt(f),
         }
     }

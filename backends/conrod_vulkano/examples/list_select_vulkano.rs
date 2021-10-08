@@ -34,10 +34,12 @@ use conrod_winit::WinitWindow;
 use winit::event::{ElementState, KeyboardInput, VirtualKeyCode};
 use winit::event_loop::ControlFlow;
 
-const DEPTH_FORMAT: Format = Format::D16Unorm;
+const DEPTH_FORMAT: Format = Format::D16_UNORM;
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
 const WIN_W: u32 = 600;
 const WIN_H: u32 = 300;
+use vulkano::buffer::TypedBufferAccess;
+use vulkano::pipeline::PipelineBindPoint;
 use winit::event;
 
 widget_ids! {
@@ -216,19 +218,24 @@ fn main() {
                     for cmd in draw_cmds {
                         let conrod_vulkano::DrawCommand {
                             graphics_pipeline,
-                            dynamic_state,
+                            scissor,
+                            viewport,
                             vertex_buffer,
                             descriptor_set,
                         } = cmd;
+                        let num_vertices = vertex_buffer.len();
+                        command_buffer_builder.bind_pipeline_graphics(graphics_pipeline.clone());
+                        command_buffer_builder.bind_vertex_buffers(0, vec![vertex_buffer]);
+                        command_buffer_builder.set_scissor(0, vec![scissor]);
+                        command_buffer_builder.set_viewport(0, vec![viewport]);
+                        command_buffer_builder.bind_descriptor_sets(
+                            PipelineBindPoint::Graphics,
+                            graphics_pipeline.layout().clone(),
+                            0,
+                            descriptor_set,
+                        );
                         command_buffer_builder
-                            .draw(
-                                graphics_pipeline,
-                                &dynamic_state,
-                                vec![vertex_buffer],
-                                descriptor_set,
-                                (),
-                                vec![],
-                            )
+                            .draw(num_vertices as u32, 1, 0, 0)
                             .expect("failed to submit draw command");
                     }
                     command_buffer_builder.end_render_pass().unwrap();
