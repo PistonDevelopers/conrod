@@ -416,7 +416,6 @@ impl Renderer {
             origin: [s.top_left[0] as u32, s.top_left[1] as u32],
             dimensions: s.dimensions,
         };
-        // ?????????????????? is there any reason to use self.tex_descs
         let mut desc_set_builder = self.tex_descs.next();
         desc_set_builder.add_sampled_image(
             ImageView::new(self.glyph_cache_tex.clone()).unwrap(),
@@ -467,24 +466,12 @@ impl Renderer {
                             continue;
                         }
                         if let Some(image) = image_map.get(&image_id) {
-                            // ??????????? is there any reason to use self.tex_descs
-                            /*
-                            let tex_desc = self
-                                .tex_descs
-                                .next()
-                                .add_sampled_image(
-                                    ImageView::new(image.image_access.clone()).unwrap(),
-                                    self.sampler.clone(),
-                                ).unwrap()
-                                .build()?;*/
                             let mut desc_set_builder = self.tex_descs.next();
                             desc_set_builder.add_sampled_image(
                                 ImageView::new(image.image_access.clone()).unwrap(),
                                 self.sampler.clone(),
                             )?;
                             let desc_image = Arc::new(desc_set_builder.build()?);
-
-                            //let desc_image = Arc::new(tex_desc);
 
                             let verts = &self.mesh.vertices()[vert_range];
                             let verts = conv_vertex_buffer(verts);
