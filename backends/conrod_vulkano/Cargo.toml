@@ -17,12 +17,12 @@ edition = "2018"
 
 [dependencies]
 conrod_core = { path = "../../conrod_core", version = "0.75" }
-vulkano = "0.24"
+vulkano = "0.26"
 
 [dev-dependencies]
 conrod_example_shared = { path = "../conrod_example_shared", version = "0.75" }
 conrod_winit = { path = "../conrod_winit", version = "0.75" }
 find_folder = "0.3"
 image = "0.23"
-vulkano-win = "0.24"
+vulkano-win = "0.26"
 winit = "0.25"

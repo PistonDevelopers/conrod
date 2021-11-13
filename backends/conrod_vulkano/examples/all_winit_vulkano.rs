@@ -19,12 +19,14 @@ use vulkano::single_pass_renderpass;
 use vulkano::sync::GpuFuture;
 use winit::event;
 
+use vulkano::buffer::TypedBufferAccess;
+use vulkano::pipeline::PipelineBindPoint;
 use winit::event::{ElementState, KeyboardInput, VirtualKeyCode};
 use winit::event_loop::ControlFlow;
 
 conrod_winit::v023_conversion_fns!();
 mod support;
-const DEPTH_FORMAT: Format = Format::D16Unorm;
+const DEPTH_FORMAT: Format = Format::D16_UNORM;
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
 fn main() {
     let event_loop = winit::event_loop::EventLoop::new();
@@ -63,7 +65,7 @@ fn main() {
             array_layers: 1,
         },
         MipmapsCount::One,
-        vulkano::format::Format::R8G8B8A8Srgb,
+        vulkano::format::Format::R8G8B8A8_SRGB,
         window.queue.clone(),
     )
     .expect("Couldn't create vulkan texture for logo");
@@ -203,19 +205,24 @@ fn main() {
                     for cmd in draw_cmds {
                         let conrod_vulkano::DrawCommand {
                             graphics_pipeline,
-                            dynamic_state,
+                            scissor,
+                            viewport,
                             vertex_buffer,
                             descriptor_set,
                         } = cmd;
+                        let num_vertices = vertex_buffer.len();
+                        command_buffer_builder.bind_pipeline_graphics(graphics_pipeline.clone());
+                        command_buffer_builder.bind_vertex_buffers(0, vec![vertex_buffer]);
+                        command_buffer_builder.set_scissor(0, vec![scissor]);
+                        command_buffer_builder.set_viewport(0, vec![viewport]);
+                        command_buffer_builder.bind_descriptor_sets(
+                            PipelineBindPoint::Graphics,
+                            graphics_pipeline.layout().clone(),
+                            0,
+                            descriptor_set,
+                        );
                         command_buffer_builder
-                            .draw(
-                                graphics_pipeline,
-                                &dynamic_state,
-                                vec![vertex_buffer],
-                                descriptor_set,
-                                (),
-                                vec![],
-                            )
+                            .draw(num_vertices as u32, 1, 0, 0)
                             .expect("failed to submit draw command");
                     }
                     command_buffer_builder.end_render_pass().unwrap();
