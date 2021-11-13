@@ -38,6 +38,7 @@ fn main() {
     let adapter_opts = wgpu::RequestAdapterOptions {
         power_preference: wgpu::PowerPreference::default(),
         compatible_surface: Some(&surface),
+        force_fallback_adapter: false,
     };
 
     let adapter = futures::executor::block_on(instance.request_adapter(&adapter_opts)).unwrap();
@@ -177,7 +178,7 @@ fn main() {
                 let primitives = ui.draw();
 
                 // The window frame that we will draw to.
-                let frame = surface.get_current_frame().unwrap();
+                let surface_tex = surface.get_current_texture().unwrap();
 
                 // Begin encoding commands.
                 let cmd_encoder_desc = wgpu::CommandEncoderDescriptor {
@@ -197,8 +198,7 @@ fn main() {
                 }
 
                 // Create a view for the surface's texture.
-                let frame_tex_view = frame
-                    .output
+                let surface_tex_view = surface_tex
                     .texture
                     .create_view(&wgpu::TextureViewDescriptor::default());
 
@@ -206,8 +206,8 @@ fn main() {
                 {
                     // This condition allows to more easily tweak the MSAA_SAMPLES constant.
                     let (attachment, resolve_target) = match MSAA_SAMPLES {
-                        1 => (&frame_tex_view, None),
-                        _ => (&multisampled_framebuffer, Some(&frame_tex_view)),
+                        1 => (&surface_tex_view, None),
+                        _ => (&multisampled_framebuffer, Some(&surface_tex_view)),
                     };
                     let color_attachment_desc = wgpu::RenderPassColorAttachment {
                         view: attachment,
@@ -255,6 +255,7 @@ fn main() {
                 }
 
                 queue.submit(Some(encoder.finish()));
+                surface_tex.present();
             }
             _ => {}
         }
