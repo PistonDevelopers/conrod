@@ -152,7 +152,7 @@ where
     P: AsRef<std::path::Path>,
 {
     let path = path.as_ref();
-    let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba();
+    let rgba_image = image::open(&std::path::Path::new(&path)).unwrap().to_rgba8();
     let image_dimensions = rgba_image.dimensions();
     let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(
         &rgba_image.into_raw(),

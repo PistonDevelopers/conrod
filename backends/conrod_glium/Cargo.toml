@@ -22,7 +22,7 @@ glium = "0.30"
 conrod_example_shared = { path = "../conrod_example_shared", version = "0.76" }
 conrod_winit = { path = "../conrod_winit", version = "0.76" }
 find_folder = "0.3.0"
-image = "0.22"
+image = "0.23"
 petgraph = "0.4"
 rand = "0.7"
 winit = "0.25"
