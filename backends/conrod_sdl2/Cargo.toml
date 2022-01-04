@@ -7,3 +7,7 @@ edition = "2021"
 
 [dependencies]
 sdl2 = { version = "0.35.1", features = ["gfx", "ttf"] }
+
+[dev-dependencies]
+conrod_example_shared = { path = "../conrod_example_shared", version = "0.71" }
+thiserror = "1.0.30"
