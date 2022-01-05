@@ -8,52 +8,47 @@ use sdl2::event::Event;
 ///
 /// NOTE: The sdl2 MouseMotion event is a combination of a MouseCursor and MouseRelative conrod
 /// events. Thus we may sometimes return two events in place of one, hence the tuple return type
-pub fn convert_event(e: Event, win_w: Scalar, win_h: Scalar) -> (Option<Input>, Option<Input>) {
+pub fn convert_event(e: Event, window_size: (u32, u32)) -> [Option<Input>; 2] {
     use sdl2::event::WindowEvent;
 
     // Translate the coordinates from top-left-origin-with-y-down to centre-origin-with-y-up.
     //
     // winit produces input events in pixels, so these positions need to be divided by the width
     // and height of the window in order to be DPI agnostic.
-    let tx = |x: f32| ((x as Scalar) - win_w / 2.0) as Scalar;
-    let ty = |y: f32| -((y as Scalar) - win_h / 2.0) as Scalar;
+    let tx = |x: f32| x as Scalar - window_size.0 as Scalar / 2.0;
+    let ty = |y: f32| -(y as Scalar - window_size.1 as Scalar / 2.0);
 
-    match e {
-        Event::Window { win_event, .. } => (
-            match win_event {
-                WindowEvent::Resized(w, h) => Some(Input::Resize(w as Scalar, h as Scalar)),
-                WindowEvent::FocusGained => Some(Input::Focus(true)),
-                WindowEvent::FocusLost => Some(Input::Focus(false)),
-                _ => None,
-            },
-            None,
-        ),
-        Event::TextInput { text, .. } => (Some(Input::Text(text)), None),
+    // If the event is converted to a single input, it will stored to this variable `event`
+    // and returned later.
+    // If zero or two events is returned, it is early-returned.
+    // We do so to simplify the code as much as possible.
+    let event = match e {
+        Event::Window { win_event, .. } => match win_event {
+            WindowEvent::Resized(w, h) => Input::Resize(w as Scalar, h as Scalar),
+            WindowEvent::FocusGained => Input::Focus(true),
+            WindowEvent::FocusLost => Input::Focus(false),
+            _ => return [None, None],
+        },
+        Event::TextInput { text, .. } => Input::Text(text),
         Event::KeyDown {
             keycode: Some(key), ..
-        } => (
-            Some(Input::Press(input::Button::Keyboard(convert_key(key)))),
-            None,
-        ),
+        } => Input::Press(input::Button::Keyboard(convert_key(key))),
         Event::KeyUp {
             keycode: Some(key), ..
-        } => (
-            Some(Input::Release(input::Button::Keyboard(convert_key(key)))),
-            None,
-        ),
+        } => Input::Release(input::Button::Keyboard(convert_key(key))),
         Event::FingerDown { touch_id, x, y, .. } => {
             let xy = [x as f64, y as f64];
             let id = input::touch::Id::new(touch_id as u64);
             let phase = input::touch::Phase::Start;
             let touch = input::Touch { phase, id, xy };
-            (Some(Input::Touch(touch)), None)
+            Input::Touch(touch)
         }
         Event::FingerMotion { touch_id, x, y, .. } => {
             let xy = [x as f64, y as f64];
             let id = input::touch::Id::new(touch_id as u64);
             let phase = input::touch::Phase::Move;
             let touch = input::Touch { phase, id, xy };
-            (Some(Input::Touch(touch)), None)
+            Input::Touch(touch)
         }
 
         Event::FingerUp { touch_id, x, y, .. } => {
@@ -61,7 +56,7 @@ pub fn convert_event(e: Event, win_w: Scalar, win_h: Scalar) -> (Option<Input>, 
             let id = input::touch::Id::new(touch_id as u64);
             let phase = input::touch::Phase::End;
             let touch = input::Touch { phase, id, xy };
-            (Some(Input::Touch(touch)), None)
+            Input::Touch(touch)
         }
         Event::MouseMotion {
             x, y, xrel, yrel, ..
@@ -74,7 +69,7 @@ pub fn convert_event(e: Event, win_w: Scalar, win_h: Scalar) -> (Option<Input>, 
                 x: tx(xrel as f32),
                 y: ty(yrel as f32),
             };
-            (Some(Input::Motion(cursor)), Some(Input::Motion(relative)))
+            return [Some(Input::Motion(cursor)), Some(Input::Motion(relative))];
         }
         Event::MouseWheel { x, y, .. } => {
             // Invert the scrolling of the *y* axis as *y* is up in conrod.
@@ -82,16 +77,14 @@ pub fn convert_event(e: Event, win_w: Scalar, win_h: Scalar) -> (Option<Input>, 
             let x = ARBITRARY_POINTS_PER_LINE_FACTOR * x as Scalar;
             let y = ARBITRARY_POINTS_PER_LINE_FACTOR * (-y) as Scalar;
             let motion = input::Motion::Scroll { x, y };
-            (Some(Input::Motion(motion)), None)
+            Input::Motion(motion)
         }
-        Event::MouseButtonDown { mouse_btn, .. } => (
-            Some(Input::Press(input::Button::Mouse(convert_mouse_button(mouse_btn)))),
-            None,
-        ),
-        Event::MouseButtonUp { mouse_btn, .. } => (
-            Some(Input::Release(input::Button::Mouse(convert_mouse_button(mouse_btn)))),
-            None,
-        ),
+        Event::MouseButtonDown { mouse_btn, .. } => {
+            Input::Press(input::Button::Mouse(convert_mouse_button(mouse_btn)))
+        }
+        Event::MouseButtonUp { mouse_btn, .. } => {
+            Input::Release(input::Button::Mouse(convert_mouse_button(mouse_btn)))
+        }
         Event::JoyAxisMotion {
             which,
             axis_idx,
@@ -102,15 +95,13 @@ pub fn convert_event(e: Event, win_w: Scalar, win_h: Scalar) -> (Option<Input>, 
             // [-32768, 32767]. Normalize it down to a float.
             use std::i16::MAX;
             let normalized_value = value as f64 / MAX as f64;
-            (
-                Some(Input::Motion(input::Motion::ControllerAxis(
-                    input::ControllerAxisArgs::new(which, axis_idx, normalized_value),
-                ))),
-                None,
-            )
+            Input::Motion(input::Motion::ControllerAxis(
+                input::ControllerAxisArgs::new(which, axis_idx, normalized_value),
+            ))
         }
-        _ => (None, None),
-    }
+        _ => return [None, None],
+    };
+    [Some(event), None]
 }
 
 /// Maps sdl2's key to a conrod `Key`.

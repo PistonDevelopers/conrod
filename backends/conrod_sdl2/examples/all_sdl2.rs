@@ -1,5 +1,6 @@
 use conrod_example_shared::{DemoApp, WIN_H, WIN_W};
-use sdl2::{video::WindowBuildError, IntegerOrSdlError, image::LoadTexture};
+use conrod_sdl2::convert_event;
+use sdl2::{image::LoadTexture, video::WindowBuildError, IntegerOrSdlError};
 use thiserror::Error;
 
 fn main() -> Result<(), SdlError> {
@@ -9,6 +10,7 @@ fn main() -> Result<(), SdlError> {
     let window = video_subsystem
         .window("Conrod with SDL2!", WIN_W, WIN_H)
         .build()?;
+    let window_size = window.size();
     let mut canvas = window.into_canvas().present_vsync().build()?;
     let texture_creator = canvas.texture_creator();
 
@@ -22,17 +24,30 @@ fn main() -> Result<(), SdlError> {
     let mut image_map = conrod_core::image::Map::new();
     let rust_logo = image_map.insert(texture_creator.load_texture(rust_logo_path));
 
+    // Create Ui and Ids of widgets to instantiate
+    let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
+        .theme(conrod_example_shared::theme())
+        .build();
+    let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
     // Demonstration app state that we'll control with our conrod GUI.
-    let app = DemoApp::new(rust_logo);
+    let mut app = DemoApp::new(rust_logo);
 
     'main: loop {
         for event in event_pump.poll_iter() {
-            #[allow(clippy::single_match)]
             match event {
-                sdl2::event::Event::Quit { .. } => break 'main,
+                sdl2::event::Event::Quit { .. }
+                | sdl2::event::Event::KeyDown {
+                    keycode: Some(sdl2::keyboard::Keycode::Escape),
+                    ..
+                } => break 'main,
                 _ => {}
             }
+            for event in convert_event(event, window_size).into_iter().flatten() {
+                ui.handle_event(event);
+            }
         }
+
+        conrod_example_shared::gui(&mut ui.set_widgets(), &ids, &mut app);
 
         canvas.present();
     }
