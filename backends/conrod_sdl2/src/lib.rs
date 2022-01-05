@@ -32,13 +32,13 @@ pub fn convert_event(e: Event, win_w: Scalar, win_h: Scalar) -> (Option<Input>, 
         Event::KeyDown {
             keycode: Some(key), ..
         } => (
-            Some(Input::Press(input::Button::Keyboard(map_key(key)))),
+            Some(Input::Press(input::Button::Keyboard(convert_key(key)))),
             None,
         ),
         Event::KeyUp {
             keycode: Some(key), ..
         } => (
-            Some(Input::Release(input::Button::Keyboard(map_key(key)))),
+            Some(Input::Release(input::Button::Keyboard(convert_key(key)))),
             None,
         ),
         Event::FingerDown { touch_id, x, y, .. } => {
@@ -85,11 +85,11 @@ pub fn convert_event(e: Event, win_w: Scalar, win_h: Scalar) -> (Option<Input>, 
             (Some(Input::Motion(motion)), None)
         }
         Event::MouseButtonDown { mouse_btn, .. } => (
-            Some(Input::Press(input::Button::Mouse(map_mouse(mouse_btn)))),
+            Some(Input::Press(input::Button::Mouse(convert_mouse_button(mouse_btn)))),
             None,
         ),
         Event::MouseButtonUp { mouse_btn, .. } => (
-            Some(Input::Release(input::Button::Mouse(map_mouse(mouse_btn)))),
+            Some(Input::Release(input::Button::Mouse(convert_mouse_button(mouse_btn)))),
             None,
         ),
         Event::JoyAxisMotion {
@@ -114,12 +114,12 @@ pub fn convert_event(e: Event, win_w: Scalar, win_h: Scalar) -> (Option<Input>, 
 }
 
 /// Maps sdl2's key to a conrod `Key`.
-pub fn map_key(keycode: sdl2::keyboard::Keycode) -> input::keyboard::Key {
+pub fn convert_key(keycode: sdl2::keyboard::Keycode) -> input::keyboard::Key {
     (keycode as u32).into()
 }
 
 /// Maps sdl2's mouse button to conrod's mouse button.
-pub fn map_mouse(mouse_button: sdl2::mouse::MouseButton) -> input::MouseButton {
+pub fn convert_mouse_button(mouse_button: sdl2::mouse::MouseButton) -> input::MouseButton {
     use conrod_core::input::MouseButton;
     match mouse_button {
         sdl2::mouse::MouseButton::Left => MouseButton::Left,
