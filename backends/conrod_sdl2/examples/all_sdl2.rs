@@ -1,5 +1,5 @@
-use conrod_example_shared::{WIN_H, WIN_W};
-use sdl2::{video::WindowBuildError, IntegerOrSdlError};
+use conrod_example_shared::{DemoApp, WIN_H, WIN_W};
+use sdl2::{video::WindowBuildError, IntegerOrSdlError, image::LoadTexture};
 use thiserror::Error;
 
 fn main() -> Result<(), SdlError> {
@@ -10,8 +10,20 @@ fn main() -> Result<(), SdlError> {
         .window("Conrod with SDL2!", WIN_W, WIN_H)
         .build()?;
     let mut canvas = window.into_canvas().present_vsync().build()?;
+    let texture_creator = canvas.texture_creator();
 
     let mut event_pump = sdl.event_pump().map_err(SdlError::String)?;
+
+    // Load Rust logo as a texture.
+    let rust_logo_path = find_folder::Search::KidsThenParents(3, 5)
+        .for_folder("assets")
+        .expect("Assets directory not found")
+        .join("images/rust.png");
+    let mut image_map = conrod_core::image::Map::new();
+    let rust_logo = image_map.insert(texture_creator.load_texture(rust_logo_path));
+
+    // Demonstration app state that we'll control with our conrod GUI.
+    let app = DemoApp::new(rust_logo);
 
     'main: loop {
         for event in event_pump.poll_iter() {
