@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+conrod_core = { path = "../../conrod_core", version = "0.71" }
 sdl2 = { version = "0.35.1", features = ["gfx", "ttf"] }
 
 [dev-dependencies]
