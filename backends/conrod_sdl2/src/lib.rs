@@ -6,13 +6,15 @@ use conrod_core::{
         rt::gpu_cache::{CacheReadErr, CacheWriteErr},
         GlyphCache,
     },
+    widget::triangles::{ColoredPoint, Triangle},
     Scalar,
 };
 use sdl2::{
     event::Event,
     gfx::primitives::DrawRenderer,
-    render::{Canvas, Texture},
-    video::Window,
+    pixels::PixelFormatEnum,
+    render::{BlendMode, Canvas, Texture, TextureCreator, TextureValueError},
+    video::{Window, WindowContext},
 };
 use thiserror::Error;
 
@@ -139,168 +141,278 @@ pub fn convert_mouse_button(mouse_button: sdl2::mouse::MouseButton) -> input::Mo
     }
 }
 
-pub fn draw(
-    canvas: &mut Canvas<Window>,
-    image_map: &mut conrod_core::image::Map<sdl2::render::Texture>,
-    glyph_cache: &mut GlyphCache,
-    glyph_texture: &mut Texture,
-    mut primitives: impl PrimitiveWalker,
-) -> Result<(), DrawPrimitiveError> {
-    while let Some(primitive) = primitives.next_primitive() {
-        // TODO: this function returns as soon as an error occurs.
-        // shuold we just ignore the error instead?
-        draw_primitive(canvas, image_map, glyph_cache, glyph_texture, primitive)?;
-    }
-    Ok(())
+/// A helper struct that simplifies rendering conrod primitives.
+pub struct Renderer<'font, 'texture> {
+    glyph_cache: GlyphCache<'font>,
+    glyph_texture: Texture<'texture>,
 }
 
-pub fn draw_primitive(
-    canvas: &mut Canvas<Window>,
-    image_map: &mut conrod_core::image::Map<sdl2::render::Texture>,
-    glyph_cache: &mut GlyphCache,
-    glyph_texture: &mut Texture,
-    primitive: Primitive,
-) -> Result<(), DrawPrimitiveError> {
-    let window_size = canvas.window().size();
-    let dpi_factor = canvas.output_size().map_err(DrawPrimitiveError::Sdl)?.0 as Scalar
-        / window_size.0 as Scalar;
-    let convert_point = |r| convert_point(window_size, dpi_factor, r);
-    let convert_rect = |r| convert_rect(window_size, dpi_factor, r);
-    canvas.set_clip_rect(convert_rect(primitive.scizzor));
-    match primitive.kind {
-        PrimitiveKind::Rectangle { color } => {
-            // println!("{:?} {:?} {:?}", primitive.rect, convert_rect(primitive.rect), color);
-            canvas.set_draw_color(convert_color(color));
+type ImageMap<'t> = conrod_core::image::Map<sdl2::render::Texture<'t>>;
+
+impl<'font, 'texture> Renderer<'font, 'texture> {
+    /// Constructs a new `Renderer`.
+    pub fn new(
+        texture_creator: &'texture TextureCreator<WindowContext>,
+    ) -> Result<Self, TextureValueError> {
+        let [w, h] = conrod_core::mesh::DEFAULT_GLYPH_CACHE_DIMS;
+        Self::with_glyph_cache_dimensions(texture_creator, (w, h))
+    }
+
+    /// Constructs a new `Renderer`.
+    pub fn with_glyph_cache_dimensions(
+        texture_creator: &'texture TextureCreator<WindowContext>,
+        glyph_cache_dimensions: (u32, u32),
+    ) -> Result<Self, TextureValueError> {
+        // Prepare glyph cache
+        let (w, h) = glyph_cache_dimensions;
+        let glyph_cache = GlyphCache::builder().dimensions(w, h).build();
+        let glyph_texture = {
+            let mut texture =
+                texture_creator.create_texture_streaming(PixelFormatEnum::ABGR8888, w, h)?;
+            texture.set_blend_mode(BlendMode::Blend);
+            texture
+        };
+
+        Ok(Self {
+            glyph_cache,
+            glyph_texture,
+        })
+    }
+
+    /// Draws the given primitives.
+    /// It stops drawing as soon as any error occurs.
+    pub fn draw<'m, 't: 'm, I>(
+        &mut self,
+        canvas: &mut Canvas<Window>,
+        image_map: I,
+        mut primitives: impl PrimitiveWalker,
+    ) -> Result<(), DrawPrimitiveError>
+    where
+        I: Into<Option<&'m mut ImageMap<'t>>>,
+    {
+        let mut image_map = image_map.into();
+        while let Some(primitive) = primitives.next_primitive() {
+            // TODO: this function returns as soon as an error occurs.
+            // shuold we just ignore the error instead?
+            match &mut image_map {
+                Some(image_map) => {
+                    self.draw_primitive::<&mut ImageMap>(canvas, image_map, primitive)?
+                }
+                None => self.draw_primitive(canvas, None, primitive)?,
+            }
+        }
+        Ok(())
+    }
+
+    /// Draws the given primitive.
+    /// It stops drawing as soon as any error occurs.
+    pub fn draw_primitive<'m, 't: 'm, I>(
+        &mut self,
+        canvas: &mut Canvas<Window>,
+        image_map: I,
+        primitive: Primitive,
+    ) -> Result<(), DrawPrimitiveError>
+    where
+        I: Into<Option<&'m mut ImageMap<'t>>>,
+    {
+        let window_size = canvas.window().size();
+        let dpi_factor = canvas.output_size().map_err(DrawPrimitiveError::Sdl)?.0 as Scalar
+            / window_size.0 as Scalar;
+        let convert_point = |r| convert_point(window_size, dpi_factor, r);
+        let convert_rect = |r| convert_rect(window_size, dpi_factor, r);
+
+        canvas.set_clip_rect(convert_rect(primitive.scizzor));
+        match primitive.kind {
+            PrimitiveKind::Rectangle { color } => {
+                Self::draw_rectangle(canvas, convert_rect(primitive.rect), color)?;
+            }
+            PrimitiveKind::TrianglesSingleColor { color, triangles } => {
+                Self::draw_triangle_single_color(canvas, color, triangles, convert_point)?;
+            }
+            PrimitiveKind::TrianglesMultiColor { triangles } => {
+                Self::draw_triangle_multi_color(canvas, triangles, convert_point)?;
+            }
+            PrimitiveKind::Image {
+                image_id,
+                color,
+                source_rect,
+            } => {
+                if let Some(image_map) = image_map.into() {
+                    Self::draw_image(
+                        canvas,
+                        image_map,
+                        convert_rect(primitive.rect),
+                        image_id,
+                        color,
+                        source_rect.map(convert_rect),
+                    )?;
+                }
+                // Otherwise, no image map was provided but an image was demanded to be rendered.
+                // Should we return an error or at least show a friendly warning to stderr?
+            }
+            PrimitiveKind::Text {
+                color,
+                text,
+                font_id,
+            } => {
+                self.draw_text(canvas, dpi_factor, color, text, font_id)?;
+            }
+            PrimitiveKind::Other(_) => {}
+        }
+        Ok(())
+    }
+
+    fn draw_rectangle(
+        canvas: &mut Canvas<Window>,
+        rect: sdl2::rect::Rect,
+        color: conrod_core::Color,
+    ) -> Result<(), DrawPrimitiveError> {
+        canvas.set_draw_color(convert_color(color));
+        canvas.fill_rect(rect).map_err(DrawPrimitiveError::Sdl)?;
+        Ok(())
+    }
+
+    fn draw_triangle_single_color(
+        canvas: &mut Canvas<Window>,
+        color: conrod_core::color::Rgba,
+        triangles: &[Triangle<conrod_core::Point>],
+        convert_point: impl Fn(conrod_core::Point) -> (i32, i32) + Copy,
+    ) -> Result<(), DrawPrimitiveError> {
+        for t in triangles {
+            let [(ax, ay), (bx, by), (cx, cy)] = t.0.map(convert_point);
             canvas
-                .fill_rect(convert_rect(primitive.rect))
-                .map_err(DrawPrimitiveError::Sdl)?;
-        }
-        PrimitiveKind::TrianglesSingleColor { color, triangles } => {
-            canvas.set_draw_color(sdl2::pixels::Color::RGBA(255, 0, 0, 128));
-            for t in triangles {
-                let [(ax, ay), (bx, by), (cx, cy)] = t.0.map(convert_point);
-                canvas
-                    .filled_trigon(
-                        ax as _,
-                        ay as _,
-                        bx as _,
-                        by as _,
-                        cx as _,
-                        cy as _,
-                        convert_color(color),
-                    )
-                    .map_err(DrawPrimitiveError::Sdl)?;
-            }
-        }
-        PrimitiveKind::TrianglesMultiColor { triangles } => {
-            // Multicolor triangles are not supported in pure SDL,
-            // so we workaround by using only the first color
-            for t in triangles {
-                let [((ax, ay), color), ((bx, by), _), ((cx, cy), _)] =
-                    t.0.map(|(p, c)| (convert_point(p), c));
-                canvas
-                    .filled_trigon(
-                        ax as _,
-                        ay as _,
-                        bx as _,
-                        by as _,
-                        cx as _,
-                        cy as _,
-                        convert_color(color),
-                    )
-                    .map_err(DrawPrimitiveError::Sdl)?;
-            }
-        }
-        PrimitiveKind::Image {
-            image_id,
-            color,
-            source_rect,
-        } => {
-            // TODO: should we really panic if no image was found?
-            let texture = image_map
-                .get_mut(image_id)
-                .expect("No image found for the given image id");
-            if let Some(color) = color {
-                let color = convert_color(color);
-                texture.set_color_mod(color.r, color.g, color.b);
-                texture.set_alpha_mod(color.a);
-            }
-            canvas
-                .copy(
-                    texture,
-                    source_rect.map(convert_rect),
-                    convert_rect(primitive.rect),
+                .filled_trigon(
+                    ax as _,
+                    ay as _,
+                    bx as _,
+                    by as _,
+                    cx as _,
+                    cy as _,
+                    convert_color(color),
                 )
                 .map_err(DrawPrimitiveError::Sdl)?;
         }
-        PrimitiveKind::Text {
-            color,
-            text,
-            font_id,
-        } => {
-            let font_id = font_id.index();
+        Ok(())
+    }
 
-            // Queue the glyphs to be cached.
-            let positioned_glyphs = text.positioned_glyphs(dpi_factor as f32);
-            for glyph in positioned_glyphs {
-                glyph_cache.queue_glyph(font_id, glyph.clone());
-            }
+    fn draw_triangle_multi_color(
+        canvas: &mut Canvas<Window>,
+        triangles: &[Triangle<ColoredPoint>],
+        convert_point: impl Fn(conrod_core::Point) -> (i32, i32) + Copy,
+    ) -> Result<(), DrawPrimitiveError> {
+        // Multicolor triangles are not supported in pure SDL,
+        // so we workaround by using only the first color
+        for t in triangles {
+            let [((ax, ay), color), ((bx, by), _), ((cx, cy), _)] =
+                t.0.map(|(p, c)| (convert_point(p), c));
+            canvas
+                .filled_trigon(
+                    ax as _,
+                    ay as _,
+                    bx as _,
+                    by as _,
+                    cx as _,
+                    cy as _,
+                    convert_color(color),
+                )
+                .map_err(DrawPrimitiveError::Sdl)?;
+        }
+        Ok(())
+    }
 
-            // Cache the glyphs within the GPU cache.
-            glyph_cache.cache_queued(|rect, data| {
-                let rect = sdl2::rect::Rect::new(
-                    rect.min.x as i32,
-                    rect.min.y as i32,
-                    rect.width(),
-                    rect.height(),
-                );
-                // TODO: propagate errors?
-                let _ = glyph_texture.with_lock(rect, |out, pitch| {
-                    let out = out.chunks_mut(pitch);
-                    let data = data.chunks(rect.width() as _);
-                    for (out, data) in out.zip(data) {
-                        for (out, &data) in out.chunks_mut(4).zip(data) {
-                            out[3] = data;
-                            out[0..3].fill(255);
-                        }
-                    }
-                });
-            })?;
-
+    fn draw_image(
+        canvas: &mut Canvas<Window>,
+        image_map: &mut conrod_core::image::Map<sdl2::render::Texture>,
+        dest_rect: sdl2::rect::Rect,
+        image_id: conrod_core::image::Id,
+        color: Option<conrod_core::Color>,
+        source_rect: Option<sdl2::rect::Rect>,
+    ) -> Result<(), DrawPrimitiveError> {
+        // TODO: should we really panic if no image was found?
+        let texture = image_map
+            .get_mut(image_id)
+            .expect("No image found for the given image id");
+        if let Some(color) = color {
             let color = convert_color(color);
-            glyph_texture.set_color_mod(color.r, color.g, color.b);
-            glyph_texture.set_alpha_mod(color.a);
+            texture.set_color_mod(color.r, color.g, color.b);
+            texture.set_alpha_mod(color.a);
+        }
+        canvas
+            .copy(texture, source_rect, dest_rect)
+            .map_err(DrawPrimitiveError::Sdl)?;
+        Ok(())
+    }
 
-            let (glyph_texture_w, glyph_texture_h) = {
-                let q = glyph_texture.query();
-                (q.width as f32, q.height as f32)
-            };
+    fn draw_text(
+        &mut self,
+        canvas: &mut Canvas<Window>,
+        dpi_factor: Scalar,
+        color: conrod_core::Color,
+        text: conrod_core::render::Text,
+        font_id: conrod_core::text::font::Id,
+    ) -> Result<(), DrawPrimitiveError> {
+        let font_id = font_id.index();
 
-            for glyph in positioned_glyphs {
-                if let Some((src, dst)) = glyph_cache.rect_for(font_id, glyph)? {
-                    let src = {
-                        let x = src.min.x * glyph_texture_w;
-                        let y = src.min.y * glyph_texture_h;
-                        let w = src.width() * glyph_texture_w;
-                        let h = src.height() * glyph_texture_h;
-                        (x as _, y as _, w as _, h as _)
-                    };
-                    let dst = {
-                        let x = dst.min.x;
-                        let y = dst.min.y;
-                        let w = dst.width();
-                        let h = dst.height();
-                        (x as _, y as _, w as _, h as _)
-                    };
-                    canvas
-                        .copy(glyph_texture, Some(src.into()), Some(dst.into()))
-                        .map_err(DrawPrimitiveError::Sdl)?;
+        // Queue the glyphs to be cached.
+        let positioned_glyphs = text.positioned_glyphs(dpi_factor as f32);
+        for glyph in positioned_glyphs {
+            self.glyph_cache.queue_glyph(font_id, glyph.clone());
+        }
+
+        // Cache the glyphs within the GPU cache.
+        self.glyph_cache.cache_queued(|rect, data| {
+            let rect = sdl2::rect::Rect::new(
+                rect.min.x as i32,
+                rect.min.y as i32,
+                rect.width(),
+                rect.height(),
+            );
+            // TODO: propagate errors?
+            let _ = self.glyph_texture.with_lock(rect, |out, pitch| {
+                let out = out.chunks_mut(pitch);
+                let data = data.chunks(rect.width() as _);
+                for (out, data) in out.zip(data) {
+                    for (out, &data) in out.chunks_mut(4).zip(data) {
+                        out[3] = data;
+                        out[0..3].fill(255);
+                    }
                 }
+            });
+        })?;
+
+        let color = convert_color(color);
+        self.glyph_texture.set_color_mod(color.r, color.g, color.b);
+        self.glyph_texture.set_alpha_mod(color.a);
+
+        let (glyph_texture_w, glyph_texture_h) = {
+            let q = self.glyph_texture.query();
+            (q.width as f32, q.height as f32)
+        };
+
+        for glyph in positioned_glyphs {
+            if let Some((src, dst)) = self.glyph_cache.rect_for(font_id, glyph)? {
+                let src = {
+                    let x = src.min.x * glyph_texture_w;
+                    let y = src.min.y * glyph_texture_h;
+                    let w = src.width() * glyph_texture_w;
+                    let h = src.height() * glyph_texture_h;
+                    (x as _, y as _, w as _, h as _)
+                };
+                let dst = {
+                    let x = dst.min.x;
+                    let y = dst.min.y;
+                    let w = dst.width();
+                    let h = dst.height();
+                    (x as _, y as _, w as _, h as _)
+                };
+                canvas
+                    .copy(&self.glyph_texture, Some(src.into()), Some(dst.into()))
+                    .map_err(DrawPrimitiveError::Sdl)?;
             }
         }
-        PrimitiveKind::Other(_) => {}
+
+        Ok(())
     }
-    Ok(())
 }
 
 #[derive(Debug, Error)]

@@ -1,14 +1,9 @@
 use std::{thread::sleep, time::Duration};
 
-use conrod_core::text::GlyphCache;
 use conrod_example_shared::{DemoApp, WIN_H, WIN_W};
 use conrod_sdl2::{convert_event, DrawPrimitiveError};
 use sdl2::{
-    image::LoadTexture,
-    pixels::PixelFormatEnum,
-    render::{BlendMode, TextureValueError},
-    video::WindowBuildError,
-    IntegerOrSdlError,
+    image::LoadTexture, render::TextureValueError, video::WindowBuildError, IntegerOrSdlError,
 };
 use thiserror::Error;
 
@@ -25,19 +20,6 @@ fn main() -> Result<(), SdlError> {
     let texture_creator = canvas.texture_creator();
 
     let mut event_pump = sdl.event_pump().map_err(SdlError::String)?;
-
-    // Prepare glyph cache
-    let (canvas_w, canvas_h) = canvas.output_size().map_err(SdlError::String)?;
-    let mut glyph_cache = GlyphCache::builder()
-        .dimensions(canvas_w * 2, canvas_h * 2)
-        .build();
-    let mut glyph_texture = {
-        let (w, h) = glyph_cache.dimensions();
-        let mut texture =
-            texture_creator.create_texture_streaming(PixelFormatEnum::ABGR8888, w, h)?;
-        texture.set_blend_mode(BlendMode::Blend);
-        texture
-    };
 
     // The assets directory, where the Rust logo and the font file belong.
     let assets = find_folder::Search::KidsThenParents(3, 5)
@@ -64,6 +46,9 @@ fn main() -> Result<(), SdlError> {
     let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
+    // Renderer
+    let mut renderer = conrod_sdl2::Renderer::new(&texture_creator)?;
+
     'main: loop {
         for event in event_pump.poll_iter() {
             match event {
@@ -84,13 +69,7 @@ fn main() -> Result<(), SdlError> {
 
         conrod_example_shared::gui(&mut ui.set_widgets(), &ids, &mut app);
         if let Some(primitives) = ui.draw_if_changed() {
-            conrod_sdl2::draw(
-                &mut canvas,
-                &mut image_map,
-                &mut glyph_cache,
-                &mut glyph_texture,
-                primitives,
-            )?;
+            renderer.draw(&mut canvas, &mut image_map, primitives)?;
             canvas.present();
         } else {
             // We should sleep for a reasonable duration before polloing for new events
@@ -112,6 +91,6 @@ pub enum SdlError {
     IntegerOrSdlError(#[from] IntegerOrSdlError),
     #[error("Failed to create a texture: {0}")]
     TextureValueError(#[from] TextureValueError),
-    #[error("Failed to draw a primitivee: {0}")]
+    #[error("Failed to draw a primitive: {0}")]
     DrawPrimitiveError(#[from] DrawPrimitiveError),
 }
