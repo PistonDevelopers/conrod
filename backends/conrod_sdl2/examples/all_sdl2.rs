@@ -1,6 +1,6 @@
 use conrod_example_shared::{DemoApp, WIN_H, WIN_W};
 use conrod_sdl2::convert_event;
-use sdl2::{image::LoadTexture, video::WindowBuildError, IntegerOrSdlError};
+use sdl2::{image::LoadTexture, rect::Rect, video::WindowBuildError, IntegerOrSdlError};
 use thiserror::Error;
 
 fn main() -> Result<(), SdlError> {
@@ -22,7 +22,10 @@ fn main() -> Result<(), SdlError> {
         .expect("Assets directory not found")
         .join("images/rust.png");
     let mut image_map = conrod_core::image::Map::new();
-    let rust_logo = image_map.insert(texture_creator.load_texture(rust_logo_path));
+    let rust_logo = texture_creator
+        .load_texture(rust_logo_path)
+        .map_err(SdlError::String)?;
+    let rust_logo = image_map.insert(rust_logo);
 
     // Create Ui and Ids of widgets to instantiate
     let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
@@ -48,6 +51,16 @@ fn main() -> Result<(), SdlError> {
         }
 
         conrod_example_shared::gui(&mut ui.set_widgets(), &ids, &mut app);
+        if let Some(primitives) = ui.draw_if_changed() {
+            conrod_sdl2::draw(&mut canvas, &mut image_map, window_size, primitives)
+                .map_err(SdlError::String)?;
+        } else {
+            // If `canvas.present()` is called without any actual drawing command, it clears the screen.
+            // We want to preserve what is drawn, so we draw a dummy rectangle outside the canvas.
+            canvas
+                .draw_rect(Rect::new(-1, -1, 1, 1))
+                .map_err(SdlError::String)?;
+        }
 
         canvas.present();
     }
