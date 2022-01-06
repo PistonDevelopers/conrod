@@ -11,7 +11,8 @@ use conrod_core::{
 use sdl2::{
     event::Event,
     gfx::primitives::DrawRenderer,
-    render::{Canvas, RenderTarget, Texture},
+    render::{Canvas, Texture},
+    video::Window,
 };
 use thiserror::Error;
 
@@ -139,36 +140,28 @@ pub fn convert_mouse_button(mouse_button: sdl2::mouse::MouseButton) -> input::Mo
 }
 
 pub fn draw(
-    canvas: &mut Canvas<impl RenderTarget>,
+    canvas: &mut Canvas<Window>,
     image_map: &mut conrod_core::image::Map<sdl2::render::Texture>,
     glyph_cache: &mut GlyphCache,
     glyph_texture: &mut Texture,
-    window_size: SdlWindowSize,
     mut primitives: impl PrimitiveWalker,
 ) -> Result<(), DrawPrimitiveError> {
     while let Some(primitive) = primitives.next_primitive() {
         // TODO: this function returns as soon as an error occurs.
         // shuold we just ignore the error instead?
-        draw_primitive(
-            canvas,
-            image_map,
-            glyph_cache,
-            glyph_texture,
-            window_size,
-            primitive,
-        )?;
+        draw_primitive(canvas, image_map, glyph_cache, glyph_texture, primitive)?;
     }
     Ok(())
 }
 
 pub fn draw_primitive(
-    canvas: &mut Canvas<impl RenderTarget>,
+    canvas: &mut Canvas<Window>,
     image_map: &mut conrod_core::image::Map<sdl2::render::Texture>,
     glyph_cache: &mut GlyphCache,
     glyph_texture: &mut Texture,
-    window_size: SdlWindowSize,
     primitive: Primitive,
 ) -> Result<(), DrawPrimitiveError> {
+    let window_size = canvas.window().size();
     let dpi_factor = canvas.output_size().map_err(DrawPrimitiveError::Sdl)?.0 as Scalar
         / window_size.0 as Scalar;
     let convert_point = |r| convert_point(window_size, dpi_factor, r);

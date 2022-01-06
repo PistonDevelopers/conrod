@@ -18,9 +18,9 @@ fn main() -> Result<(), SdlError> {
     let video_subsystem = sdl.video().map_err(SdlError::String)?;
     let window = video_subsystem
         .window("Conrod with SDL2!", WIN_W, WIN_H)
+        .resizable()
         .allow_highdpi()
         .build()?;
-    let window_size = window.size();
     let mut canvas = window.into_canvas().present_vsync().build()?;
     let texture_creator = canvas.texture_creator();
 
@@ -74,7 +74,10 @@ fn main() -> Result<(), SdlError> {
                 } => break 'main,
                 _ => {}
             }
-            for event in convert_event(event, window_size).into_iter().flatten() {
+            for event in convert_event(event, canvas.window().size())
+                .into_iter()
+                .flatten()
+            {
                 ui.handle_event(event);
             }
         }
@@ -86,7 +89,6 @@ fn main() -> Result<(), SdlError> {
                 &mut image_map,
                 &mut glyph_cache,
                 &mut glyph_texture,
-                window_size,
                 primitives,
             )?;
             canvas.present();
