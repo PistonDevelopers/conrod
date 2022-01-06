@@ -169,8 +169,10 @@ pub fn draw_primitive(
     window_size: SdlWindowSize,
     primitive: Primitive,
 ) -> Result<(), DrawPrimitiveError> {
-    let convert_point = |r| convert_point(window_size, r);
-    let convert_rect = |r| convert_rect(window_size, r);
+    let dpi_factor = canvas.output_size().map_err(DrawPrimitiveError::Sdl)?.0 as Scalar
+        / window_size.0 as Scalar;
+    let convert_point = |r| convert_point(window_size, dpi_factor, r);
+    let convert_rect = |r| convert_rect(window_size, dpi_factor, r);
     canvas.set_clip_rect(convert_rect(primitive.scizzor));
     match primitive.kind {
         PrimitiveKind::Rectangle { color } => {
@@ -245,11 +247,8 @@ pub fn draw_primitive(
         } => {
             let font_id = font_id.index();
 
-            // FIXME: We can calculate the DPI factor by accessing the video subsystem
-            let dpi_factor = 1.0;
-            let positioned_glyphs = text.positioned_glyphs(dpi_factor);
-
             // Queue the glyphs to be cached.
+            let positioned_glyphs = text.positioned_glyphs(dpi_factor as f32);
             for glyph in positioned_glyphs {
                 glyph_cache.queue_glyph(font_id, glyph.clone());
             }
@@ -294,10 +293,10 @@ pub fn draw_primitive(
                         (x as _, y as _, w as _, h as _)
                     };
                     let dst = {
-                        let x = dst.min.x as f32 / dpi_factor;
-                        let y = dst.min.y as f32 / dpi_factor;
-                        let w = dst.width() as f32 / dpi_factor;
-                        let h = dst.height() as f32 / dpi_factor;
+                        let x = dst.min.x;
+                        let y = dst.min.y;
+                        let w = dst.width();
+                        let h = dst.height();
                         (x as _, y as _, w as _, h as _)
                     };
                     canvas
@@ -321,14 +320,27 @@ pub enum DrawPrimitiveError {
     GlyphCacheReadErr(#[from] CacheReadErr),
 }
 
-pub fn convert_rect(window_size: SdlWindowSize, rect: conrod_core::Rect) -> sdl2::rect::Rect {
-    let (x, y) = convert_point(window_size, rect.top_left());
-    sdl2::rect::Rect::new(x, y, rect.w() as _, rect.h() as _)
+pub fn convert_rect(
+    window_size: SdlWindowSize,
+    dpi_factor: Scalar,
+    rect: conrod_core::Rect,
+) -> sdl2::rect::Rect {
+    let (x, y) = convert_point(window_size, dpi_factor, rect.top_left());
+    sdl2::rect::Rect::new(
+        x,
+        y,
+        (rect.w() * dpi_factor) as _,
+        (rect.h() * dpi_factor) as _,
+    )
 }
 
-pub fn convert_point(window_size: SdlWindowSize, [x, y]: conrod_core::Point) -> (i32, i32) {
-    let x = window_size.0 as f64 / 2. + x;
-    let y = window_size.1 as f64 / 2. - y;
+pub fn convert_point(
+    window_size: SdlWindowSize,
+    dpi_factor: Scalar,
+    [x, y]: conrod_core::Point,
+) -> (i32, i32) {
+    let x = (window_size.0 as Scalar / 2. + x) * dpi_factor;
+    let y = (window_size.1 as Scalar / 2. - y) * dpi_factor;
     (x as _, y as _)
 }
 

@@ -17,6 +17,7 @@ fn main() -> Result<(), SdlError> {
     let video_subsystem = sdl.video().map_err(SdlError::String)?;
     let window = video_subsystem
         .window("Conrod with SDL2!", WIN_W, WIN_H)
+        .allow_highdpi()
         .build()?;
     let window_size = window.size();
     let mut canvas = window.into_canvas().present_vsync().build()?;
@@ -25,7 +26,10 @@ fn main() -> Result<(), SdlError> {
     let mut event_pump = sdl.event_pump().map_err(SdlError::String)?;
 
     // Prepare glyph cache
-    let mut glyph_cache = GlyphCache::builder().build();
+    let (canvas_w, canvas_h) = canvas.output_size().map_err(SdlError::String)?;
+    let mut glyph_cache = GlyphCache::builder()
+        .dimensions(canvas_w * 2, canvas_h * 2)
+        .build();
     let mut glyph_texture = {
         let (w, h) = glyph_cache.dimensions();
         let mut texture =
