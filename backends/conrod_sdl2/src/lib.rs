@@ -1,14 +1,19 @@
 use conrod_core::{
     event::Input,
     input,
-    render::{Primitive, PrimitiveWalker},
+    render::{Primitive, PrimitiveKind, PrimitiveWalker},
+    text::{
+        rt::gpu_cache::{CacheReadErr, CacheWriteErr},
+        GlyphCache,
+    },
     Scalar,
 };
 use sdl2::{
     event::Event,
     gfx::primitives::DrawRenderer,
-    render::{Canvas, RenderTarget},
+    render::{Canvas, RenderTarget, Texture},
 };
+use thiserror::Error;
 
 type SdlWindowSize = (u32, u32);
 
@@ -136,13 +141,22 @@ pub fn convert_mouse_button(mouse_button: sdl2::mouse::MouseButton) -> input::Mo
 pub fn draw(
     canvas: &mut Canvas<impl RenderTarget>,
     image_map: &mut conrod_core::image::Map<sdl2::render::Texture>,
+    glyph_cache: &mut GlyphCache,
+    glyph_texture: &mut Texture,
     window_size: SdlWindowSize,
     mut primitives: impl PrimitiveWalker,
-) -> Result<(), String> {
+) -> Result<(), DrawPrimitiveError> {
     while let Some(primitive) = primitives.next_primitive() {
         // TODO: this function returns as soon as an error occurs.
         // shuold we just ignore the error instead?
-        draw_primitive(canvas, image_map, window_size, primitive)?;
+        draw_primitive(
+            canvas,
+            image_map,
+            glyph_cache,
+            glyph_texture,
+            window_size,
+            primitive,
+        )?;
     }
     Ok(())
 }
@@ -150,51 +164,59 @@ pub fn draw(
 pub fn draw_primitive(
     canvas: &mut Canvas<impl RenderTarget>,
     image_map: &mut conrod_core::image::Map<sdl2::render::Texture>,
+    glyph_cache: &mut GlyphCache,
+    glyph_texture: &mut Texture,
     window_size: SdlWindowSize,
     primitive: Primitive,
-) -> Result<(), String> {
+) -> Result<(), DrawPrimitiveError> {
     let convert_point = |r| convert_point(window_size, r);
     let convert_rect = |r| convert_rect(window_size, r);
     canvas.set_clip_rect(convert_rect(primitive.scizzor));
     match primitive.kind {
-        conrod_core::render::PrimitiveKind::Rectangle { color } => {
+        PrimitiveKind::Rectangle { color } => {
             // println!("{:?} {:?} {:?}", primitive.rect, convert_rect(primitive.rect), color);
             canvas.set_draw_color(convert_color(color));
-            canvas.fill_rect(convert_rect(primitive.rect))?;
+            canvas
+                .fill_rect(convert_rect(primitive.rect))
+                .map_err(DrawPrimitiveError::Sdl)?;
         }
-        conrod_core::render::PrimitiveKind::TrianglesSingleColor { color, triangles } => {
+        PrimitiveKind::TrianglesSingleColor { color, triangles } => {
             canvas.set_draw_color(sdl2::pixels::Color::RGBA(255, 0, 0, 128));
             for t in triangles {
                 let [(ax, ay), (bx, by), (cx, cy)] = t.0.map(convert_point);
-                canvas.filled_trigon(
-                    ax as _,
-                    ay as _,
-                    bx as _,
-                    by as _,
-                    cx as _,
-                    cy as _,
-                    convert_color(color),
-                )?;
+                canvas
+                    .filled_trigon(
+                        ax as _,
+                        ay as _,
+                        bx as _,
+                        by as _,
+                        cx as _,
+                        cy as _,
+                        convert_color(color),
+                    )
+                    .map_err(DrawPrimitiveError::Sdl)?;
             }
         }
-        conrod_core::render::PrimitiveKind::TrianglesMultiColor { triangles } => {
+        PrimitiveKind::TrianglesMultiColor { triangles } => {
             // Multicolor triangles are not supported in pure SDL,
             // so we workaround by using only the first color
             for t in triangles {
                 let [((ax, ay), color), ((bx, by), _), ((cx, cy), _)] =
                     t.0.map(|(p, c)| (convert_point(p), c));
-                canvas.filled_trigon(
-                    ax as _,
-                    ay as _,
-                    bx as _,
-                    by as _,
-                    cx as _,
-                    cy as _,
-                    convert_color(color),
-                )?;
+                canvas
+                    .filled_trigon(
+                        ax as _,
+                        ay as _,
+                        bx as _,
+                        by as _,
+                        cx as _,
+                        cy as _,
+                        convert_color(color),
+                    )
+                    .map_err(DrawPrimitiveError::Sdl)?;
             }
         }
-        conrod_core::render::PrimitiveKind::Image {
+        PrimitiveKind::Image {
             image_id,
             color,
             source_rect,
@@ -208,25 +230,95 @@ pub fn draw_primitive(
                 texture.set_color_mod(color.r, color.g, color.b);
                 texture.set_alpha_mod(color.a);
             }
-            canvas.copy(
-                texture,
-                source_rect.map(convert_rect),
-                convert_rect(primitive.rect),
-            )?;
+            canvas
+                .copy(
+                    texture,
+                    source_rect.map(convert_rect),
+                    convert_rect(primitive.rect),
+                )
+                .map_err(DrawPrimitiveError::Sdl)?;
         }
-        conrod_core::render::PrimitiveKind::Text {
+        PrimitiveKind::Text {
             color,
             text,
             font_id,
         } => {
+            let font_id = font_id.index();
+
             // FIXME: We can calculate the DPI factor by accessing the video subsystem
-            for glyph in text.positioned_glyphs(1.0) {
-                // TODO
+            let dpi_factor = 1.0;
+            let positioned_glyphs = text.positioned_glyphs(dpi_factor);
+
+            // Queue the glyphs to be cached.
+            for glyph in positioned_glyphs {
+                glyph_cache.queue_glyph(font_id, glyph.clone());
+            }
+
+            // Cache the glyphs within the GPU cache.
+            glyph_cache.cache_queued(|rect, data| {
+                let rect = sdl2::rect::Rect::new(
+                    rect.min.x as i32,
+                    rect.min.y as i32,
+                    rect.width(),
+                    rect.height(),
+                );
+                // TODO: propagate errors?
+                let _ = glyph_texture.with_lock(rect, |out, pitch| {
+                    let out = out.chunks_mut(pitch);
+                    let data = data.chunks(rect.width() as _);
+                    for (out, data) in out.zip(data) {
+                        for (out, &data) in out.chunks_mut(4).zip(data) {
+                            out[3] = data;
+                            out[0..3].fill(255);
+                        }
+                    }
+                });
+            })?;
+
+            let color = convert_color(color);
+            glyph_texture.set_color_mod(color.r, color.g, color.b);
+            glyph_texture.set_alpha_mod(color.a);
+
+            let (glyph_texture_w, glyph_texture_h) = {
+                let q = glyph_texture.query();
+                (q.width as f32, q.height as f32)
+            };
+
+            for glyph in positioned_glyphs {
+                if let Some((src, dst)) = glyph_cache.rect_for(font_id, glyph)? {
+                    let src = {
+                        let x = src.min.x * glyph_texture_w;
+                        let y = src.min.y * glyph_texture_h;
+                        let w = src.width() * glyph_texture_w;
+                        let h = src.height() * glyph_texture_h;
+                        (x as _, y as _, w as _, h as _)
+                    };
+                    let dst = {
+                        let x = dst.min.x as f32 / dpi_factor;
+                        let y = dst.min.y as f32 / dpi_factor;
+                        let w = dst.width() as f32 / dpi_factor;
+                        let h = dst.height() as f32 / dpi_factor;
+                        (x as _, y as _, w as _, h as _)
+                    };
+                    canvas
+                        .copy(glyph_texture, Some(src.into()), Some(dst.into()))
+                        .map_err(DrawPrimitiveError::Sdl)?;
+                }
             }
         }
-        conrod_core::render::PrimitiveKind::Other(_) => {}
+        PrimitiveKind::Other(_) => {}
     }
     Ok(())
+}
+
+#[derive(Debug, Error)]
+pub enum DrawPrimitiveError {
+    #[error("SDL returned an error: {0}")]
+    Sdl(String),
+    #[error("GlyphCache::cache_queued failed: {0}")]
+    GlyphCacheWriteErr(#[from] CacheWriteErr),
+    #[error("GlyphCache:rect_for failed: {0}")]
+    GlyphCacheReadErr(#[from] CacheReadErr),
 }
 
 pub fn convert_rect(window_size: SdlWindowSize, rect: conrod_core::Rect) -> sdl2::rect::Rect {

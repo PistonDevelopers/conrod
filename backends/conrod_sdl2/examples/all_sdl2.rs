@@ -1,6 +1,14 @@
+use conrod_core::text::GlyphCache;
 use conrod_example_shared::{DemoApp, WIN_H, WIN_W};
-use conrod_sdl2::convert_event;
-use sdl2::{image::LoadTexture, rect::Rect, video::WindowBuildError, IntegerOrSdlError};
+use conrod_sdl2::{convert_event, DrawPrimitiveError};
+use sdl2::{
+    image::LoadTexture,
+    pixels::PixelFormatEnum,
+    rect::Rect,
+    render::{BlendMode, TextureValueError},
+    video::WindowBuildError,
+    IntegerOrSdlError,
+};
 use thiserror::Error;
 
 fn main() -> Result<(), SdlError> {
@@ -16,11 +24,23 @@ fn main() -> Result<(), SdlError> {
 
     let mut event_pump = sdl.event_pump().map_err(SdlError::String)?;
 
-    // Load Rust logo as a texture.
-    let rust_logo_path = find_folder::Search::KidsThenParents(3, 5)
+    // Prepare glyph cache
+    let mut glyph_cache = GlyphCache::builder().build();
+    let mut glyph_texture = {
+        let (w, h) = glyph_cache.dimensions();
+        let mut texture =
+            texture_creator.create_texture_streaming(PixelFormatEnum::ABGR8888, w, h)?;
+        texture.set_blend_mode(BlendMode::Blend);
+        texture
+    };
+
+    // The assets directory, where the Rust logo and the font file belong.
+    let assets = find_folder::Search::KidsThenParents(3, 5)
         .for_folder("assets")
-        .expect("Assets directory not found")
-        .join("images/rust.png");
+        .expect("Assets directory not found");
+
+    // Load Rust logo as a texture.
+    let rust_logo_path = assets.join("images/rust.png");
     let mut image_map = conrod_core::image::Map::new();
     let rust_logo = texture_creator
         .load_texture(rust_logo_path)
@@ -34,6 +54,10 @@ fn main() -> Result<(), SdlError> {
     let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());
     // Demonstration app state that we'll control with our conrod GUI.
     let mut app = DemoApp::new(rust_logo);
+
+    // Load font file
+    let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
+    ui.fonts.insert_from_file(font_path).unwrap();
 
     'main: loop {
         for event in event_pump.poll_iter() {
@@ -52,11 +76,18 @@ fn main() -> Result<(), SdlError> {
 
         conrod_example_shared::gui(&mut ui.set_widgets(), &ids, &mut app);
         if let Some(primitives) = ui.draw_if_changed() {
-            conrod_sdl2::draw(&mut canvas, &mut image_map, window_size, primitives)
-                .map_err(SdlError::String)?;
+            conrod_sdl2::draw(
+                &mut canvas,
+                &mut image_map,
+                &mut glyph_cache,
+                &mut glyph_texture,
+                window_size,
+                primitives,
+            )?;
         } else {
             // If `canvas.present()` is called without any actual drawing command, it clears the screen.
-            // We want to preserve what is drawn, so we draw a dummy rectangle outside the canvas.
+            // We want to preserve what is already drawn in the previous loop,
+            // so we draw a dummy rectangle outside the canvas.
             canvas
                 .draw_rect(Rect::new(-1, -1, 1, 1))
                 .map_err(SdlError::String)?;
@@ -76,4 +107,8 @@ pub enum SdlError {
     WindowBuildError(#[from] WindowBuildError),
     #[error("Integer overflowed or SDL returned an error: {0}")]
     IntegerOrSdlError(#[from] IntegerOrSdlError),
+    #[error("Failed to create a texture: {0}")]
+    TextureValueError(#[from] TextureValueError),
+    #[error("Failed to draw a primitivee: {0}")]
+    DrawPrimitiveError(#[from] DrawPrimitiveError),
 }
