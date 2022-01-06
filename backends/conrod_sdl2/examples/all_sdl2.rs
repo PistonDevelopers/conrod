@@ -1,10 +1,11 @@
+use std::{thread::sleep, time::Duration};
+
 use conrod_core::text::GlyphCache;
 use conrod_example_shared::{DemoApp, WIN_H, WIN_W};
 use conrod_sdl2::{convert_event, DrawPrimitiveError};
 use sdl2::{
     image::LoadTexture,
     pixels::PixelFormatEnum,
-    rect::Rect,
     render::{BlendMode, TextureValueError},
     video::WindowBuildError,
     IntegerOrSdlError,
@@ -88,16 +89,12 @@ fn main() -> Result<(), SdlError> {
                 window_size,
                 primitives,
             )?;
+            canvas.present();
         } else {
-            // If `canvas.present()` is called without any actual drawing command, it clears the screen.
-            // We want to preserve what is already drawn in the previous loop,
-            // so we draw a dummy rectangle outside the canvas.
-            canvas
-                .draw_rect(Rect::new(-1, -1, 1, 1))
-                .map_err(SdlError::String)?;
+            // We should sleep for a reasonable duration before polloing for new events
+            // in order to avoid polloing new events very frequently.
+            sleep(Duration::from_secs_f64(1. / 60.));
         }
-
-        canvas.present();
     }
 
     Ok(())
