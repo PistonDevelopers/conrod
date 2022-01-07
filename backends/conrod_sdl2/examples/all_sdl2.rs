@@ -1,5 +1,6 @@
 use std::{thread::sleep, time::Duration};
 
+use conrod_core::UiBuilder;
 use conrod_example_shared::{DemoApp, WIN_H, WIN_W};
 use conrod_sdl2::{convert_event, DrawPrimitiveError};
 use sdl2::{
@@ -35,7 +36,7 @@ fn main() -> Result<(), SdlError> {
     let rust_logo = image_map.insert(rust_logo);
 
     // Create Ui and Ids of widgets to instantiate
-    let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64])
+    let mut ui = UiBuilder::new([WIN_W as f64, WIN_H as f64])
         .theme(conrod_example_shared::theme())
         .build();
     let ids = conrod_example_shared::Ids::new(ui.widget_id_generator());

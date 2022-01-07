@@ -7,12 +7,13 @@ use conrod_core::{
         GlyphCache,
     },
     widget::triangles::{ColoredPoint, Triangle},
-    Scalar,
+    Color as ConrodColor, Point as ConrodPoint, Scalar,
 };
 use sdl2::{
-    event::Event,
+    event::{Event, WindowEvent},
     gfx::primitives::DrawRenderer,
     pixels::PixelFormatEnum,
+    rect::Rect as SdlRect,
     render::{BlendMode, Canvas, Texture, TextureCreator, TextureValueError},
     video::{Window, WindowContext},
 };
@@ -28,14 +29,11 @@ type SdlWindowSize = (u32, u32);
 /// NOTE: The sdl2 MouseMotion event is a combination of a MouseCursor and MouseRelative conrod
 /// events. Thus we may sometimes return two events in place of one, hence the tuple return type
 pub fn convert_event(e: Event, window_size: SdlWindowSize) -> [Option<Input>; 2] {
-    use sdl2::event::WindowEvent;
-
     // Translate the coordinates from top-left-origin-with-y-down to centre-origin-with-y-up.
-    //
-    // winit produces input events in pixels, so these positions need to be divided by the width
+    // Sdl2 produces input events in pixels, so these positions need to be divided by the width
     // and height of the window in order to be DPI agnostic.
-    let tx = |x: f32| x as Scalar - window_size.0 as Scalar / 2.0;
-    let ty = |y: f32| -(y as Scalar - window_size.1 as Scalar / 2.0);
+    let tx = |x: i32| x as Scalar - window_size.0 as Scalar / 2.0;
+    let ty = |y: i32| -(y as Scalar - window_size.1 as Scalar / 2.0);
 
     // If the event is converted to a single input, it will stored to this variable `event`
     // and returned later.
@@ -56,14 +54,14 @@ pub fn convert_event(e: Event, window_size: SdlWindowSize) -> [Option<Input>; 2]
             keycode: Some(key), ..
         } => Input::Release(input::Button::Keyboard(convert_key(key))),
         Event::FingerDown { touch_id, x, y, .. } => {
-            let xy = [x as f64, y as f64];
+            let xy = [x as Scalar, y as Scalar];
             let id = input::touch::Id::new(touch_id as u64);
             let phase = input::touch::Phase::Start;
             let touch = input::Touch { phase, id, xy };
             Input::Touch(touch)
         }
         Event::FingerMotion { touch_id, x, y, .. } => {
-            let xy = [x as f64, y as f64];
+            let xy = [x as Scalar, y as Scalar];
             let id = input::touch::Id::new(touch_id as u64);
             let phase = input::touch::Phase::Move;
             let touch = input::Touch { phase, id, xy };
@@ -71,7 +69,7 @@ pub fn convert_event(e: Event, window_size: SdlWindowSize) -> [Option<Input>; 2]
         }
 
         Event::FingerUp { touch_id, x, y, .. } => {
-            let xy = [x as f64, y as f64];
+            let xy = [x as Scalar, y as Scalar];
             let id = input::touch::Id::new(touch_id as u64);
             let phase = input::touch::Phase::End;
             let touch = input::Touch { phase, id, xy };
@@ -80,13 +78,10 @@ pub fn convert_event(e: Event, window_size: SdlWindowSize) -> [Option<Input>; 2]
         Event::MouseMotion {
             x, y, xrel, yrel, ..
         } => {
-            let cursor = input::Motion::MouseCursor {
-                x: tx(x as f32),
-                y: ty(y as f32),
-            };
+            let cursor = input::Motion::MouseCursor { x: tx(x), y: ty(y) };
             let relative = input::Motion::MouseRelative {
-                x: tx(xrel as f32),
-                y: ty(yrel as f32),
+                x: tx(xrel),
+                y: ty(yrel),
             };
             return [Some(Input::Motion(cursor)), Some(Input::Motion(relative))];
         }
@@ -181,14 +176,15 @@ impl<'font, 'texture> Renderer<'font, 'texture> {
 
     /// Draws the given primitives.
     /// It stops drawing as soon as any error occurs.
-    pub fn draw<'m, 't: 'm, I>(
+    pub fn draw<'m, 't: 'm, I, P>(
         &mut self,
         canvas: &mut Canvas<Window>,
         image_map: I,
-        mut primitives: impl PrimitiveWalker,
+        mut primitives: P,
     ) -> Result<(), DrawPrimitiveError>
     where
         I: Into<Option<&'m mut ImageMap<'t>>>,
+        P: PrimitiveWalker,
     {
         let mut image_map = image_map.into();
         while let Some(primitive) = primitives.next_primitive() {
@@ -264,8 +260,8 @@ impl<'font, 'texture> Renderer<'font, 'texture> {
 
     fn draw_rectangle(
         canvas: &mut Canvas<Window>,
-        rect: sdl2::rect::Rect,
-        color: conrod_core::Color,
+        rect: SdlRect,
+        color: ConrodColor,
     ) -> Result<(), DrawPrimitiveError> {
         canvas.set_draw_color(convert_color(color));
         canvas.fill_rect(rect).map_err(DrawPrimitiveError::Sdl)?;
@@ -275,8 +271,8 @@ impl<'font, 'texture> Renderer<'font, 'texture> {
     fn draw_triangle_single_color(
         canvas: &mut Canvas<Window>,
         color: conrod_core::color::Rgba,
-        triangles: &[Triangle<conrod_core::Point>],
-        convert_point: impl Fn(conrod_core::Point) -> (i32, i32) + Copy,
+        triangles: &[Triangle<ConrodPoint>],
+        convert_point: impl Fn(ConrodPoint) -> (i32, i32) + Copy,
     ) -> Result<(), DrawPrimitiveError> {
         for t in triangles {
             let [(ax, ay), (bx, by), (cx, cy)] = t.0.map(convert_point);
@@ -298,7 +294,7 @@ impl<'font, 'texture> Renderer<'font, 'texture> {
     fn draw_triangle_multi_color(
         canvas: &mut Canvas<Window>,
         triangles: &[Triangle<ColoredPoint>],
-        convert_point: impl Fn(conrod_core::Point) -> (i32, i32) + Copy,
+        convert_point: impl Fn(ConrodPoint) -> (i32, i32) + Copy,
     ) -> Result<(), DrawPrimitiveError> {
         // Multicolor triangles are not supported in pure SDL,
         // so we workaround by using only the first color
@@ -322,11 +318,11 @@ impl<'font, 'texture> Renderer<'font, 'texture> {
 
     fn draw_image(
         canvas: &mut Canvas<Window>,
-        image_map: &mut conrod_core::image::Map<sdl2::render::Texture>,
-        dest_rect: sdl2::rect::Rect,
+        image_map: &mut ImageMap,
+        dest_rect: SdlRect,
         image_id: conrod_core::image::Id,
-        color: Option<conrod_core::Color>,
-        source_rect: Option<sdl2::rect::Rect>,
+        color: Option<ConrodColor>,
+        source_rect: Option<SdlRect>,
     ) -> Result<(), DrawPrimitiveError> {
         // TODO: should we really panic if no image was found?
         let texture = image_map
@@ -347,7 +343,7 @@ impl<'font, 'texture> Renderer<'font, 'texture> {
         &mut self,
         canvas: &mut Canvas<Window>,
         dpi_factor: Scalar,
-        color: conrod_core::Color,
+        color: ConrodColor,
         text: conrod_core::render::Text,
         font_id: conrod_core::text::font::Id,
     ) -> Result<(), DrawPrimitiveError> {
@@ -361,7 +357,7 @@ impl<'font, 'texture> Renderer<'font, 'texture> {
 
         // Cache the glyphs within the GPU cache.
         self.glyph_cache.cache_queued(|rect, data| {
-            let rect = sdl2::rect::Rect::new(
+            let rect = SdlRect::new(
                 rect.min.x as i32,
                 rect.min.y as i32,
                 rect.width(),
@@ -429,9 +425,9 @@ pub fn convert_rect(
     window_size: SdlWindowSize,
     dpi_factor: Scalar,
     rect: conrod_core::Rect,
-) -> sdl2::rect::Rect {
+) -> SdlRect {
     let (x, y) = convert_point(window_size, dpi_factor, rect.top_left());
-    sdl2::rect::Rect::new(
+    SdlRect::new(
         x,
         y,
         (rect.w() * dpi_factor) as _,
@@ -440,16 +436,16 @@ pub fn convert_rect(
 }
 
 pub fn convert_point(
-    window_size: SdlWindowSize,
+    (window_w, window_h): SdlWindowSize,
     dpi_factor: Scalar,
-    [x, y]: conrod_core::Point,
+    [x, y]: ConrodPoint,
 ) -> (i32, i32) {
-    let x = (window_size.0 as Scalar / 2. + x) * dpi_factor;
-    let y = (window_size.1 as Scalar / 2. - y) * dpi_factor;
+    let x = (window_w as Scalar / 2. + x) * dpi_factor;
+    let y = (window_h as Scalar / 2. - y) * dpi_factor;
     (x as _, y as _)
 }
 
-pub fn convert_color(color: impl Into<conrod_core::Color>) -> sdl2::pixels::Color {
+pub fn convert_color(color: impl Into<ConrodColor>) -> sdl2::pixels::Color {
     let [r, g, b, a] = color.into().to_byte_fsa();
     sdl2::pixels::Color::RGBA(r, g, b, a)
 }
