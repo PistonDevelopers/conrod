@@ -1,3 +1,4 @@
+use arrayvec::ArrayVec;
 use conrod_core::{
     event::Input,
     input,
@@ -21,14 +22,14 @@ use thiserror::Error;
 
 type SdlWindowSize = (u32, u32);
 
-/// A function for converting a `sdl2::event::Event` to a `conrod::event::Input`.
+/// Converts a `sdl2::event::Event` to a `conrod::event::Input`.
 ///
-/// This can be useful for single-window applications. Note that win_w and win_h should be the dpi
-/// agnostic values (i.e. pass window.size() values and NOT window.drawable_size())
+/// This can be useful for single-window applications. Note that window_size should be the dpi
+/// agnostic values (i.e. pass `window.size()` values and NOT `window.drawable_size()`).
 ///
 /// NOTE: The sdl2 MouseMotion event is a combination of a MouseCursor and MouseRelative conrod
-/// events. Thus we may sometimes return two events in place of one, hence the tuple return type
-pub fn convert_event(e: Event, window_size: SdlWindowSize) -> [Option<Input>; 2] {
+/// events. Thus we may sometimes return up to two events.
+pub fn convert_event(e: Event, window_size: SdlWindowSize) -> ArrayVec<Input, 2> {
     // Translate the coordinates from top-left-origin-with-y-down to centre-origin-with-y-up.
     // Sdl2 produces input events in pixels, so these positions need to be divided by the width
     // and height of the window in order to be DPI agnostic.
@@ -44,7 +45,7 @@ pub fn convert_event(e: Event, window_size: SdlWindowSize) -> [Option<Input>; 2]
             WindowEvent::Resized(w, h) => Input::Resize(w as Scalar, h as Scalar),
             WindowEvent::FocusGained => Input::Focus(true),
             WindowEvent::FocusLost => Input::Focus(false),
-            _ => return [None, None],
+            _ => return ArrayVec::new(),
         },
         Event::TextInput { text, .. } => Input::Text(text),
         Event::KeyDown {
@@ -83,7 +84,7 @@ pub fn convert_event(e: Event, window_size: SdlWindowSize) -> [Option<Input>; 2]
                 x: tx(xrel),
                 y: ty(yrel),
             };
-            return [Some(Input::Motion(cursor)), Some(Input::Motion(relative))];
+            return [Input::Motion(cursor), Input::Motion(relative)].into();
         }
         Event::MouseWheel { x, y, .. } => {
             // Invert the scrolling of the *y* axis as *y* is up in conrod.
@@ -113,9 +114,11 @@ pub fn convert_event(e: Event, window_size: SdlWindowSize) -> [Option<Input>; 2]
                 input::ControllerAxisArgs::new(which, axis_idx, normalized_value),
             ))
         }
-        _ => return [None, None],
+        _ => return ArrayVec::new(),
     };
-    [Some(event), None]
+    let mut ret = ArrayVec::new();
+    ret.push(event);
+    ret
 }
 
 /// Maps sdl2's key to a conrod `Key`.

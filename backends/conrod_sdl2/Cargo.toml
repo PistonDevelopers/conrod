@@ -9,7 +9,10 @@ edition = "2021"
 conrod_core = { path = "../../conrod_core", version = "0.71" }
 thiserror = "1.0.30"
 sdl2 = { version = "0.35.1", features = ["gfx", "image"] }
+arrayvec = "0.7.2"
 
 [dev-dependencies]
 conrod_example_shared = { path = "../conrod_example_shared", version = "0.71" }
 find_folder = "0.3.0"
+
+[features]

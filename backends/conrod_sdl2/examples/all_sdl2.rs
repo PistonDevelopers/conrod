@@ -60,10 +60,7 @@ fn main() -> Result<(), SdlError> {
                 } => break 'main,
                 _ => {}
             }
-            for event in convert_event(event, canvas.window().size())
-                .into_iter()
-                .flatten()
-            {
+            for event in convert_event(event, canvas.window().size()) {
                 ui.handle_event(event);
             }
         }
