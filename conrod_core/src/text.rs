@@ -12,8 +12,6 @@ pub mod rt {
     pub use rusttype::{gpu_cache, point, vector, Point, Rect, Vector};
 }
 
-/// The RustType `FontCollection` type used by conrod.
-pub type FontCollection = ::rusttype::FontCollection<'static>;
 /// The RustType `Font` type used by conrod.
 pub type Font = ::rusttype::Font<'static>;
 /// The RustType `PositionedGlyph` type used by conrod.
@@ -136,10 +134,12 @@ pub mod font {
     /// Returned when loading new fonts from file or bytes.
     #[derive(Debug)]
     pub enum Error {
-        /// Some error occurred while loading a `FontCollection` from a file.
+        /// Some error occurred while loading a `Font` from a file.
         IO(std::io::Error),
         /// No `Font`s could be yielded from the `FontCollection`.
         NoFont,
+        /// An error produced by rusttype.
+        Rusttype(rusttype::Error),
     }
 
     impl Id {
@@ -181,23 +181,6 @@ pub mod font {
             Ok(self.insert(font))
         }
 
-        // /// Adds each font in the given `rusttype::FontCollection` to the `Map` and returns an
-        // /// iterator yielding a unique `Id` for each.
-        // pub fn insert_collection(&mut self, collection: super::FontCollection) -> NewIds {
-        //     let start_index = self.next_index;
-        //     let mut end_index = start_index;
-        //     for index in 0.. {
-        //         match collection.font_at(index) {
-        //             Some(font) => {
-        //                 self.insert(font);
-        //                 end_index += 1;
-        //             }
-        //             None => break,
-        //         }
-        //     }
-        //     NewIds { index_range: start_index..end_index }
-        // }
-
         /// Produces an iterator yielding the `Id` for each `Font` within the `Map`.
         pub fn ids(&self) -> Ids {
             Ids {
@@ -206,26 +189,13 @@ pub mod font {
         }
     }
 
-    /// Load a `super::FontCollection` from a file at a given path.
-    pub fn collection_from_file<P>(path: P) -> Result<super::FontCollection, std::io::Error>
-    where
-        P: AsRef<std::path::Path>,
-    {
-        use std::io::Read;
-        let path = path.as_ref();
-        let mut file = std::fs::File::open(path)?;
-        let mut file_buffer = Vec::new();
-        file.read_to_end(&mut file_buffer)?;
-        Ok(super::FontCollection::from_bytes(file_buffer)?)
-    }
-
     /// Load a single `Font` from a file at the given path.
     pub fn from_file<P>(path: P) -> Result<super::Font, Error>
     where
         P: AsRef<std::path::Path>,
     {
-        let collection = collection_from_file(path)?;
-        collection.into_font().or(Err(Error::NoFont))
+        let bytes = std::fs::read(path)?;
+        super::Font::from_bytes(bytes).map_err(Error::Rusttype)
     }
 
     impl Iterator for NewIds {
@@ -248,10 +218,17 @@ pub mod font {
         }
     }
 
+    impl From<rusttype::Error> for Error {
+        fn from(e: rusttype::Error) -> Self {
+            Error::Rusttype(e)
+        }
+    }
+
     impl std::error::Error for Error {
         fn cause(&self) -> Option<&dyn std::error::Error> {
             match *self {
                 Error::IO(ref e) => Some(e),
+                Error::Rusttype(ref e) => Some(e),
                 _ => None,
             }
         }
@@ -262,6 +239,7 @@ pub mod font {
             let s = match *self {
                 Error::IO(ref e) => return std::fmt::Display::fmt(e, f),
                 Error::NoFont => "No `Font` found in the loaded `FontCollection`.",
+                Error::Rusttype(ref e) => return std::fmt::Display::fmt(e, f),
             };
             write!(f, "{}", s)
         }
@@ -280,7 +258,7 @@ pub mod glyph {
     pub type HalfW = Scalar;
 
     /// An iterator yielding the `Rect` for each `char`'s `Glyph` in the given `text`.
-    pub struct Rects<'a, 'b> {
+    pub struct Rects<'font, 'b> {
         /// The *y* axis `Range` of the `Line` for which character `Rect`s are being yielded.
         ///
         /// Every yielded `Rect` will use this as its `y` `Range`.
@@ -288,7 +266,7 @@ pub mod glyph {
         /// The position of the next `Rect`'s left edge along the *x* axis.
         next_left: Scalar,
         /// `PositionedGlyphs` yielded by the RustType `LayoutIter`.
-        layout: super::LayoutIter<'a, 'b>,
+        layout: super::LayoutIter<'font, 'b>,
     }
 
     /// An iterator that, for every `(line, line_rect)` pair yielded by the given iterator,
@@ -536,9 +514,9 @@ pub mod cursor {
     /// Each possible cursor position along the *x* axis within a line of text.
     ///
     /// `Xs` iterators are produced by the `XysPerLine` iterator.
-    pub struct Xs<'a, 'b> {
+    pub struct Xs<'font, 'b> {
         next_x: Option<Scalar>,
-        layout: super::LayoutIter<'a, 'b>,
+        layout: super::LayoutIter<'font, 'b>,
     }
 
     /// An index representing the position of a cursor within some text.

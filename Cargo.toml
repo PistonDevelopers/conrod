@@ -12,3 +12,6 @@ members = [
     "backends/conrod_wgpu",
     "backends/conrod_sdl2",
 ]
+
+# wgpu requires this feature resolver version.
+resolver = "2"

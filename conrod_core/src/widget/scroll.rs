@@ -36,11 +36,11 @@ pub struct State<A> {
 /// Methods for distinguishing behaviour between both scroll axes at compile-time.
 pub trait Axis {
     /// The range of the given `Rect` that is parallel with this `Axis`.
-    fn parallel_range(Rect) -> Range;
+    fn parallel_range(r: Rect) -> Range;
     /// The range of the given `Rect` that is perpendicular with this `Axis`.
-    fn perpendicular_range(Rect) -> Range;
+    fn perpendicular_range(r: Rect) -> Range;
     /// Given some rectangular `Padding`, return the `Range` that corresponds with this `Axis`.
-    fn padding_range(Padding) -> Range;
+    fn padding_range(p: Padding) -> Range;
     /// The coordinate of the given mouse position that corresponds with this `Axis`.
     fn mouse_scalar(mouse_xy: Point) -> Scalar;
     /// A `Scalar` multiplier representing the direction in which positive offset shifts the
@@ -141,14 +141,14 @@ where
     ///                         |   |                       |
     ///          >   scrollable |   =========================
     ///          ^      range y |
-    ///          ^              |    
-    ///          ^              |    
-    ///   offset ^              |    
-    ///   bounds ^              |    
-    ///     .end ^              |    
-    ///          ^              |    
-    ///          ^              |    
-    ///          +              >    
+    ///          ^              |
+    ///          ^              |
+    ///   offset ^              |
+    ///   bounds ^              |
+    ///     .end ^              |
+    ///          ^              |
+    ///          ^              |
+    ///          +              >
     ///
     /// ```
     pub fn update(

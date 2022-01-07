@@ -1,6 +1,6 @@
 [package]
 name = "conrod_core"
-version = "0.71.0"
+version = "0.76.0"
 authors = [
     "Mitchell Nordine <mitchell.nordine@gmail.com>",
     "Sven Nilsen <bvssvni@gmail.com>"
@@ -21,11 +21,11 @@ stdweb = [ "instant/stdweb" ]
 wasm-bindgen = [ "instant/wasm-bindgen" ]
 
 [dependencies]
-conrod_derive = { path = "../conrod_derive", version = "0.71" }
+conrod_derive = { path = "../conrod_derive", version = "0.76" }
 daggy = "0.5"
 fnv = "1.0"
 num = "0.3"
 pistoncore-input = "1.0.0"
-rusttype = { version = "0.8", features = ["gpu_cache"] }
+rusttype = { version = "0.8.3", features = ["gpu_cache"] }
 instant = "0.1"
 copypasta = "0.6"

@@ -25,6 +25,7 @@ pub struct Mesh {
     glyph_cache_pixel_buffer: Vec<u8>,
     commands: Vec<PreparedCommand>,
     vertices: Vec<Vertex>,
+    positioned_glyphs: Vec<text::PositionedGlyph>,
 }
 
 /// Represents the scizzor in pixel coordinates.
@@ -138,11 +139,13 @@ impl Mesh {
         let glyph_cache_pixel_buffer = vec![0u8; gc_width as usize * gc_height as usize];
         let commands = vec![];
         let vertices = vec![];
+        let positioned_glyphs = vec![];
         Mesh {
             glyph_cache,
             glyph_cache_pixel_buffer,
             commands,
             vertices,
+            positioned_glyphs,
         }
     }
 
@@ -170,6 +173,7 @@ impl Mesh {
             ref mut glyph_cache_pixel_buffer,
             ref mut commands,
             ref mut vertices,
+            ref mut positioned_glyphs,
         } = *self;
 
         commands.clear();
@@ -202,11 +206,15 @@ impl Mesh {
             let (w, h) = rect.w_h();
             let left = (rect.left() * dpi_factor + half_viewport_w).round() as i32;
             let top = (rect.top() * dpi_factor - half_viewport_h).round().abs() as i32;
-            let width = (w * dpi_factor).round() as u32;
-            let height = (h * dpi_factor).round() as u32;
-            Scizzor {
-                top_left: [left.max(0), top.max(0)],
-                dimensions: [width.min(viewport_w as u32), height.min(viewport_h as u32)],
+            let width = ((w * dpi_factor).round() as u32).min(viewport_w as u32);
+            let height = ((h * dpi_factor).round() as u32).min(viewport_h as u32);
+            if width == 0 || height == 0 {
+                None
+            } else {
+                Some(Scizzor {
+                    top_left: [left.max(0), top.max(0)],
+                    dimensions: [width, height],
+                })
             }
         };
 
@@ -253,12 +261,19 @@ impl Mesh {
 
                 // Update the scizzor and produce a command.
                 current_scizzor = new_scizzor;
-                commands.push(PreparedCommand::Scizzor(new_scizzor));
+                if let Some(scizzor) = new_scizzor {
+                    commands.push(PreparedCommand::Scizzor(scizzor));
+                }
 
                 // Set the state back to plain drawing.
                 current_state = State::Plain {
                     start: vertices.len(),
                 };
+            }
+
+            // If the scizzor is `None`, then nothing is viewable, so don't draw anything.
+            if current_scizzor.is_none() {
+                continue;
             }
 
             match kind {
@@ -342,10 +357,11 @@ impl Mesh {
                 } => {
                     switch_to_plain_state!();
 
-                    let positioned_glyphs = text.positioned_glyphs(dpi_factor as f32);
+                    positioned_glyphs.clear();
+                    positioned_glyphs.extend(text.positioned_glyphs(dpi_factor as f32));
 
                     // Queue the glyphs to be cached
-                    for glyph in positioned_glyphs {
+                    for glyph in positioned_glyphs.iter() {
                         glyph_cache.queue_glyph(font_id.index(), glyph.clone());
                     }
 
@@ -384,8 +400,8 @@ impl Mesh {
                             )) * 2.0,
                     };
 
-                    for g in positioned_glyphs {
-                        if let Ok(Some((uv_rect, screen_rect))) = glyph_cache.rect_for(cache_id, g)
+                    for g in positioned_glyphs.drain(..) {
+                        if let Ok(Some((uv_rect, screen_rect))) = glyph_cache.rect_for(cache_id, &g)
                         {
                             let vk_rect = to_vk_rect(screen_rect);
                             let v = |p, t| Vertex {
