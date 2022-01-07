@@ -353,8 +353,10 @@ impl<'font, 'texture> Renderer<'font, 'texture> {
         let font_id = font_id.index();
 
         // Queue the glyphs to be cached.
-        let positioned_glyphs = text.positioned_glyphs(dpi_factor as f32);
-        for glyph in positioned_glyphs {
+        let positioned_glyphs = text
+            .positioned_glyphs(dpi_factor as f32)
+            .collect::<Vec<_>>();
+        for glyph in &positioned_glyphs {
             self.glyph_cache.queue_glyph(font_id, glyph.clone());
         }
 
@@ -389,7 +391,7 @@ impl<'font, 'texture> Renderer<'font, 'texture> {
         };
 
         for glyph in positioned_glyphs {
-            if let Some((src, dst)) = self.glyph_cache.rect_for(font_id, glyph)? {
+            if let Some((src, dst)) = self.glyph_cache.rect_for(font_id, &glyph)? {
                 let src = {
                     let x = src.min.x * glyph_texture_w;
                     let y = src.min.y * glyph_texture_h;
