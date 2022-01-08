@@ -200,11 +200,16 @@ impl<'font, 'texture> Renderer<'font, 'texture> {
                 None => self.draw_primitive(canvas, None, primitive)?,
             }
         }
+        canvas.set_clip_rect(None);
         Ok(())
     }
 
     /// Draws the given primitive.
     /// It stops drawing as soon as any error occurs.
+    ///
+    /// Note that this function may set clip rect to the renderer
+    /// but does not recover the original state for optimization reason.
+    /// Make sure that you unset the clip rect by yourself after using this function.
     pub fn draw_primitive<'m, 't: 'm, I>(
         &mut self,
         canvas: &mut Canvas<Window>,
