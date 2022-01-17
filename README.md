@@ -1,3 +1,14 @@
+# NOTICE: Original maintainer stepping down
+
+I'll no longer be maintaining conrod for the reasons discussed
+[here](https://github.com/PistonDevelopers/conrod/issues/1454). If you're
+looking for a similar yet nicer replacement GUI library, I recommend
+[egui](https://crates.io/crates/egui). If you're interested in taking over
+maintenance, please express your interest
+[here](https://github.com/PistonDevelopers/conrod/issues/1454).
+
+---
+
 # Conrod [![Actions Status](https://github.com/pistondevelopers/conrod/workflows/conrod/badge.svg)](https://github.com/pistondevelopers/conrod/actions) [![Crates.io](https://img.shields.io/crates/l/conrod_core.svg)](https://github.com/PistonDevelopers/conrod/blob/master/LICENSE)
 
 An easy-to-use, 2D GUI library written entirely in Rust.
