@@ -1,6 +1,6 @@
 [package]
 name = "conrod_glium"
-version = "0.76.0"
+version = "0.76.1"
 authors = ["Mitchell Nordine <mitchell.nordine@gmail.com>"]
 keywords = ["ui", "widgets", "gui", "interface", "graphics"]
 description = "An easy-to-use, 100% Rust, extensible 2D GUI library."
